@@ -251,6 +251,44 @@ def test_loop_local_quiet_premium_refinement_limits_brand_color_usage():
         assert forbidden not in css, f"overdesigned/heavy visual treatment still present: {forbidden}"
 
 
+def test_loop_local_app_store_consumer_refinement_prioritizes_content():
+    css = read('app/globals.css')
+    shell = read('components/app-shell.tsx')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    for marker in [
+        'App Store consumer refinement',
+        'Only cards should feel like cards.',
+        'Bring browsing above the fold.',
+        'Make placeholder images quiet and clearly secondary to real photography.',
+    ]:
+        assert marker in design, f"design system doc missing App Store refinement marker {marker}"
+    for marker in [
+        'compact-consumer-hero',
+        'unframed-discovery-section',
+        'content-first-event-card',
+        'scannable-event-meta',
+        'quiet-placeholder-image',
+        'subtle-active-nav',
+        '--ll-card-radius: 30px',
+        '--ll-card-shadow: 0 16px 36px rgba(0, 0, 0, 0.20)',
+        '--ll-section-border: transparent',
+    ]:
+        assert marker in css, f"CSS missing App Store refinement marker {marker}"
+    for marker in [
+        'compact-consumer-hero',
+        'content-first-event-card',
+        'scannable-event-meta',
+        'no-image-label',
+    ]:
+        assert marker in shell, f"shell missing App Store refinement marker {marker}"
+    assert 'shortSummary(item)' not in shell, 'event cards still show dense summary text by default'
+    assert 'addressLine(item) ||' not in shell, 'event cards still show address by default instead of hiding secondary details'
+    assert css.count('border: 1px solid var(--ll-border);') <= 12, 'too many bordered containers; rely more on whitespace'
+    assert 'grid-template-columns: minmax(0, 1fr) minmax(340px, .82fr)' not in css, 'hero still uses oversized two-column treatment'
+    assert 'font-size: clamp(3rem, 8vw, 5.9rem)' not in css, 'hero headline is still too tall'
+    assert 'min-height: 218px;' not in css, 'event image is not prominent enough for the refined card hierarchy'
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -278,5 +316,6 @@ if __name__ == '__main__':
     test_missing_event_images_use_branded_loop_local_fallback()
     test_loop_local_design_system_is_authoritative()
     test_loop_local_quiet_premium_refinement_limits_brand_color_usage()
+    test_loop_local_app_store_consumer_refinement_prioritizes_content()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

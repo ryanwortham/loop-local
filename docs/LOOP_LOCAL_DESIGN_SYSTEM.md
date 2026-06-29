@@ -143,6 +143,23 @@ Refinement rules:
 - Most category chips should be neutral dark chips with subtle borders; selected chips may use the brand gradient.
 - Do not tint large sections blue; the interface should recede so events, businesses, photos, and local content become the hero.
 
+## App Store consumer refinement
+
+This refinement keeps the current palette and direction but makes the app feel lighter, more premium, and more content-first.
+
+Rules:
+
+- Only cards should feel like cards.
+- Major page sections should breathe without visible outlines.
+- Use whitespace instead of framed panels to separate discovery areas.
+- Bring browsing above the fold.
+- Reduce hero height by roughly 35–40% from the first dark baseline.
+- Make event imagery the strongest visual element in event cards.
+- Show only scannable default event metadata: title, date/time, venue, distance, and CTA.
+- Move address, long summary, price details, and secondary metadata behind later detail/tap states.
+- Make placeholder images quiet and clearly secondary to real photography.
+- Navigation should feel light and consumer-app-like; inactive tabs should recede.
+
 ## Current implementation contract
 
 The app CSS must expose:
