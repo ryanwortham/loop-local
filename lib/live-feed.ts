@@ -22,8 +22,19 @@ export type LiveFeedItem = {
   type?: string;
   source?: string;
   ticketUrl?: string;
+  ticket_url?: string;
+  event_url?: string;
+  venueUrl?: string;
   website?: string;
   price?: string;
+  image_url?: string;
+  endsAt?: string | null;
+  timezone?: string;
+  artists?: string[];
+  soldOut?: boolean;
+  limitedAvailability?: boolean;
+  rescheduled?: boolean;
+  isPartnerEvent?: boolean;
 };
 
 export type LiveFeedResponse = {

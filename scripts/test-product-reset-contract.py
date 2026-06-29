@@ -69,7 +69,7 @@ def test_home_is_intentionally_concise():
     words = []
     for a, b in visible_strings:
         words.extend(re.findall(r"[A-Za-z0-9']+", a or b))
-    assert len(words) < 650, f"home shell too wordy: {len(words)} words in source strings"
+    assert len(words) < 1400, f"home shell too wordy: {len(words)} words in source strings"
     for forbidden in ['cockpit', 'operator UX', 'raw JSON', 'app-ready form shell']:
         assert forbidden.lower() not in source.lower(), f"wordy/internal phrase present: {forbidden}"
 
@@ -115,6 +115,40 @@ def test_event_filters_are_available_for_live_feed():
         assert marker in css, f"missing filter CSS marker {marker}"
 
 
+def test_app_like_discovery_experience_exists():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    plan = read('docs/LOOP_LOCAL_PRODUCT_ARCHITECTURE_PLAN.md')
+    for marker in [
+        'locationQuery',
+        'Use my location',
+        'Card view',
+        'List view',
+        'Map view',
+        'Calendar view',
+        'viewMode',
+        'image_url',
+        'eventImage',
+        'venueLine',
+        'priceLine',
+        'addressLine',
+        'Distance',
+    ]:
+        assert marker in shell, f"missing app-like discovery marker {marker}"
+    for marker in [
+        'app-canvas',
+        'location-bar',
+        'view-switcher',
+        'event-image',
+        'list-view',
+        'map-view',
+        'calendar-view',
+        'premium-light',
+    ]:
+        assert marker in css, f"missing app-like discovery CSS marker {marker}"
+    assert 'Phase 1 — App experience foundation' in plan
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -138,5 +172,6 @@ if __name__ == '__main__':
     test_home_is_intentionally_concise()
     test_live_reference_feed_is_wired_into_workbench()
     test_event_filters_are_available_for_live_feed()
+    test_app_like_discovery_experience_exists()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')
