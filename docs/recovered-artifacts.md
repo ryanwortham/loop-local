@@ -1,0 +1,25 @@
+# Recovered Artifacts
+
+Recovered from:
+
+```text
+/Users/ryanwortham/.openclaw/workspace/inbox/imports/pizzabot-migration-2026-06-23--1934/raw/productivebot
+```
+
+## Included Files
+
+- `supabase/migrations/20260629152300_looplocal_profiles_moderation.sql`
+- `recovered/inspect_events_columns.sql`
+- `recovered/apply_looplocal_confirm_qa_ui.js`
+- `recovered/apply_looplocal_inspect_columns_ui.js`
+- `recovered/apply_looplocal_profiles_moderation_ui.js`
+- `recovered/apply_looplocal_profiles_trigger_ui.js`
+- `recovered/confirm_looplocal_qa.redacted.sql`
+
+## Not Included
+
+The original `confirm_looplocal_qa.sql` contained a temporary QA password and was not committed as-is. A redacted placeholder version is included instead.
+
+## Caution
+
+The recovered JavaScript files are old browser automation helpers. They include absolute paths from the old Productivebot machine and should be treated as historical recovery artifacts, not current production scripts.
