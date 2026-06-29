@@ -153,6 +153,8 @@ def test_missing_event_images_use_branded_loop_local_fallback():
     for path in [
         'public/looplocal-logo-app.jpg',
         'public/looplocal-logo-app.png',
+        'public/looplocal-event-placeholder.jpg',
+        'public/looplocal-event-placeholder.png',
         'public/looplocal-icon-192.png',
         'public/looplocal-icon-512.png',
         'app/icon.png',
@@ -164,16 +166,17 @@ def test_missing_event_images_use_branded_loop_local_fallback():
     layout = read('app/layout.tsx')
     manifest = read('app/manifest.ts')
     for marker in [
-        "'/looplocal-logo-app.png'",
+        "'/looplocal-event-placeholder.jpg'",
         'hasEventImage',
         'event-image-fallback',
         'brand-logo-image',
         'Loop Local',
     ]:
-        assert marker in shell, f"missing canonical logo fallback marker {marker}"
+        assert marker in shell, f"missing supplied event fallback marker {marker}"
+    assert "'/looplocal-logo-app.png'" not in shell, 'square app logo still used as event-card fallback'
     assert 'source.unsplash.com' not in shell, 'random external event fallback image still present'
     assert "'/looplocal-event-fallback.svg'" not in shell, 'old generated SVG fallback still used by cards'
-    for marker in ['event-image-fallback', 'fallback-logo-badge', 'brand-logo-image']:
+    for marker in ['event-image-fallback', 'brand-logo-image']:
         assert marker in css, f"missing fallback/logo CSS marker {marker}"
     for marker in ['/looplocal-icon-512.png', '/looplocal-logo-app.png']:
         assert marker in (layout + manifest), f"metadata missing canonical logo marker {marker}"

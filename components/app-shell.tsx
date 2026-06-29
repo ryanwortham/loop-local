@@ -20,7 +20,7 @@ function formatEventMeta(item: LiveFeedItem): string {
 }
 
 function eventImage(item: LiveFeedItem): string {
-  return item.image_url || '/looplocal-logo-app.png';
+  return item.image_url || '/looplocal-event-placeholder.jpg';
 }
 
 function venueLine(item: LiveFeedItem): string {
@@ -113,7 +113,6 @@ function EventCard({ item }: { item: LiveFeedItem }) {
   return (
     <article className="event-card premium-light">
       <div className={hasEventImage ? 'event-image' : 'event-image event-image-fallback'} style={{ backgroundImage: `url(${eventImage(item)})` }}>
-        {!hasEventImage ? <span className="fallback-logo-badge">Loop Local</span> : null}
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
         <span className="event-price-pill">{priceLine(item)}</span>
       </div>
