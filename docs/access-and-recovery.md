@@ -23,6 +23,28 @@ One of these is required before this can become the actual full app repository:
 3. Access to the machine/session running the Cloudflare tunnel.
 4. A zip/export of the current app source.
 
+## What Was Recovered From The Tunnel
+
+The public Cloudflare tunnel was reachable on 2026-06-29:
+
+```text
+https://replaced-gaming-selected-spectacular.trycloudflare.com
+```
+
+It served a Next.js/Turbopack dev build for Loop Local. The reachable public assets were downloaded into:
+
+```text
+recovered/tunnel-snapshot-2026-06-29/
+```
+
+Compiled app modules were split into:
+
+```text
+recovered/compiled-src/
+```
+
+This is valuable recovery material, but it is not pristine original source. Treat it as a reconstruction aid until the real repo/source export is found.
+
 ## Recommended Recovery Order
 
 1. Get GitHub/repo access if possible.

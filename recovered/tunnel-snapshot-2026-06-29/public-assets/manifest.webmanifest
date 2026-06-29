@@ -1,0 +1,25 @@
+{
+  "name": "Loop Local",
+  "short_name": "Loop Local",
+  "description": "Loop Local helps residents discover events, specials, live music, deals, and community happenings around them.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f4ef",
+  "theme_color": "#f43f5e",
+  "icons": [
+    {
+      "src": "/looplocal-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/looplocal-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

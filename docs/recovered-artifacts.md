@@ -15,6 +15,8 @@ Recovered from:
 - `recovered/apply_looplocal_profiles_moderation_ui.js`
 - `recovered/apply_looplocal_profiles_trigger_ui.js`
 - `recovered/confirm_looplocal_qa.redacted.sql`
+- `recovered/tunnel-snapshot-2026-06-29/`
+- `recovered/compiled-src/`
 
 ## Not Included
 
@@ -23,3 +25,5 @@ The original `confirm_looplocal_qa.sql` contained a temporary QA password and wa
 ## Caution
 
 The recovered JavaScript files are old browser automation helpers. They include absolute paths from the old Productivebot machine and should be treated as historical recovery artifacts, not current production scripts.
+
+The tunnel snapshot is recovered from a public Next.js/Turbopack dev build. It contains compiled client modules, chunks, route HTML, CSS, and public assets, not the pristine original repository.
