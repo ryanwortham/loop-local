@@ -67,6 +67,45 @@ def test_initial_ui_has_operator_sections():
         assert needle in page, f"missing UI marker {needle}"
 
 
+def test_post_local_route_matches_current_app_contract():
+    for path in [
+        "app/post-local/page.tsx",
+        "components/file-drop-input.tsx",
+        "components/post-local-wizard.tsx",
+        "public/looplocal-logo.png",
+        "public/looplocal-icon-192.png",
+        "references/current-cloudflare-app-snapshot/post-local.html",
+        "references/current-cloudflare-app-snapshot/form-fields.json",
+    ]:
+        assert_file(path)
+
+    route = read("app/post-local/page.tsx") + read("components/post-local-wizard.tsx")
+    for needle in [
+        "Post Local",
+        "Post something local in minutes",
+        "List Your Business",
+        "Post an Event",
+        "Join as a Community Organization",
+        "Step 1: Profile",
+        "Business/Organization Profile",
+        "logo",
+        "contact_name",
+        "entity_type",
+        "Step 2: First Event or Promotion",
+        "post_type",
+        "event_image",
+        "event_title",
+        "event_date",
+        "start_time",
+        "end_time",
+        "Step 3: Preview",
+        "Step 4: Submit for Approval",
+        "Submit for Approval",
+        "Draft/pending until approved",
+    ]:
+        assert needle in route, f"missing /post-local marker {needle}"
+
+
 def test_no_secrets_committed():
     forbidden = ["service_role", "SUPABASE_SERVICE_ROLE_KEY", "sb_secret_", "postgresql://postgres:"]
     for path in ["app/page.tsx", "lib/env.ts", "lib/supabase/client.ts", "README.md"]:
@@ -80,5 +119,6 @@ if __name__ == "__main__":
     test_package_scripts_and_dependencies()
     test_supabase_env_is_used_safely()
     test_initial_ui_has_operator_sections()
+    test_post_local_route_matches_current_app_contract()
     test_no_secrets_committed()
     print("loop_local_app_scaffold_contract_ok")

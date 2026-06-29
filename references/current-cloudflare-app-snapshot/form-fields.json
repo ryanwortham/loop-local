@@ -1,0 +1,205 @@
+[
+  {
+    "tag": "input",
+    "type": "file",
+    "name": "logo",
+    "id": "_R_guatpeqlb_"
+  },
+  {
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "name"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "contact_name"
+  },
+  {
+    "tag": "input",
+    "type": "email",
+    "name": "email"
+  },
+  {
+    "tag": "input",
+    "type": "tel",
+    "name": "phone"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "address_line_1"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "city"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "state"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "zip"
+  },
+  {
+    "tag": "input",
+    "type": "url",
+    "name": "website_url"
+  },
+  {
+    "tag": "select",
+    "name": "entity_type"
+  },
+  {
+    "tag": "select",
+    "name": "category"
+  },
+  {
+    "tag": "textarea",
+    "name": "description"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "radio",
+    "name": "post_type"
+  },
+  {
+    "tag": "input",
+    "type": "file",
+    "name": "event_image",
+    "id": "_R_peatpeqlb_"
+  },
+  {
+    "tag": "button",
+    "type": "button"
+  },
+  {
+    "tag": "input",
+    "type": "date",
+    "name": "mobile_date_picker_contract"
+  },
+  {
+    "tag": "input",
+    "type": "time",
+    "name": "mobile_time_picker_contract"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "event_title"
+  },
+  {
+    "tag": "input",
+    "type": "date",
+    "name": "event_date"
+  },
+  {
+    "tag": "input",
+    "type": "time",
+    "name": "start_time"
+  },
+  {
+    "tag": "input",
+    "type": "time",
+    "name": "end_time"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "location_name"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "address_line_1"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "event_city"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "event_state"
+  },
+  {
+    "tag": "input",
+    "type": "text",
+    "name": "event_zip"
+  },
+  {
+    "tag": "input",
+    "type": "url",
+    "name": "ticket_url"
+  },
+  {
+    "tag": "input",
+    "type": "tel",
+    "name": "contact_phone"
+  },
+  {
+    "tag": "input",
+    "type": "email",
+    "name": "contact_email"
+  },
+  {
+    "tag": "select",
+    "name": "event_category"
+  },
+  {
+    "tag": "textarea",
+    "name": "event_description"
+  },
+  {
+    "tag": "button"
+  }
+]

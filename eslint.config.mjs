@@ -9,6 +9,7 @@ export default defineConfig([
     '.next/**',
     'node_modules/**',
     'supabase/.temp/**',
+    'references/current-cloudflare-app-snapshot/**',
     'next-env.d.ts',
   ]),
 ]);
