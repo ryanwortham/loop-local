@@ -74,6 +74,26 @@ def test_home_is_intentionally_concise():
         assert forbidden.lower() not in source.lower(), f"wordy/internal phrase present: {forbidden}"
 
 
+def test_live_reference_feed_is_wired_into_workbench():
+    for path in [
+        'lib/live-feed.ts',
+        'app/api/feed/route.ts',
+    ]:
+        assert_file(path)
+    page = read('app/page.tsx')
+    shell = read('components/app-shell.tsx')
+    feed = read('lib/live-feed.ts')
+    api = read('app/api/feed/route.ts')
+    for marker in [
+        'getLiveFeed',
+        'feedItems',
+        'replaced-gaming-selected-spectacular.trycloudflare.com',
+        'live_supabase',
+        'items',
+    ]:
+        assert marker in (page + shell + feed + api), f"missing live data marker {marker}"
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -95,5 +115,6 @@ if __name__ == '__main__':
     test_pwa_and_native_distribution_foundation_exists()
     test_package_has_product_contract_script()
     test_home_is_intentionally_concise()
+    test_live_reference_feed_is_wired_into_workbench()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

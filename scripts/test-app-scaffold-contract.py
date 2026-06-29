@@ -62,9 +62,9 @@ def test_initial_ui_has_consumer_app_sections():
         "Map",
         "Saved",
         "Profile",
-        "Happening now",
+        "Happening nearby",
         "Tonight",
-        "Local deals",
+        "Live local feed",
         "Save · Share · Directions",
     ]:
         assert needle in page, f"missing UI marker {needle}"
