@@ -113,7 +113,7 @@ function EventCard({ item }: { item: LiveFeedItem }) {
         <span className="event-price-pill">{priceLine(item)}</span>
       </div>
       <div className="event-card-body">
-        <div className="event-date-block">
+        <div className="event-date-block muted-date-badge">
           <strong>{item.date ? new Date(item.date).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) : 'Soon'}</strong>
           <span>{item.date ? new Date(item.date).getUTCDate() : '•'}</span>
         </div>
@@ -282,7 +282,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
         <div className="view-switcher" aria-label="Event view mode">
           {viewModes.map((mode) => (
-            <button className={viewMode === mode.id ? 'active' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">
+            <button className={viewMode === mode.id ? 'active neutral-active-view' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">
               {mode.label}
             </button>
           ))}
@@ -298,7 +298,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
           <div className="list-view">
             {visibleItems.map((item) => (
               <article className="list-row premium-light" key={item.id}>
-                <div className="list-date"><strong>{item.date?.slice(5, 7) || '•'}</strong><span>{item.date?.slice(8, 10) || 'Soon'}</span></div>
+                <div className="list-date muted-date-badge"><strong>{item.date?.slice(5, 7) || '•'}</strong><span>{item.date?.slice(8, 10) || 'Soon'}</span></div>
                 <div>
                   <h3>{item.title}</h3>
                   <p>{venueLine(item)} · {formatEventMeta(item)}</p>

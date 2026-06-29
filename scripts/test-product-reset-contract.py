@@ -289,6 +289,35 @@ def test_loop_local_app_store_consumer_refinement_prioritizes_content():
     assert 'min-height: 218px;' not in css, 'event image is not prominent enough for the refined card hierarchy'
 
 
+def test_loop_local_browsing_ui_uses_near_zero_blue_chrome():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    for marker in [
+        'Near-zero blue browsing chrome',
+        'Browsing controls should be neutral unless they are the main CTA.',
+        'Date badges, section eyebrows, and placeholder cards should not use blue as their default color.',
+    ]:
+        assert marker in design, f"design system doc missing near-zero-blue marker {marker}"
+    for marker in [
+        'near-zero-blue-chrome',
+        '--ll-accent-browsing: rgba(255, 255, 255, 0.72)',
+        '--ll-placeholder-opacity: .10',
+        'neutral-active-view',
+        'muted-date-badge',
+        'muted-section-eyebrow',
+    ]:
+        assert marker in css, f"CSS missing near-zero-blue marker {marker}"
+    assert css.count('var(--ll-brand-gradient)') <= 1, 'brand gradient still appears outside the main CTA level'
+    for forbidden in [
+        'background: var(--ll-brand-gradient);\n}\n\n.range-tabs button.active,\n.view-switcher button.active',
+        'background: var(--ll-brand-gradient);\n  box-shadow: var(--ll-glow);',
+        'color: var(--ll-accent-primary);\n  font-size: .74rem',
+        'color: var(--ll-accent-primary);\n  background: rgba(255,255,255,.055);',
+        'opacity: .34;',
+    ]:
+        assert forbidden not in css, f"browsing UI still has too much blue/chroma: {forbidden}"
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -317,5 +346,6 @@ if __name__ == '__main__':
     test_loop_local_design_system_is_authoritative()
     test_loop_local_quiet_premium_refinement_limits_brand_color_usage()
     test_loop_local_app_store_consumer_refinement_prioritizes_content()
+    test_loop_local_browsing_ui_uses_near_zero_blue_chrome()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

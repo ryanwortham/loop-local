@@ -160,6 +160,19 @@ Rules:
 - Make placeholder images quiet and clearly secondary to real photography.
 - Navigation should feel light and consumer-app-like; inactive tabs should recede.
 
+## Near-zero blue browsing chrome
+
+The discovery/browsing UI should use almost no blue chrome.
+
+Rules:
+
+- Browsing controls should be neutral unless they are the main CTA.
+- Date badges, section eyebrows, and placeholder cards should not use blue as their default color.
+- Active view tabs should use a neutral selected state, not the brand gradient.
+- The mobile active tab should be neutral glass unless it is a high-intent CTA.
+- Placeholder images should feel like quiet absence states, not branded blue panels.
+- Blue/purple remains available for the logo, primary CTA moments, and rare high-intent actions only.
+
 ## Current implementation contract
 
 The app CSS must expose:
