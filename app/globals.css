@@ -1483,3 +1483,43 @@ body {
   font-weight: 950;
   letter-spacing: -0.01em;
 }
+
+/* Canonical supplied Loop Local logo */
+.brand-mark.brand-mark-image {
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: #050a1e;
+  box-shadow: 0 10px 24px rgba(5,10,30,0.18);
+}
+
+.brand-logo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.event-image-fallback {
+  background-color: #050a1e;
+  background-size: cover;
+  background-position: center;
+}
+
+.event-image-fallback .event-chip,
+.event-image-fallback .event-price-pill {
+  border-color: rgba(255,255,255,0.34);
+  background: rgba(5,10,30,0.58);
+}
+
+.event-image-fallback .fallback-logo-badge {
+  color: #ffffff;
+  border-color: rgba(67, 176, 255, 0.34);
+  background: linear-gradient(135deg, rgba(28, 168, 255, 0.64), rgba(123, 48, 255, 0.66));
+}
+
+.brand-logo-image {
+  background-image: url('/looplocal-logo-app.png');
+  background-size: cover;
+  background-position: center;
+}

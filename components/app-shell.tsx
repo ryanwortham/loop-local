@@ -20,7 +20,7 @@ function formatEventMeta(item: LiveFeedItem): string {
 }
 
 function eventImage(item: LiveFeedItem): string {
-  return item.image_url || '/looplocal-event-fallback.svg';
+  return item.image_url || '/looplocal-logo-app.png';
 }
 
 function venueLine(item: LiveFeedItem): string {
@@ -197,7 +197,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     <main className="app-shell app-canvas">
       <nav className="top-nav premium-light" aria-label="Primary navigation">
         <Link className="brand-lockup" href="/">
-          <span className="brand-mark">LL</span>
+          <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
           <div>
             <strong>Loop Local</strong>
             <small>{hasLiveData ? `${totalCount} local picks` : 'nearby, right now'}</small>

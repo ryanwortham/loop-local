@@ -150,22 +150,33 @@ def test_app_like_discovery_experience_exists():
 
 
 def test_missing_event_images_use_branded_loop_local_fallback():
-    assert_file('public/looplocal-event-fallback.svg')
+    for path in [
+        'public/looplocal-logo-app.jpg',
+        'public/looplocal-logo-app.png',
+        'public/looplocal-icon-192.png',
+        'public/looplocal-icon-512.png',
+        'app/icon.png',
+        'app/apple-icon.png',
+    ]:
+        assert_file(path)
     shell = read('components/app-shell.tsx')
     css = read('app/globals.css')
-    fallback = read('public/looplocal-event-fallback.svg')
+    layout = read('app/layout.tsx')
+    manifest = read('app/manifest.ts')
     for marker in [
-        "'/looplocal-event-fallback.svg'",
+        "'/looplocal-logo-app.png'",
         'hasEventImage',
         'event-image-fallback',
+        'brand-logo-image',
         'Loop Local',
     ]:
-        assert marker in shell, f"missing branded fallback marker {marker}"
+        assert marker in shell, f"missing canonical logo fallback marker {marker}"
     assert 'source.unsplash.com' not in shell, 'random external event fallback image still present'
-    for marker in ['event-image-fallback', 'fallback-logo-badge']:
-        assert marker in css, f"missing fallback CSS marker {marker}"
-    for marker in ['Loop Local', 'Find what is happening nearby', 'LL']:
-        assert marker in fallback, f"fallback asset missing marker {marker}"
+    assert "'/looplocal-event-fallback.svg'" not in shell, 'old generated SVG fallback still used by cards'
+    for marker in ['event-image-fallback', 'fallback-logo-badge', 'brand-logo-image']:
+        assert marker in css, f"missing fallback/logo CSS marker {marker}"
+    for marker in ['/looplocal-icon-512.png', '/looplocal-logo-app.png']:
+        assert marker in (layout + manifest), f"metadata missing canonical logo marker {marker}"
 
 
 def test_supabase_and_github_status_are_documented_without_secrets():

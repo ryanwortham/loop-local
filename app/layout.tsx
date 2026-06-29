@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     description: appDescription,
     images: [
       {
-        url: '/looplocal-icon-512.png',
+        url: '/looplocal-logo-app.png',
         width: 512,
         height: 512,
         alt: appName,
