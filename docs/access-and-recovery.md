@@ -12,6 +12,19 @@ Recovered scripts reference this Supabase project:
 itraeknotcdtdzaeukan
 ```
 
+Recovered non-secret project metadata:
+
+```text
+SUPABASE_PROJECT_REF=itraeknotcdtdzaeukan
+SUPABASE_URL=https://itraeknotcdtdzaeukan.supabase.co
+SUPABASE_PROJECT_URL=https://itraeknotcdtdzaeukan.supabase.co
+SUPABASE_DB_HOST=db.itraeknotcdtdzaeukan.supabase.co
+SUPABASE_ORG_ID=unshynpxdppoeuodnvdw
+SUPABASE_ORG_SLUG=unshynpxdppoeuodnvdw
+SUPABASE_ORG_NAME=Local loop
+SUPABASE_REGION=us-west-2
+```
+
 The Supabase CLI connects to the Supabase backend, not to the frontend app. The frontend app will have its own source repository or source folder, plus environment variables pointing to Supabase.
 
 ## Full Access Still Requires

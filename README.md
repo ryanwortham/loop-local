@@ -18,8 +18,11 @@ itraeknotcdtdzaeukan
 
 - `supabase/migrations/20260629152300_looplocal_profiles_moderation.sql`
   - Adds/reconciles `profiles` fields, admin checks, and event moderation policies.
+- `supabase/migrations/20260629163000_local_platform_phase6_geospatial.sql`
+  - Recovered additive Phase 6 geospatial/events migration for the Local Loop App Supabase project.
 - `recovered/`
   - Recovered browser/Supabase SQL helper scripts from the old workspace.
+  - Recovered Supabase project metadata with no tokens, passwords, or keys.
   - Public tunnel HTML/chunk snapshot.
   - Compiled source modules split from exposed Next.js/Turbopack dev chunks.
 - `docs/access-and-recovery.md`
