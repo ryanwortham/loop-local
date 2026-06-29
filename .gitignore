@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+.next/
+tsconfig.tsbuildinfo
 
 # Environment / secrets
 .env
