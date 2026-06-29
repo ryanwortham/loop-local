@@ -856,3 +856,102 @@ p { color: var(--muted); line-height: 1.65; }
   .section-heading-row { align-items: start; flex-direction: column; }
   .event-rail { grid-auto-columns: minmax(78vw, 1fr); }
 }
+
+/* Event filtering controls */
+.filter-bar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.35fr) repeat(3, minmax(150px, 0.65fr));
+  gap: 10px;
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(23, 23, 23, 0.92), rgba(15, 15, 15, 0.82));
+}
+
+.filter-input,
+.filter-select {
+  display: grid;
+  gap: 7px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.035);
+}
+
+.filter-input span,
+.filter-select span {
+  color: var(--dim);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.filter-input input,
+.filter-select select {
+  width: 100%;
+  border: 0;
+  outline: none;
+  color: #fff;
+  background: transparent;
+  font: inherit;
+  font-weight: 750;
+}
+
+.filter-input input::placeholder { color: rgba(255,255,255,0.38); }
+.filter-select select { color-scheme: dark; cursor: pointer; }
+
+.filter-chip { min-width: 74px; }
+
+.results-summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.results-summary span,
+.results-summary button,
+.empty-filter-state button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--muted);
+  background: rgba(255,255,255,0.035);
+  font-weight: 800;
+}
+
+.results-summary button,
+.empty-filter-state button {
+  cursor: pointer;
+  color: #fff;
+  border-color: rgba(62,207,142,.28);
+  background: rgba(62,207,142,.1);
+}
+
+.empty-filter-state {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 260px;
+  border: 1px dashed rgba(255,255,255,0.16);
+  border-radius: 24px;
+  padding: 28px;
+  text-align: center;
+  background: rgba(255,255,255,0.025);
+}
+
+.empty-filter-state h3 {
+  margin: 0;
+  color: #fff;
+}
+
+@media (max-width: 920px) {
+  .filter-bar { grid-template-columns: 1fr 1fr; }
+}
+
+@media (max-width: 620px) {
+  .filter-bar { grid-template-columns: 1fr; border-radius: 24px; }
+}

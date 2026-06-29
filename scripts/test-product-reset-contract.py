@@ -94,6 +94,27 @@ def test_live_reference_feed_is_wired_into_workbench():
         assert marker in (page + shell + feed + api), f"missing live data marker {marker}"
 
 
+def test_event_filters_are_available_for_live_feed():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'useState',
+        'searchQuery',
+        'activeCategory',
+        'activeCity',
+        'activeMoment',
+        'filteredItems',
+        'Search events',
+        'All categories',
+        'All cities',
+        'No events match',
+        'Clear filters',
+    ]:
+        assert marker in shell, f"missing event filter marker {marker}"
+    for marker in ['filter-bar', 'filter-input', 'filter-select', 'filter-chip', 'results-summary']:
+        assert marker in css, f"missing filter CSS marker {marker}"
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -116,5 +137,6 @@ if __name__ == '__main__':
     test_package_has_product_contract_script()
     test_home_is_intentionally_concise()
     test_live_reference_feed_is_wired_into_workbench()
+    test_event_filters_are_available_for_live_feed()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')
