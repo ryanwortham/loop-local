@@ -1455,3 +1455,31 @@ body {
   .list-row a { grid-column: 1 / -1; text-align: center; }
   .calendar-view { grid-template-columns: 1fr; }
 }
+
+/* Branded event image fallback */
+.event-image-fallback {
+  background-color: #fff8ef;
+  background-size: cover;
+  background-position: center;
+}
+
+.event-image-fallback::after {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(23,19,15,0.16));
+}
+
+.fallback-logo-badge {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  z-index: 1;
+  border: 1px solid rgba(255,255,255,0.7);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: #17130f;
+  background: rgba(255,255,255,0.78);
+  box-shadow: 0 10px 24px rgba(23,19,15,0.12);
+  backdrop-filter: blur(14px);
+  font-size: 0.76rem;
+  font-weight: 950;
+  letter-spacing: -0.01em;
+}

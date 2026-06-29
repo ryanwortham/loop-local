@@ -20,7 +20,7 @@ function formatEventMeta(item: LiveFeedItem): string {
 }
 
 function eventImage(item: LiveFeedItem): string {
-  return item.image_url || `https://source.unsplash.com/900x650/?${encodeURIComponent(`${item.category || 'community'} event ${item.city || 'city'}`)}`;
+  return item.image_url || '/looplocal-event-fallback.svg';
 }
 
 function venueLine(item: LiveFeedItem): string {
@@ -108,9 +108,12 @@ function sortItems(items: LiveFeedItem[], sortBy: string): LiveFeedItem[] {
 }
 
 function EventCard({ item }: { item: LiveFeedItem }) {
+  const hasEventImage = Boolean(item.image_url);
+
   return (
     <article className="event-card premium-light">
-      <div className="event-image" style={{ backgroundImage: `url(${eventImage(item)})` }}>
+      <div className={hasEventImage ? 'event-image' : 'event-image event-image-fallback'} style={{ backgroundImage: `url(${eventImage(item)})` }}>
+        {!hasEventImage ? <span className="fallback-logo-badge">Loop Local</span> : null}
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
         <span className="event-price-pill">{priceLine(item)}</span>
       </div>

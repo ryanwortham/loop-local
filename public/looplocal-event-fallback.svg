@@ -1,0 +1,46 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Loop Local event fallback image</title>
+  <desc id="desc">Loop Local branded fallback image for events without photos. Find what is happening nearby.</desc>
+  <defs>
+    <radialGradient id="warm" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(210 90) rotate(42) scale(760 560)">
+      <stop stop-color="#FFE2B7"/>
+      <stop offset="0.45" stop-color="#FF7A5C"/>
+      <stop offset="1" stop-color="#FF5A5F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="green" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(965 155) rotate(128) scale(640 520)">
+      <stop stop-color="#C9F8DF"/>
+      <stop offset="0.55" stop-color="#3FCF8E"/>
+      <stop offset="1" stop-color="#3FCF8E" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0" x2="1200" y1="0" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF9EF"/>
+      <stop offset="0.52" stop-color="#FFFDF8"/>
+      <stop offset="1" stop-color="#EEF8EF"/>
+    </linearGradient>
+    <filter id="shadow" x="240" y="130" width="720" height="560" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="28" stdDeviation="34" flood-color="#2B261F" flood-opacity="0.18"/>
+    </filter>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="4" cy="4" r="2" fill="#17130F" opacity="0.06"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="800" fill="url(#paper)"/>
+  <rect width="1200" height="800" fill="url(#warm)"/>
+  <rect width="1200" height="800" fill="url(#green)"/>
+  <rect width="1200" height="800" fill="url(#dots)" opacity="0.9"/>
+  <path d="M-40 670 C160 580 250 700 410 610 C565 523 615 407 785 452 C970 500 1005 660 1240 560" stroke="#17130F" stroke-opacity="0.08" stroke-width="34" stroke-linecap="round"/>
+  <g filter="url(#shadow)">
+    <rect x="318" y="168" width="564" height="464" rx="66" fill="white" fill-opacity="0.84"/>
+    <rect x="338" y="188" width="524" height="424" rx="52" stroke="#17130F" stroke-opacity="0.09" stroke-width="2"/>
+    <circle cx="600" cy="334" r="104" fill="#17130F"/>
+    <text x="600" y="366" text-anchor="middle" fill="white" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="72" font-weight="900" letter-spacing="-6">LL</text>
+    <text x="600" y="486" text-anchor="middle" fill="#17130F" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="54" font-weight="900" letter-spacing="-2">Loop Local</text>
+    <text x="600" y="538" text-anchor="middle" fill="#6D7069" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="25" font-weight="700">Find what is happening nearby</text>
+  </g>
+  <g opacity="0.75">
+    <circle cx="186" cy="222" r="12" fill="#FF5A5F"/>
+    <circle cx="1018" cy="520" r="15" fill="#1F9D62"/>
+    <circle cx="1008" cy="255" r="9" fill="#2563EB"/>
+    <circle cx="252" cy="574" r="8" fill="#17130F"/>
+  </g>
+</svg>
