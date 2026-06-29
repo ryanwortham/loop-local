@@ -219,6 +219,38 @@ def test_loop_local_design_system_is_authoritative():
     assert 'loop-local-design-system' in shell
 
 
+def test_loop_local_quiet_premium_refinement_limits_brand_color_usage():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    for marker in [
+        'content-first refinement',
+        '80% dark neutrals',
+        '5% blue/purple accents',
+        'Reserve the gradient for primary actions, active navigation, selected filters, progress, small accents, and logo usage.',
+    ]:
+        assert marker in design, f"design system doc missing quiet refinement marker {marker}"
+    for marker in [
+        '--ll-border: rgba(255, 255, 255, 0.06)',
+        '--ll-surface: #0A1538',
+        '--ll-surface-strong: #0B163A',
+        '--ll-glow: 0 10px 24px rgba(31, 184, 255, 0.10)',
+        'quiet-content-first',
+        'neutral-event-chip',
+        'quiet-navigation',
+        'content-hero-card',
+    ]:
+        assert marker in css, f"CSS missing quiet refinement marker {marker}"
+    assert css.count('var(--ll-brand-gradient)') <= 8, 'brand gradient is overused; keep it for important actions/selected states only'
+    assert css.count('rgba(31, 184, 255') <= 8, 'blue tint is overused; keep accents subtle and sparse'
+    for forbidden in [
+        'box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28)',
+        'rgba(31, 184, 255, 0.22)',
+        'rgba(111, 59, 255, 0.20)',
+        'background: var(--ll-brand-gradient);\n  box-shadow: var(--ll-glow);\n}',
+    ]:
+        assert forbidden not in css, f"overdesigned/heavy visual treatment still present: {forbidden}"
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -245,5 +277,6 @@ if __name__ == '__main__':
     test_app_like_discovery_experience_exists()
     test_missing_event_images_use_branded_loop_local_fallback()
     test_loop_local_design_system_is_authoritative()
+    test_loop_local_quiet_premium_refinement_limits_brand_color_usage()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

@@ -120,6 +120,29 @@ Every interface decision must answer:
 
 > Does this make discovering local events and businesses faster and easier?
 
+## content-first refinement
+
+The brand system should feel premium and quiet, not overdesigned.
+
+Target color distribution:
+
+- 80% dark neutrals
+- 15% white and gray typography
+- 5% blue/purple accents
+
+Refinement rules:
+
+- Reduce blue/purple brand color usage by roughly 70–80% compared with the initial dark baseline.
+- Keep the background primarily `#050B24` with only an extremely subtle gradient.
+- Cards should read as dark navy content surfaces, not blue panels.
+- Remove heavy glows from containers and cards.
+- Use thin borders: `rgba(255, 255, 255, 0.06)`.
+- Make typography and event imagery the primary hierarchy.
+- Reserve the gradient for primary actions, active navigation, selected filters, progress, small accents, and logo usage.
+- Secondary actions should be quiet dark outlined controls.
+- Most category chips should be neutral dark chips with subtle borders; selected chips may use the brand gradient.
+- Do not tint large sections blue; the interface should recede so events, businesses, photos, and local content become the hero.
+
 ## Current implementation contract
 
 The app CSS must expose:
