@@ -1,0 +1,21 @@
+const fs = require('fs');
+const { chromium } = require('playwright');
+const sql = fs.readFileSync('/Users/productivebot/productivebot/looplocal_profiles_moderation.sql', 'utf8');
+(async()=>{
+ const browser = await chromium.connectOverCDP('http://127.0.0.1:18800');
+ const context = browser.contexts()[0] || await browser.newContext();
+ const page = await context.newPage();
+ let response=null, detected=false;
+ page.on('request', req=>{ const pd=req.postData()||''; if(req.method()==='POST' && pd.includes('prevent_profile_admin_self_elevation')) { detected=true; console.log('TRIGGER_POST_DETECTED', req.url()); }});
+ page.on('response', async res=>{ const u=res.url(); if(detected && u.includes('/pg-meta/itraeknotcdtdzaeukan/query')) { try { response={status:res.status(), text:(await res.text()).slice(0,2000)}; console.log('TRIGGER_SQL_RESPONSE', JSON.stringify(response)); } catch {} }});
+ await page.goto('https://supabase.com/dashboard/project/itraeknotcdtdzaeukan/sql/new', {waitUntil:'domcontentloaded', timeout:60000});
+ await page.waitForTimeout(8000);
+ await page.locator('.monaco-editor textarea').first().click({ force: true });
+ await page.keyboard.press('Meta+A');
+ await page.keyboard.insertText(sql);
+ await page.waitForTimeout(1000);
+ await page.keyboard.press('Meta+Enter');
+ await page.waitForTimeout(12000);
+ console.log('FINAL', JSON.stringify({detected, response}));
+ await page.close(); await browser.close();
+})();

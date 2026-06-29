@@ -10,6 +10,7 @@ export default defineConfig([
     'node_modules/**',
     'supabase/.temp/**',
     'references/current-cloudflare-app-snapshot/**',
+    'references/github-recovery/**',
     'next-env.d.ts',
   ]),
 ]);
