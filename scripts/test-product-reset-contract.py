@@ -182,6 +182,43 @@ def test_missing_event_images_use_branded_loop_local_fallback():
         assert marker in (layout + manifest), f"metadata missing canonical logo marker {marker}"
 
 
+def test_loop_local_design_system_is_authoritative():
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    css = read('app/globals.css')
+    shell = read('components/app-shell.tsx')
+    for marker in [
+        '#050B24',
+        '#0A1538',
+        '#1FB8FF',
+        '#3A8DFF',
+        '#6F3BFF',
+        '#C8D2E6',
+        '#7B89A8',
+        'linear-gradient(135deg, #1FB8FF 0%, #3A8DFF 45%, #6F3BFF 100%)',
+        'Stay in the loop with everything happening locally.',
+    ]:
+        assert marker in design, f"design system doc missing marker {marker}"
+    for marker in [
+        'loop-local-design-system',
+        '--ll-bg-primary: #050B24',
+        '--ll-bg-secondary: #0A1538',
+        '--ll-accent-primary: #1FB8FF',
+        '--ll-accent-secondary: #3A8DFF',
+        '--ll-accent-purple: #6F3BFF',
+        '--ll-text-secondary: #C8D2E6',
+        '--ll-text-muted: #7B89A8',
+        '--ll-brand-gradient: linear-gradient(135deg, #1FB8FF 0%, #3A8DFF 45%, #6F3BFF 100%)',
+        '--ll-bg-gradient: linear-gradient(180deg, #050B24 0%, #07102D 100%)',
+        'brand-gradient-control',
+        'dark-navy-surface',
+        'native-app-motion',
+    ]:
+        assert marker in css, f"CSS missing design-system marker {marker}"
+    for forbidden in ['#ff5a5f', '#f8f7f2', '#fffaf4', '#3ecf8e', '#0071e3']:
+        assert forbidden.lower() not in css.lower(), f"legacy/off-brand color still present: {forbidden}"
+    assert 'loop-local-design-system' in shell
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -207,5 +244,6 @@ if __name__ == '__main__':
     test_event_filters_are_available_for_live_feed()
     test_app_like_discovery_experience_exists()
     test_missing_event_images_use_branded_loop_local_fallback()
+    test_loop_local_design_system_is_authoritative()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')
