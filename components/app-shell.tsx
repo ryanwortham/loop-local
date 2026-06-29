@@ -1,29 +1,28 @@
-import { StatusCard } from '@/components/status-card';
-import { projectRef } from '@/lib/env';
+import Link from 'next/link';
 
-const ranges = ['Today', 'Last 3 days', 'Last 7 days', 'This month'];
-const nav = ['Dashboard', 'Places', 'Loops', 'Events', 'Profile', 'Admin'];
+const moments = ['Now', 'Tonight', 'Weekend', 'Deals'];
+const tabs = ['Discover', 'Events', 'Map', 'Saved', 'Profile'];
 
-const launchCards = [
+const rails = [
   {
-    title: 'Places',
-    body: 'Local businesses, services, venues, and community anchors ready for discovery.',
-    metric: '0 records',
+    title: 'Happening now',
+    body: 'Music, markets, food, and family picks near you.',
+    meta: 'Live',
   },
   {
-    title: 'Loops',
-    body: 'Neighborhood groups, interest circles, recommendations, and repeatable community flows.',
-    metric: '0 loops',
+    title: 'Tonight',
+    body: 'Quick plans after work, sorted by start time.',
+    meta: 'Soon',
   },
   {
-    title: 'Events',
-    body: 'A calendar surface for what is happening nearby, with time-window filters ready.',
-    metric: '0 events',
+    title: 'Local deals',
+    body: 'Happy hours, specials, and limited offers.',
+    meta: 'Save',
   },
   {
-    title: 'Admin',
-    body: 'Operator controls for schema readiness, Supabase health, content review, and guardrails.',
-    metric: 'ready',
+    title: 'Post local',
+    body: 'Share an event, deal, or community update.',
+    meta: 'Post',
   },
 ];
 
@@ -31,50 +30,51 @@ export function AppShell() {
   return (
     <main className="app-shell">
       <nav className="top-nav" aria-label="Primary navigation">
-        <div className="brand-lockup">
+        <Link className="brand-lockup" href="/">
           <span className="brand-mark">LL</span>
           <div>
-            <strong>Local Loop</strong>
-            <small>community operating layer</small>
+            <strong>Loop Local</strong>
+            <small>nearby, right now</small>
           </div>
-        </div>
+        </Link>
         <div className="nav-links">
-          {nav.map((item) => (
+          {tabs.map((item) => (
             <a href={`#${item.toLowerCase()}`} key={item}>{item}</a>
           ))}
         </div>
       </nav>
 
-      <section className="hero" id="dashboard">
+      <section className="hero" id="discover">
         <div className="hero-copy">
-          <p className="eyebrow">Supabase connected · project {projectRef}</p>
-          <h1>Build the local network where places, people, loops, and events meet.</h1>
-          <p>
-            A polished starter cockpit for the Local Loop App. The cloud project is linked, the local stack is running, and this shell is ready for real schema-backed features.
-          </p>
+          <p className="eyebrow">Local discovery</p>
+          <h1>Find what’s worth doing now.</h1>
+          <p>Events, food, music, deals, and local spots in one clean feed.</p>
           <div className="actions">
-            <a className="primary-action" href="http://127.0.0.1:54323">Open local Supabase Studio</a>
-            <a className="secondary-action" href="https://supabase.com/dashboard/project/itraeknotcdtdzaeukan">Open cloud project</a>
+            <a className="primary-action" href="#events">Explore nearby</a>
+            <Link className="secondary-action" href="/post-local">Post local</Link>
           </div>
         </div>
-        <div className="hero-panel" aria-label="Readiness panel">
-          <StatusCard label="Supabase" value="Linked" detail="Local Loop App · West US" tone="green" />
-          <StatusCard label="Local API" value=":54321" detail="REST and GraphQL running" tone="blue" />
-          <StatusCard label="Studio" value=":54323" detail="Local database console" tone="neutral" />
+        <div className="hero-panel" aria-label="Quick picks">
+          <div className="mini-phone-card">
+            <span>Tonight</span>
+            <strong>Live music nearby</strong>
+            <p>Starts 8:00 PM · 2.4 mi</p>
+            <div>Save · Share · Directions</div>
+          </div>
         </div>
       </section>
 
-      <section className="range-tabs" aria-label="Time range filters">
-        {ranges.map((range, index) => (
-          <button className={index === 0 ? 'active' : ''} key={range} type="button">{range}</button>
+      <section className="range-tabs" aria-label="Moment filters">
+        {moments.map((moment, index) => (
+          <button className={index === 0 ? 'active' : ''} key={moment} type="button">{moment}</button>
         ))}
       </section>
 
-      <section className="card-grid" aria-label="Initial app sections">
-        {launchCards.map((card) => (
-          <article className="feature-card" id={card.title.toLowerCase()} key={card.title}>
+      <section className="card-grid" id="events" aria-label="Discovery rails">
+        {rails.map((card) => (
+          <article className="feature-card" id={card.title.toLowerCase().replaceAll(' ', '-')} key={card.title}>
             <div>
-              <p className="eyebrow">{card.metric}</p>
+              <p className="eyebrow">{card.meta}</p>
               <h2>{card.title}</h2>
               <p>{card.body}</p>
             </div>
@@ -83,16 +83,11 @@ export function AppShell() {
         ))}
       </section>
 
-      <section className="operator-strip">
-        <div>
-          <p className="eyebrow">Next schema move</p>
-          <h2>Start with read models before write workflows.</h2>
-          <p>
-            The remote schema pull found no migrations to generate, so the safest next step is to design the first tables for places, loops, events, and memberships locally before pushing anything remote.
-          </p>
-        </div>
-        <code>supabase db pull --linked → No schema changes found</code>
-      </section>
+      <nav className="mobile-tabs" aria-label="App tabs">
+        {tabs.map((tab) => (
+          <a href={`#${tab.toLowerCase()}`} key={tab}>{tab}</a>
+        ))}
+      </nav>
     </main>
   );
 }

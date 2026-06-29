@@ -50,19 +50,22 @@ def test_supabase_env_is_used_safely():
     assert "supabase" in client
 
 
-def test_initial_ui_has_operator_sections():
+def test_initial_ui_has_consumer_app_sections():
     page = read("app/page.tsx") + read("components/app-shell.tsx")
     for needle in [
-        "Local Loop",
-        "Today",
-        "Last 3 days",
-        "Last 7 days",
-        "This month",
-        "Places",
-        "Loops",
+        "Loop Local",
+        "Find what’s worth doing now",
+        "Explore nearby",
+        "Post local",
+        "Discover",
         "Events",
-        "Admin",
-        "Supabase",
+        "Map",
+        "Saved",
+        "Profile",
+        "Happening now",
+        "Tonight",
+        "Local deals",
+        "Save · Share · Directions",
     ]:
         assert needle in page, f"missing UI marker {needle}"
 
@@ -118,7 +121,7 @@ if __name__ == "__main__":
     test_core_next_files_exist()
     test_package_scripts_and_dependencies()
     test_supabase_env_is_used_safely()
-    test_initial_ui_has_operator_sections()
+    test_initial_ui_has_consumer_app_sections()
     test_post_local_route_matches_current_app_contract()
     test_no_secrets_committed()
     print("loop_local_app_scaffold_contract_ok")

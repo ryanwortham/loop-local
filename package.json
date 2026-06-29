@@ -9,7 +9,9 @@
     "start": "next start -p 3001",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test:contract": "python3 scripts/test-app-scaffold-contract.py"
+    "test:contract": "python3 scripts/test-app-scaffold-contract.py",
+    "test:product": "python3 scripts/test-product-reset-contract.py",
+    "test:all": "npm run test:contract && npm run test:product && npm run lint && npm run typecheck"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

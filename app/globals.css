@@ -649,3 +649,77 @@ p { color: var(--muted); line-height: 1.65; }
     text-align: center;
   }
 }
+
+/* 10x reset mobile app foundation */
+.mini-phone-card {
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 10px;
+  border-radius: 34px;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.78)),
+    radial-gradient(circle at 30% 20%, rgba(0, 113, 227, 0.42), transparent 34%),
+    #f5f5f7;
+  color: #fff;
+  box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0;
+}
+
+.mini-phone-card span {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mini-phone-card strong {
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+}
+
+.mini-phone-card p,
+.mini-phone-card div {
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 650;
+}
+
+.mobile-tabs {
+  position: sticky;
+  bottom: 14px;
+  z-index: 20;
+  display: none;
+  width: min(720px, calc(100% - 24px));
+  margin: 30px auto 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 10px;
+  background: rgba(10, 10, 11, 0.82);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.mobile-tabs a {
+  flex: 1;
+  border-radius: 999px;
+  padding: 10px 6px;
+  color: rgba(255,255,255,0.74);
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.mobile-tabs a:first-child {
+  color: #fff;
+  background: #0071e3;
+}
+
+@media (max-width: 760px) {
+  .mobile-tabs { display: flex; }
+  .nav-links { display: none; }
+}
