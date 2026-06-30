@@ -331,8 +331,8 @@ def test_loop_local_media_visibility_recovers_from_over_muting():
         '--ll-placeholder-opacity: .28',
         'visible-placeholder-image',
         'background-size: min(72%, 560px) auto',
-        'filter: saturate(.66) contrast(.92) brightness(.92)',
-        'rgba(5, 11, 36, .18), rgba(5, 11, 36, .42)',
+        'filter: saturate(.76) contrast(1.02) brightness(1.05)',
+        'rgba(5, 11, 36, .10), rgba(5, 11, 36, .30)',
     ]:
         assert marker in css, f"CSS missing media visibility recovery marker {marker}"
     assert 'visible-placeholder-image' in shell, 'event placeholder image class must be visible in the rendered card markup'
@@ -344,6 +344,29 @@ def test_loop_local_media_visibility_recovers_from_over_muting():
         'rgba(5, 11, 36, .24), rgba(5, 11, 36, .72)',
     ]:
         assert forbidden not in css, f"over-muted media treatment still present: {forbidden}"
+
+
+def test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    shell = read('components/app-shell.tsx')
+    for marker in [
+        'Cards need to stand out without becoming blue chrome.',
+        'Use brighter neutral card surfaces, clearer media, and stronger-but-soft elevation.',
+    ]:
+        assert marker in design, f"design system doc missing card contrast marker {marker}"
+    for marker in [
+        '--ll-card-surface: #101D46',
+        '--ll-card-border: rgba(255, 255, 255, 0.09)',
+        '--ll-card-shadow-strong: 0 22px 52px rgba(0, 0, 0, 0.30)',
+        '--ll-card-image-lift: saturate(1.06) contrast(1.08) brightness(1.06)',
+        'brighter-content-card',
+        'box-shadow: var(--ll-card-shadow-strong)',
+        'filter: var(--ll-card-image-lift)',
+    ]:
+        assert marker in css, f"CSS missing brighter card separation marker {marker}"
+    assert 'brighter-content-card' in shell, 'event card markup must opt into brighter premium card treatment'
+    assert css.count('var(--ll-brand-gradient)') <= 1, 'card contrast pass must not reintroduce blue/gradient-heavy UI'
 
 
 def test_supabase_and_github_status_are_documented_without_secrets():
@@ -376,5 +399,6 @@ if __name__ == '__main__':
     test_loop_local_app_store_consumer_refinement_prioritizes_content()
     test_loop_local_browsing_ui_uses_near_zero_blue_chrome()
     test_loop_local_media_visibility_recovers_from_over_muting()
+    test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

@@ -184,6 +184,18 @@ Rules:
 - Real photos and placeholder art should read as the card's visual hero.
 - If an event has no source image, the placeholder should be clear, calm, and polished — not invisible.
 
+## Brighter premium card contrast
+
+Cards need to stand out without becoming blue chrome.
+
+Rules:
+
+- Use brighter neutral card surfaces, clearer media, and stronger-but-soft elevation.
+- Make event cards feel more tangible than the page background.
+- Increase image contrast/brightness slightly so cards feel more colorful through content, not UI chrome.
+- Keep blue/purple restrained to primary actions and logo-level accents.
+- Do not solve card contrast by tinting cards blue.
+
 ## Current implementation contract
 
 The app CSS must expose:
