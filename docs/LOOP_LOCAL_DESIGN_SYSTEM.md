@@ -173,6 +173,17 @@ Rules:
 - Placeholder images should feel like quiet absence states, not branded blue panels.
 - Blue/purple remains available for the logo, primary CTA moments, and rare high-intent actions only.
 
+## Media visibility correction
+
+Media visibility beats over-muting. The previous near-zero-blue pass made the missing-image placeholder too faint, which made cards feel broken instead of premium.
+
+Rules:
+
+- Placeholder media must remain visibly legible even when blue chrome is restrained.
+- Neutral UI chrome should never make event cards look empty.
+- Real photos and placeholder art should read as the card's visual hero.
+- If an event has no source image, the placeholder should be clear, calm, and polished — not invisible.
+
 ## Current implementation contract
 
 The app CSS must expose:

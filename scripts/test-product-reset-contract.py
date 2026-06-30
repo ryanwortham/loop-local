@@ -301,7 +301,7 @@ def test_loop_local_browsing_ui_uses_near_zero_blue_chrome():
     for marker in [
         'near-zero-blue-chrome',
         '--ll-accent-browsing: rgba(255, 255, 255, 0.72)',
-        '--ll-placeholder-opacity: .10',
+        '--ll-placeholder-opacity: .28',
         'neutral-active-view',
         'muted-date-badge',
         'muted-section-eyebrow',
@@ -316,6 +316,34 @@ def test_loop_local_browsing_ui_uses_near_zero_blue_chrome():
         'opacity: .34;',
     ]:
         assert forbidden not in css, f"browsing UI still has too much blue/chroma: {forbidden}"
+
+
+def test_loop_local_media_visibility_recovers_from_over_muting():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    shell = read('components/app-shell.tsx')
+    for marker in [
+        'Media visibility beats over-muting.',
+        'Placeholder media must remain visibly legible even when blue chrome is restrained.',
+    ]:
+        assert marker in design, f"design system doc missing media visibility correction marker {marker}"
+    for marker in [
+        '--ll-placeholder-opacity: .28',
+        'visible-placeholder-image',
+        'background-size: min(72%, 560px) auto',
+        'filter: saturate(.66) contrast(.92) brightness(.92)',
+        'rgba(5, 11, 36, .18), rgba(5, 11, 36, .42)',
+    ]:
+        assert marker in css, f"CSS missing media visibility recovery marker {marker}"
+    assert 'visible-placeholder-image' in shell, 'event placeholder image class must be visible in the rendered card markup'
+    for forbidden in [
+        '--ll-placeholder-opacity: .10',
+        'inset: 26%',
+        'filter: saturate(.38) contrast(.72) brightness(.72)',
+        'background-image: none !important;',
+        'rgba(5, 11, 36, .24), rgba(5, 11, 36, .72)',
+    ]:
+        assert forbidden not in css, f"over-muted media treatment still present: {forbidden}"
 
 
 def test_supabase_and_github_status_are_documented_without_secrets():
@@ -347,5 +375,6 @@ if __name__ == '__main__':
     test_loop_local_quiet_premium_refinement_limits_brand_color_usage()
     test_loop_local_app_store_consumer_refinement_prioritizes_content()
     test_loop_local_browsing_ui_uses_near_zero_blue_chrome()
+    test_loop_local_media_visibility_recovers_from_over_muting()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

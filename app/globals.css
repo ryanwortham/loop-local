@@ -23,7 +23,7 @@
   --ll-card-radius: 30px;
   --ll-card-shadow: 0 16px 36px rgba(0, 0, 0, 0.20);
   --ll-section-border: transparent;
-  --ll-placeholder-opacity: .10;
+  --ll-placeholder-opacity: .28;
   --ll-accent-browsing: rgba(255, 255, 255, 0.72);
 }
 
@@ -487,27 +487,28 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
 }
 .event-image-fallback { background-color: var(--ll-bg-secondary); }
 
-.quiet-placeholder-image {
+.quiet-placeholder-image,
+.visible-placeholder-image {
   position: relative;
-  background-image: none !important;
   background-color: #08112f;
 }
 
 .quiet-placeholder-image::before {
   content: '';
   position: absolute;
-  inset: 26%;
+  inset: 0;
   background-image: url('/looplocal-event-placeholder.jpg');
   background-repeat: no-repeat;
   background-position: center;
-  background-size: contain;
+  background-size: min(72%, 560px) auto;
   opacity: var(--ll-placeholder-opacity);
-  filter: saturate(.38) contrast(.72) brightness(.72);
+  filter: saturate(.66) contrast(.92) brightness(.92);
   z-index: -2;
 }
 
-.quiet-placeholder-image::after {
-  background: linear-gradient(180deg, rgba(5, 11, 36, .24), rgba(5, 11, 36, .72));
+.quiet-placeholder-image::after,
+.visible-placeholder-image::after {
+  background: linear-gradient(180deg, rgba(5, 11, 36, .18), rgba(5, 11, 36, .42));
 }
 
 .no-image-label {
@@ -515,7 +516,7 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
   left: 18px;
   bottom: 16px;
   z-index: 1;
-  color: rgba(255,255,255,.42);
+  color: rgba(255,255,255,.62);
   font-size: .72rem;
   font-weight: 600;
   letter-spacing: .04em;

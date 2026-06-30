@@ -107,7 +107,7 @@ function EventCard({ item }: { item: LiveFeedItem }) {
 
   return (
     <article className="event-card premium-light content-first-event-card">
-      <div className={hasEventImage ? 'event-image' : 'event-image event-image-fallback quiet-placeholder-image'} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
+      <div className={hasEventImage ? 'event-image' : 'event-image event-image-fallback quiet-placeholder-image visible-placeholder-image'} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
         {!hasEventImage ? <span className="no-image-label">No image available</span> : null}
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
         <span className="event-price-pill">{priceLine(item)}</span>
