@@ -47,20 +47,20 @@ Design inspiration combines:
 ## Official colors
 
 ```css
---ll-bg-primary: #F7F3EA;
+--ll-bg-primary: #F4F7FB;
 --ll-bg-secondary: #FFFFFF;
---ll-bg-deep: #EEE7DA;
---ll-accent-primary: #E85D75;
+--ll-bg-deep: #071D33;
+--ll-accent-primary: #006BFF;
 --ll-accent-secondary: #2F80ED;
---ll-accent-indigo: #8B5CF6;
---ll-accent-purple: #8B5CF6;
---ll-warm-accent: #F2A65A;
---ll-rose-accent: #E85D75;
---ll-text-primary: #18151F;
---ll-text-secondary: #4E4656;
---ll-text-muted: #817889;
---ll-brand-gradient: linear-gradient(135deg, #E85D75 0%, #8B5CF6 62%, #2F80ED 100%);
---ll-bg-gradient: linear-gradient(180deg, #F7F3EA 0%, #FFF9F0 48%, #EEE7DA 100%);
+--ll-accent-indigo: #0B56B3;
+--ll-accent-purple: #0B56B3;
+--ll-warm-accent: #7DB8FF;
+--ll-rose-accent: #006BFF;
+--ll-text-primary: #102033;
+--ll-text-secondary: #425466;
+--ll-text-muted: #6F7D8C;
+--ll-brand-gradient: linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%);
+--ll-bg-gradient: linear-gradient(180deg, #F4F7FB 0%, #FFFFFF 48%, #EDF3FA 100%);
 ```
 
 No new UI colors should be introduced unless they fit this system. If a future state needs a semantic color, derive it from these brand colors or document the exception.
@@ -232,12 +232,24 @@ Stop iterating on the muddy dark palette. The Loop Local interface should feel l
 
 Rules:
 
-- Use warm daylight neutrals, white cards, ink typography, and coral/berry/lavender brand accents.
+- Use the white/navy/royal-blue reference palette unless the user requests a different direction.
 - Keep blue only as a small brand-gradient tail, not as the app mood.
 - Let photography and real local content provide most color.
 - Use white and warm ivory surfaces so the app feels welcoming and alive.
 - Preserve premium restraint: no neon, no crypto gradients, no heavy glow.
-- Category flavor may use coral, amber, lavender, sage, and berry tints at low opacity.
+- Category flavor may use navy, slate, sky, and royal-blue tints at low opacity.
+
+## Reference-inspired white/navy/blue palette
+
+User supplied a reference screenshot and said they like this color scheme. Treat that as the new direction.
+
+Rules:
+
+- White navigation, deep navy hero, royal-blue CTA, clean slate text, and white content cards.
+- Use blue confidently for primary actions and hero atmosphere, but keep cards and browsing surfaces white and readable.
+- Hero atmosphere should feel like a photo under a navy/blue overlay: professional, crisp, high contrast.
+- Do not return to the rejected white/navy/royal-blue editorial palette or muddy plum palette.
+- For Loop Local, adapt the mood rather than the medical content: local discovery stays photo/content-led, but the frame becomes white/navy/blue.
 
 ## Current implementation contract
 
