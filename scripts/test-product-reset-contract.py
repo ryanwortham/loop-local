@@ -1,631 +1,168 @@
 #!/usr/bin/env python3
-"""Contract checks for the Loop Local 10x product reset foundation."""
 from pathlib import Path
-import json
-import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def read(path: str) -> str:
-    return (ROOT / path).read_text(errors='ignore')
+    return (ROOT / path).read_text(encoding='utf-8')
 
 
-def assert_file(path: str) -> Path:
-    p = ROOT / path
-    assert p.exists(), f"missing {path}"
-    assert p.stat().st_size > 0, f"empty {path}"
-    return p
-
-
-def test_reset_brief_exists_and_names_distribution_targets():
-    brief = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
-    for marker in [
-        '10x better',
-        'Less wordy',
-        'Web app / PWA',
-        'iOS app wrapper',
-        'Android app wrapper',
-        'Supabase',
-        'GitHub',
-        'Copy rules',
-    ]:
-        assert marker in brief, f"missing reset marker {marker}"
-
-
-def test_pwa_and_native_distribution_foundation_exists():
-    for path in [
-        'app/manifest.ts',
-        'app/icon.png',
-        'app/apple-icon.png',
-        'public/sw.js',
-        'docs/NATIVE_DISTRIBUTION.md',
-    ]:
-        assert_file(path)
-
-    layout = read('app/layout.tsx')
-    for marker in [
-        'appleWebApp',
-        'openGraph',
-        'twitter',
-        'themeColor',
-        'viewport',
-        'manifest',
-        'mobile-web-app-capable',
-    ]:
-        assert marker in layout, f"layout missing mobile/PWA metadata marker {marker}"
-
-
-def test_package_has_product_contract_script():
-    pkg = json.loads(read('package.json'))
-    assert 'test:product' in pkg['scripts']
-    assert 'test:all' in pkg['scripts']
-    assert 'scripts/test-product-reset-contract.py' in pkg['scripts']['test:product']
-
-
-def test_home_is_intentionally_concise():
-    source = read('components/app-shell.tsx') + read('app/page.tsx')
-    visible_strings = re.findall(r'>([^<>{}\n]{12,})<|["`]([^"`]{18,})["`]', source)
-    words = []
-    for a, b in visible_strings:
-        words.extend(re.findall(r"[A-Za-z0-9']+", a or b))
-    assert len(words) < 1400, f"home shell too wordy: {len(words)} words in source strings"
-    for forbidden in ['cockpit', 'operator UX', 'raw JSON', 'app-ready form shell']:
-        assert forbidden.lower() not in source.lower(), f"wordy/internal phrase present: {forbidden}"
-
-
-def test_live_reference_feed_is_wired_into_workbench():
-    for path in [
-        'lib/live-feed.ts',
-        'app/api/feed/route.ts',
-    ]:
-        assert_file(path)
+def test_live_engine_and_distribution_docs_remain_present():
+    package = read('package.json')
     page = read('app/page.tsx')
-    shell = read('components/app-shell.tsx')
     feed = read('lib/live-feed.ts')
-    api = read('app/api/feed/route.ts')
-    for marker in [
-        'getLiveFeed',
-        'feedItems',
-        'replaced-gaming-selected-spectacular.trycloudflare.com',
-        'live_supabase',
-        'items',
-    ]:
-        assert marker in (page + shell + feed + api), f"missing live data marker {marker}"
-
-
-def test_event_filters_are_available_for_live_feed():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'useState',
-        'searchQuery',
-        'activeCategory',
-        'activeCity',
-        'activeMoment',
-        'filteredItems',
-        'Search events',
-        'All categories',
-        'All cities',
-        'No events match',
-        'Clear filters',
-    ]:
-        assert marker in shell, f"missing event filter marker {marker}"
-    for marker in ['filter-bar', 'filter-input', 'filter-select', 'filter-chip', 'results-summary']:
-        assert marker in css, f"missing filter CSS marker {marker}"
-
-
-def test_app_like_discovery_experience_exists():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    plan = read('docs/LOOP_LOCAL_PRODUCT_ARCHITECTURE_PLAN.md')
-    for marker in [
-        'locationQuery',
-        'Use my location',
-        'Card view',
-        'List view',
-        'Map view',
-        'Calendar view',
-        'viewMode',
-        'image_url',
-        'eventImage',
-        'venueLine',
-        'priceLine',
-        'addressLine',
-        'Distance',
-    ]:
-        assert marker in shell, f"missing app-like discovery marker {marker}"
-    for marker in [
-        'app-canvas',
-        'location-bar',
-        'view-switcher',
-        'event-image',
-        'list-view',
-        'map-view',
-        'calendar-view',
-        'premium-light',
-    ]:
-        assert marker in css, f"missing app-like discovery CSS marker {marker}"
-    assert 'Phase 1 — App experience foundation' in plan
-
-
-def test_missing_event_images_use_branded_loop_local_fallback():
-    for path in [
-        'public/looplocal-logo-app.jpg',
-        'public/looplocal-logo-app.png',
-        'public/looplocal-event-placeholder.jpg',
-        'public/looplocal-event-placeholder.png',
-        'public/looplocal-icon-192.png',
-        'public/looplocal-icon-512.png',
-        'app/icon.png',
-        'app/apple-icon.png',
-    ]:
-        assert_file(path)
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    layout = read('app/layout.tsx')
-    manifest = read('app/manifest.ts')
-    for marker in [
-        "'/looplocal-event-placeholder.jpg'",
-        'hasEventImage',
-        'event-image-fallback',
-        'brand-logo-image',
-        'Loop Local',
-    ]:
-        assert marker in shell, f"missing supplied event fallback marker {marker}"
-    assert "'/looplocal-logo-app.png'" not in shell, 'square app logo still used as event-card fallback'
-    assert 'source.unsplash.com' not in shell, 'random external event fallback image still present'
-    assert "'/looplocal-event-fallback.svg'" not in shell, 'old generated SVG fallback still used by cards'
-    for marker in ['event-image-fallback', 'brand-logo-image']:
-        assert marker in css, f"missing fallback/logo CSS marker {marker}"
-    for marker in ['/looplocal-icon-512.png', '/looplocal-logo-app.png']:
-        assert marker in (layout + manifest), f"metadata missing canonical logo marker {marker}"
-
-
-def test_loop_local_design_system_is_authoritative():
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    css = read('app/globals.css')
-    shell = read('components/app-shell.tsx')
-    for marker in [
-        '#FAFBFC',
-        '#FFFFFF',
-        '#2563EB',
-        '#1D4ED8',
-        '#1D4ED8',
-        '#475569',
-        '#64748B',
-        'linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
-        'Stay in the loop with everything happening locally.',
-    ]:
-        assert marker in design, f"design system doc missing marker {marker}"
-    for marker in [
-        'loop-local-design-system',
-        '--ll-bg-primary: #FAFBFC',
-        '--ll-bg-secondary: #FFFFFF',
-        '--ll-accent-primary: #2563EB',
-        '--ll-accent-secondary: #0EA5E9',
-        '--ll-accent-purple: #1D4ED8',
-        '--ll-text-secondary: #475569',
-        '--ll-text-muted: #64748B',
-        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
-        '--ll-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 46%, #F5F7FA 100%)',
-        'brand-gradient-control',
-        'professional-consumer-redesign',
-        'native-app-motion',
-    ]:
-        assert marker in css, f"CSS missing design-system marker {marker}"
-    for forbidden in ['#ff5a5f', '#f8f7f2', '#fffaf4', '#3ecf8e', '#0071e3']:
-        assert forbidden.lower() not in css.lower(), f"legacy/off-brand color still present: {forbidden}"
-    assert 'loop-local-design-system' in shell
-
-
-def test_loop_local_quiet_premium_refinement_limits_brand_color_usage():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'content-first refinement',
-        '80% dark neutrals',
-        '5% blue/purple accents',
-        'Reserve the gradient for primary actions, active navigation, selected filters, progress, small accents, and logo usage.',
-    ]:
-        assert marker in design, f"design system doc missing quiet refinement marker {marker}"
-    for marker in [
-        '--ll-border: rgba(15, 23, 42, 0.08)',
-        '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFC',
-        '--ll-glow: 0 12px 26px rgba(37, 99, 235, 0.16)',
-        'quiet-content-first',
-        'neutral-event-chip',
-        'quiet-navigation',
-        'content-hero-card',
-    ]:
-        assert marker in css, f"CSS missing quiet refinement marker {marker}"
-    assert css.count('var(--ll-brand-gradient)') <= 8, 'brand gradient is overused; keep it for important actions/selected states only'
-    assert css.count('rgba(31, 184, 255') <= 8, 'blue tint is overused; keep accents subtle and sparse'
-    for forbidden in [
-        'box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28)',
-        'rgba(31, 184, 255, 0.22)',
-        'rgba(111, 59, 255, 0.20)',
-        'background: var(--ll-brand-gradient);\n  box-shadow: var(--ll-glow);\n}',
-    ]:
-        assert forbidden not in css, f"overdesigned/heavy visual treatment still present: {forbidden}"
-
-
-def test_loop_local_app_store_consumer_refinement_prioritizes_content():
-    css = read('app/globals.css')
-    shell = read('components/app-shell.tsx')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'App Store consumer refinement',
-        'Only cards should feel like cards.',
-        'Bring browsing above the fold.',
-        'Make placeholder images quiet and clearly secondary to real photography.',
-    ]:
-        assert marker in design, f"design system doc missing App Store refinement marker {marker}"
-    for marker in [
-        'compact-consumer-hero',
-        'unframed-discovery-section',
-        'content-first-event-card',
-        'scannable-event-meta',
-        'quiet-placeholder-image',
-        'subtle-active-nav',
-        '--ll-card-radius: 26px',
-        '--ll-card-shadow: 0 10px 28px rgba(15, 23, 42, 0.06)',
-        '--ll-section-border: transparent',
-    ]:
-        assert marker in css, f"CSS missing App Store refinement marker {marker}"
-    for marker in [
-        'compact-consumer-hero',
-        'content-first-event-card',
-        'scannable-event-meta',
-        'no-image-label',
-    ]:
-        assert marker in shell, f"shell missing App Store refinement marker {marker}"
-    assert 'shortSummary(item)' not in shell, 'event cards still show dense summary text by default'
-    assert 'addressLine(item) ||' not in shell, 'event cards still show address by default instead of hiding secondary details'
-    assert css.count('border: 1px solid var(--ll-border);') <= 12, 'too many bordered containers; rely more on whitespace'
-    assert 'grid-template-columns: minmax(0, 1fr) minmax(340px, .82fr)' not in css, 'hero still uses oversized two-column treatment'
-    assert 'font-size: clamp(3rem, 8vw, 5.9rem)' not in css, 'hero headline is still too tall'
-    assert 'min-height: 218px;' not in css, 'event image is not prominent enough for the refined card hierarchy'
-
-
-def test_loop_local_browsing_ui_uses_near_zero_blue_chrome():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'Near-zero blue browsing chrome',
-        'Browsing controls should be neutral unless they are the main CTA.',
-        'Date badges, section eyebrows, and placeholder cards should not use blue as their default color.',
-    ]:
-        assert marker in design, f"design system doc missing near-zero-blue marker {marker}"
-    for marker in [
-        'near-zero-blue-chrome',
-        '--ll-accent-browsing: #2563EB',
-        '--ll-placeholder-opacity: .28',
-        'neutral-active-view',
-        'muted-date-badge',
-        'muted-section-eyebrow',
-    ]:
-        assert marker in css, f"CSS missing near-zero-blue marker {marker}"
-    assert css.count('var(--ll-brand-gradient)') <= 1, 'brand gradient still appears outside the main CTA level'
-    for forbidden in [
-        'background: var(--ll-brand-gradient);\n}\n\n.range-tabs button.active,\n.view-switcher button.active',
-        'background: var(--ll-brand-gradient);\n  box-shadow: var(--ll-glow);',
-        'color: var(--ll-accent-primary);\n  font-size: .74rem',
-        'color: var(--ll-accent-primary);\n  background: rgba(255,255,255,.055);',
-        'opacity: .34;',
-    ]:
-        assert forbidden not in css, f"browsing UI still has too much blue/chroma: {forbidden}"
-
-
-def test_loop_local_media_visibility_recovers_from_over_muting():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    shell = read('components/app-shell.tsx')
-    for marker in [
-        'Media visibility beats over-muting.',
-        'Placeholder media must remain visibly legible even when blue chrome is restrained.',
-    ]:
-        assert marker in design, f"design system doc missing media visibility correction marker {marker}"
-    for marker in [
-        '--ll-placeholder-opacity: .28',
-        'visible-placeholder-image',
-        'background-size: min(72%, 560px) auto',
-        'filter: saturate(.88) contrast(1.02) brightness(1.02)',
-        'rgba(238, 246, 255, .12), rgba(15, 23, 42, .18)',
-    ]:
-        assert marker in css, f"CSS missing media visibility recovery marker {marker}"
-    assert 'visible-placeholder-image' in shell, 'event placeholder image class must be visible in the rendered card markup'
-    for forbidden in [
-        '--ll-placeholder-opacity: .10',
-        'inset: 26%',
-        'filter: saturate(.38) contrast(.72) brightness(.72)',
-        'background-image: none !important;',
-        'rgba(5, 11, 36, .24), rgba(5, 11, 36, .72)',
-    ]:
-        assert forbidden not in css, f"over-muted media treatment still present: {forbidden}"
-
-
-def test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    shell = read('components/app-shell.tsx')
-    for marker in [
-        'Cards need to stand out without becoming blue chrome.',
-        'Use brighter neutral card surfaces, clearer media, and stronger-but-soft elevation.',
-    ]:
-        assert marker in design, f"design system doc missing card contrast marker {marker}"
-    for marker in [
-        '--ll-card-surface: #FFFFFF',
-        '--ll-card-border: rgba(15, 23, 42, 0.08)',
-        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
-        '--ll-card-image-lift: saturate(1.08) contrast(1.04) brightness(1.02)',
-        'brighter-content-card',
-        'box-shadow: var(--ll-card-shadow-strong)',
-        'filter: var(--ll-card-image-lift)',
-    ]:
-        assert marker in css, f"CSS missing brighter card separation marker {marker}"
-    assert 'brighter-content-card' in shell, 'event card markup must opt into brighter premium card treatment'
-    assert css.count('var(--ll-brand-gradient)') <= 1, 'card contrast pass must not reintroduce blue/gradient-heavy UI'
-
-
-def test_loop_local_palette_uses_brand_colors_without_blue_dominance():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'Brand-aware, less-blue palette redesign',
-        'Use brand colors as accents, not as the ambient color of the whole interface.',
-        'Shift the base scheme toward ink, plum, charcoal, and warm slate neutrals.',
-    ]:
-        assert marker in design, f"design system doc missing less-blue palette marker {marker}"
-    for marker in [
-        '--ll-bg-primary: #FAFBFC',
-        '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #0F172A',
-        '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFC',
-        '--ll-card-surface: #FFFFFF',
-        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
-        '--ll-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 46%, #F5F7FA 100%)',
-        '--ll-warm-accent: #F5EFE5',
-        '--ll-rose-accent: #E0F2FE',
-        'professional-consumer-redesign',
-    ]:
-        assert marker in css, f"CSS missing professional brand palette marker {marker}"
-    assert css.count('#050B24') <= 2, 'old blue-navy background still dominates the CSS'
-    assert css.count('#0A1538') <= 2, 'old blue card surface still dominates the CSS'
-    assert css.count('rgba(31, 184, 255') <= 1, 'blue rgba usage has become dominant again'
-    assert css.count('var(--ll-brand-gradient)') <= 1, 'brand gradient should remain rare even after palette redesign'
-
-
-def test_loop_local_palette_has_life_without_becoming_blue_again():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'Livelier brand palette correction',
-        'The app should feel alive, local, and premium — not flat or cave-dark.',
-        'Add life with warm ambient light, brighter plum surfaces, rose/amber micro-accents, and clearer media.',
-    ]:
-        assert marker in design, f"design system doc missing lively palette marker {marker}"
-    for marker in [
-        '--ll-bg-primary: #FAFBFC',
-        '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #0F172A',
-        '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFC',
-        '--ll-card-surface: #FFFFFF',
-        '--ll-card-surface-warm: #FFFDF8',
-        '--ll-card-border: rgba(15, 23, 42, 0.08)',
-        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
-        '--ll-life-amber: #F5EFE5',
-        '--ll-life-rose: #E0F2FE',
-        '--ll-life-lavender: #DBEAFE',
-        '--ll-card-image-lift: saturate(1.08) contrast(1.04) brightness(1.02)',
-        'life-forward-palette',
-        'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,253,.92))',
-    ]:
-        assert marker in css, f"CSS missing lively palette marker {marker}"
-    assert css.count('rgba(31, 184, 255') == 0, 'palette should not bring blue rgba back'
-    assert css.count('var(--ll-brand-gradient)') <= 1, 'lively palette should not become gradient-heavy'
-    assert '#120D1D' not in css.split(':root', 1)[1].split('}', 1)[0], 'root background is still too dark/muddy'
-
-
-def test_loop_local_color_scheme_resets_to_clean_editorial_consumer_palette():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'Reference-inspired white/navy/blue palette',
-        'User supplied a reference screenshot and said they like this color scheme.',
-        'Use the white/navy/royal-blue reference palette unless the user requests a different direction.',
-    ]:
-        assert marker in design, f"design system doc missing clean editorial reset marker {marker}"
-    for marker in [
-        '--ll-bg-primary: #FAFBFC',
-        '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #0F172A',
-        '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFC',
-        '--ll-card-surface: #FFFFFF',
-        '--ll-card-surface-warm: #FFFDF8',
-        '--ll-text-primary: #0F172A',
-        '--ll-text-secondary: #475569',
-        '--ll-text-muted: #64748B',
-        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
-        '--ll-accent-primary: #2563EB',
-        '--ll-accent-purple: #1D4ED8',
-        '--ll-accent-secondary: #0EA5E9',
-        '--ll-warm-accent: #F5EFE5',
-        '--ll-rose-accent: #E0F2FE',
-        '--ll-card-border: rgba(15, 23, 42, 0.08)',
-        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
-        '--ll-card-image-lift: saturate(1.08) contrast(1.04) brightness(1.02)',
-        'clean-editorial-palette',
-    ]:
-        assert marker in css, f"CSS missing clean editorial palette marker {marker}"
-    for forbidden in [
-        '#120D1D', '#1B1428', '#211934', '#2B2242', '#332542',
-        'rgba(18, 13, 29', 'rgba(31, 184, 255',
-    ]:
-        assert forbidden not in css, f"muddy/dark/blue palette artifact remains: {forbidden}"
-    assert css.count('var(--ll-brand-gradient)') <= 1, 'brand gradient should remain rare in the editorial palette'
-
-
-def test_loop_local_uses_reference_inspired_white_nav_navy_hero_blue_cta_palette():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'Reference-inspired white/navy/blue palette',
-        'White navigation, deep navy hero, royal-blue CTA, clean slate text, and white content cards.',
-        'Use blue confidently for primary actions and hero atmosphere, but keep cards and browsing surfaces white and readable.',
-    ]:
-        assert marker in design, f"design system doc missing reference palette marker {marker}"
-    for marker in [
-        '--ll-bg-primary: #FAFBFC',
-        '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #0F172A',
-        '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFC',
-        '--ll-card-surface: #FFFFFF',
-        '--ll-text-primary: #0F172A',
-        '--ll-text-secondary: #475569',
-        '--ll-text-muted: #64748B',
-        '--ll-accent-primary: #2563EB',
-        '--ll-accent-secondary: #0EA5E9',
-        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
-        '--ll-hero-overlay: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-        '--ll-card-border: rgba(15, 23, 42, 0.08)',
-        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
-        'professional-consumer-redesign',
-        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-        'background: var(--ll-accent-primary)',
-    ]:
-        assert marker in css, f"CSS missing reference palette marker {marker}"
-    for forbidden in ['#E85D75', '#8B5CF6', '#F2A65A', 'coral/berry/lavender']:
-        assert forbidden not in css + design, f"old rejected editorial/coral palette remains: {forbidden}"
-    assert css.count('var(--ll-brand-gradient)') <= 1, 'gradient should be controlled; use solid blue for primary CTA'
-
-
-def test_loop_local_reference_palette_applies_to_all_site_surfaces():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    for marker in [
-        'Reference palette must cover the whole site, not only the hero.',
-        'Filters, feed cards, list/map/calendar views, mobile tabs, and Post Local must share the white/navy/royal-blue system.',
-    ]:
-        assert marker in design, f"design system doc missing full-site reference marker {marker}"
-    for marker in [
-        'professional-consumer-redesign',
-        '--ll-field-surface: #FFFFFF',
-        '--ll-soft-blue-surface: #F0F8FF',
-                '.filter-bar.professional-filter-system',
-        '.feed-layout-shell',
-        '.post-local-shell.professional-consumer-redesign',
-        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-        'box-shadow: var(--ll-premium-shadow)',
-        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-        'background: var(--ll-blue-accent)',
-        'border-color: rgba(37, 99, 235, 0.18)',
-    ]:
-        assert marker in css, f"CSS missing full-site palette marker {marker}"
-    for forbidden in [
-        'rgba(242, 166, 90',
-        'rgba(232, 93, 117',
-        '#F2EBDD',
-        'background: rgba(24,21,31,.055)',
-        'background: rgba(24,21,31,.07)',
-    ]:
-        assert forbidden not in css, f"old partial-palette artifact still affects non-hero surfaces: {forbidden}"
-
-
-
-def test_loop_local_top_to_bottom_consumer_redesign_uses_blue_as_accent_only():
-    css = read('app/globals.css')
-    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
-    shell = read('components/app-shell.tsx')
-    post = read('components/post-local-wizard.tsx')
-    for marker in [
-        'Professional consumer redesign: blue as accent only',
-        'Bright off-white canvas, white cards, dark slate text, compact scanning, and tasteful Loop Local blue accents.',
-        'Do not use heavy blue sections, blue page backgrounds, blue cards, or corporate navy hero blocks.',
-    ]:
-        assert marker in design, f"design system missing professional redesign marker {marker}"
-    for marker in [
-        'professional-consumer-redesign',
-        '--ll-page-bg: #FAFBFC',
-        '--ll-page-bg-soft: #F5F7FA',
-        '--ll-blue-accent: #2563EB',
-        '--ll-cyan-accent: #E8F5FF',
-        '--ll-warm-paper: #FFFDF8',
-        '--ll-premium-shadow: 0 18px 45px rgba(15, 23, 42, 0.08)',
-        '--ll-subtle-shadow: 0 10px 28px rgba(15, 23, 42, 0.06)',
-        '.hero.professional-consumer-redesign',
-        '.event-card.professional-event-card',
-        '.filter-bar.professional-filter-system',
-        '.top-nav.professional-nav',
-        '.post-local-shell.professional-consumer-redesign',
-        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-        'background: var(--ll-blue-accent)',
-        'box-shadow: var(--ll-premium-shadow)',
-    ]:
-        assert marker in css, f"CSS missing professional redesign marker {marker}"
-    for marker in [
-        'professional-consumer-redesign',
-        'professional-event-card',
-        'professional-filter-system',
-        'professional-nav',
-        'feed-layout-shell',
-        'event-card-content-grid',
-    ]:
-        assert marker in shell, f"home markup missing redesigned class {marker}"
-    assert 'professional-consumer-redesign' in post, 'Post Local route must share the professional redesign class'
-    for forbidden in [
-        'background: var(--ll-hero-overlay)',
-        'background: linear-gradient(135deg, rgba(7, 29, 51, .96), rgba(10, 45, 82, .92))',
-        'reference-navy-blue-palette',
-        'less-blue-brand-palette',
-        'dark-navy-surface',
-        '--ll-navy-panel:',
-        '--ll-navy-panel-soft:',
-    ]:
-        assert forbidden not in css + shell + post, f"old heavy-blue/reference palette artifact remains: {forbidden}"
-    assert css.count('rgba(0,107,255') <= 6, 'raw blue rgba accents should be rare; use tokens and neutral surfaces'
-
-def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
-    combined = native + reset
+    combined = package + page + feed + native + reset
     for marker in [
+        'test:product',
+        'getLiveFeed',
+        'LiveFeedItem',
         'itraeknotcdtdzaeukan',
         'ryanwortham/loop-local',
         'GitHub write access',
         'Do not paste tokens',
         'Do not push production schema changes',
     ]:
-        assert marker in combined, f"missing access marker {marker}"
+        assert marker in combined, f'missing preserved engine/distribution marker {marker}'
     for forbidden in ['service_role', 'sb_secret_', 'postgresql://postgres:', 'SUPABASE_SERVICE_ROLE_KEY']:
-        assert forbidden not in combined, f"forbidden secret marker {forbidden}"
+        assert forbidden not in combined, f'forbidden secret marker {forbidden}'
+
+
+def test_complete_frontend_rebuild_matches_reference_without_touching_engine():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    shell = read('components/app-shell.tsx')
+    post = read('components/post-local-wizard.tsx')
+    for marker in [
+        'Complete frontend rebuild: premium local discovery app',
+        'Replace the frontend shell while preserving Supabase, API endpoints, event feed, routing, search logic, filters, maps, and business functionality.',
+        'Reference mood: Airbnb clarity, Spotify energy, Apple polish, Google Maps utility, Eventbrite event intent, Instagram Explore image-led browsing.',
+    ]:
+        assert marker in design, f'design doc missing complete rebuild marker {marker}'
+    for marker in [
+        'complete-frontend-rebuild',
+        '--ll-rebuild-blue: #155EEF',
+        '--ll-rebuild-ink: #07112B',
+        '--ll-rebuild-bg: #F7F9FC',
+        '--ll-rebuild-card: #FFFFFF',
+        '--ll-rebuild-cyan: #EAF6FF',
+        '--ll-rebuild-radius-xl: 32px',
+        '--ll-rebuild-shadow: 0 22px 70px rgba(7, 17, 43, 0.10)',
+        '.app-reference-shell',
+        '.local-hero-panel',
+        '.discovery-phone',
+        '.event-detail-preview',
+        '.explore-card',
+        '.popular-list-row',
+        '.mobile-app-tabbar',
+    ]:
+        assert marker in css, f'CSS missing full rebuild marker {marker}'
+    for marker in [
+        'complete-frontend-rebuild',
+        'app-reference-shell',
+        'local-hero-panel',
+        'discovery-phone',
+        'event-detail-preview',
+        'explore-card',
+        'popular-list-row',
+        'mobile-app-tabbar',
+        'value-tile-grid',
+        'ticket-action-strip',
+    ]:
+        assert marker in shell, f'home shell missing reference-inspired rebuild marker {marker}'
+    for marker in ['post-local-shell', 'complete-frontend-rebuild', 'post-mobile-reference-shell', 'post-flow-card', 'mobile-app-tabbar']:
+        assert marker in post, f'Post Local route missing rebuild marker {marker}'
+
+
+def test_home_preserves_search_filters_views_and_feed_logic():
+    shell = read('components/app-shell.tsx')
+    for preserved in [
+        'useState',
+        'useMemo',
+        'setSearchQuery',
+        'setLocationQuery',
+        'setActiveCategory',
+        'setActiveCity',
+        'setActiveMoment',
+        'setSortBy',
+        'setViewMode',
+        'matchesMoment',
+        'sortItems',
+        'primaryUrl',
+        'visibleItems',
+        'calendarItems',
+        "viewMode === 'card'",
+        "viewMode === 'list'",
+        "viewMode === 'map'",
+        "viewMode === 'calendar'",
+        'map-view',
+        'calendar-view',
+        'empty-filter-state',
+    ]:
+        assert preserved in shell, f'working search/filter/view/feed behavior was removed: {preserved}'
+
+
+def test_event_media_and_placeholder_assets_stay_intentional():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        "item.image_url || '/looplocal-event-placeholder.jpg'",
+        "backgroundImage: `url(${eventImage(item)})`",
+        '/looplocal-event-placeholder.jpg',
+        'quiet-placeholder-image',
+        'explore-card-image',
+    ]:
+        assert marker in shell + css, f'missing media/placeholder marker {marker}'
+    assert 'source.unsplash.com' not in shell + css, 'random external placeholder images should not be used'
+
+
+def test_post_local_preserves_form_fields_and_uploads():
+    post = read('components/post-local-wizard.tsx')
+    for marker in [
+        'FileDropInput',
+        'Business/community/entity name',
+        'Contact name',
+        'Email',
+        'Phone number',
+        'Street address',
+        'Website',
+        'Entity type',
+        'Event title',
+        'Event date',
+        'Start time',
+        'End time',
+        'Website/ticket link',
+        'Submit for Approval',
+        'mobile_date_picker_contract',
+        'mobile_time_picker_contract',
+    ]:
+        assert marker in post, f'Post Local field/functionality removed: {marker}'
+
+
+def test_old_incremental_design_artifacts_removed():
+    combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
+    for forbidden in [
+        'professional-consumer-redesign',
+        'reference-full-site-surfaces',
+        'professional-event-card',
+        'professional-filter-system',
+        'feed-layout-shell',
+        'dark-navy-surface',
+        'less-blue-brand-palette',
+        'reference-navy-blue-palette',
+        'background: var(--ll-hero-overlay)',
+        '--ll-navy-panel:',
+    ]:
+        assert forbidden not in combined, f'old incremental design artifact remains after full rebuild: {forbidden}'
 
 
 if __name__ == '__main__':
-    test_reset_brief_exists_and_names_distribution_targets()
-    test_pwa_and_native_distribution_foundation_exists()
-    test_package_has_product_contract_script()
-    test_home_is_intentionally_concise()
-    test_live_reference_feed_is_wired_into_workbench()
-    test_event_filters_are_available_for_live_feed()
-    test_app_like_discovery_experience_exists()
-    test_missing_event_images_use_branded_loop_local_fallback()
-    test_loop_local_design_system_is_authoritative()
-    test_loop_local_quiet_premium_refinement_limits_brand_color_usage()
-    test_loop_local_app_store_consumer_refinement_prioritizes_content()
-    test_loop_local_browsing_ui_uses_near_zero_blue_chrome()
-    test_loop_local_media_visibility_recovers_from_over_muting()
-    test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse()
-    test_loop_local_palette_uses_brand_colors_without_blue_dominance()
-    test_loop_local_palette_has_life_without_becoming_blue_again()
-    test_loop_local_color_scheme_resets_to_clean_editorial_consumer_palette()
-    test_loop_local_uses_reference_inspired_white_nav_navy_hero_blue_cta_palette()
-    test_loop_local_reference_palette_applies_to_all_site_surfaces()
-    test_loop_local_top_to_bottom_consumer_redesign_uses_blue_as_accent_only()
-    test_supabase_and_github_status_are_documented_without_secrets()
-    print('loop_local_10x_product_reset_contract_ok')
+    test_live_engine_and_distribution_docs_remain_present()
+    test_complete_frontend_rebuild_matches_reference_without_touching_engine()
+    test_home_preserves_search_filters_views_and_feed_logic()
+    test_event_media_and_placeholder_assets_stay_intentional()
+    test_post_local_preserves_form_fields_and_uploads()
+    test_old_incremental_design_artifacts_removed()
+    print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -1,3 +1,47 @@
+
+## Complete frontend rebuild: premium local discovery app
+
+Replace the frontend shell while preserving Supabase, API endpoints, event feed, routing, search logic, filters, maps, and business functionality.
+
+Reference mood: Airbnb clarity, Spotify energy, Apple polish, Google Maps utility, Eventbrite event intent, Instagram Explore image-led browsing.
+
+This is not an incremental palette refinement. The UI should immediately communicate: “Something amazing is happening near you.”
+
+Rules:
+
+- Build around an app-like discovery shell: left brand/hero, center mobile-style discovery feed, right event detail preview on wide screens.
+- Main surfaces are white/off-white with crisp borders and shadows.
+- Blue is the brand action color for primary buttons, active chips, links, icon highlights, and focus states only.
+- Event imagery carries emotion; cards should be image-led, compact, scannable, and mobile-friendly.
+- Keep search, category filters, city filters, moment chips, sort, view modes, map, calendar, event links, Post Local form fields, and live feed data intact.
+- Remove old incremental design artifacts from markup and CSS.
+
+Core rebuild tokens:
+
+```css
+--ll-rebuild-blue: #155EEF;
+--ll-rebuild-ink: #07112B;
+--ll-rebuild-bg: #F7F9FC;
+--ll-rebuild-card: #FFFFFF;
+--ll-rebuild-cyan: #EAF6FF;
+--ll-rebuild-radius-xl: 32px;
+--ll-rebuild-shadow: 0 22px 70px rgba(7, 17, 43, 0.10);
+```
+
+Primary component anchors:
+
+```text
+complete-frontend-rebuild
+app-reference-shell
+local-hero-panel
+discovery-phone
+event-detail-preview
+explore-card
+popular-list-row
+mobile-app-tabbar
+post-mobile-reference-shell
+```
+
 # Loop Local Design System
 
 Generated: 2026-06-29

@@ -54,18 +54,21 @@ def test_initial_ui_has_consumer_app_sections():
     page = read("app/page.tsx") + read("components/app-shell.tsx")
     for needle in [
         "Loop Local",
-        "Find what’s worth doing now",
-        "Explore nearby",
-        "Post local",
+        "Discover what’s happening near you",
+        "Explore Nearby",
+        "Post an Event",
         "Discover",
         "Events",
         "Map",
         "Saved",
         "Profile",
-        "Happening nearby",
+        "Featured This Week",
+        "Popular Near You",
         "Tonight",
-        "Live local feed",
-        "Card view",
+        "complete-frontend-rebuild",
+        "app-reference-shell",
+        "discovery-phone",
+        "event-detail-preview",
     ]:
         assert needle in page, f"missing UI marker {needle}"
 
@@ -85,7 +88,7 @@ def test_post_local_route_matches_current_app_contract():
     route = read("app/post-local/page.tsx") + read("components/post-local-wizard.tsx")
     for needle in [
         "Post Local",
-        "Post something local in minutes",
+        "Share something amazing nearby.",
         "List Your Business",
         "Post an Event",
         "Join as a Community Organization",

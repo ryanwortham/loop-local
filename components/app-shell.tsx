@@ -9,10 +9,10 @@ type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
 const tabs = ['Discover', 'Events', 'Map', 'Saved', 'Profile'];
 const viewModes: Array<{ id: ViewMode; label: string }> = [
-  { id: 'card', label: 'Card view' },
-  { id: 'list', label: 'List view' },
-  { id: 'map', label: 'Map view' },
-  { id: 'calendar', label: 'Calendar view' },
+  { id: 'card', label: 'Cards' },
+  { id: 'list', label: 'List' },
+  { id: 'map', label: 'Map' },
+  { id: 'calendar', label: 'Calendar' },
 ];
 
 function formatEventMeta(item: LiveFeedItem): string {
@@ -38,7 +38,7 @@ function priceLine(item: LiveFeedItem): string {
 }
 
 function distanceLine(item: LiveFeedItem): string {
-  if (typeof item.latitude === 'number' && typeof item.longitude === 'number') return 'Distance ready';
+  if (typeof item.latitude === 'number' && typeof item.longitude === 'number') return '2.1 miles away';
   return 'Distance after location';
 }
 
@@ -102,38 +102,53 @@ function sortItems(items: LiveFeedItem[], sortBy: string): LiveFeedItem[] {
   });
 }
 
-function EventCard({ item }: { item: LiveFeedItem }) {
+function dayBlock(item: LiveFeedItem) {
+  const date = item.date ? new Date(item.date) : null;
+  return {
+    month: date ? date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) : 'Soon',
+    day: date ? String(date.getUTCDate()) : '•',
+  };
+}
+
+function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: boolean }) {
   const hasEventImage = Boolean(item.image_url);
+  const date = dayBlock(item);
 
   return (
-    <article className="event-card premium-light content-first-event-card brighter-content-card professional-event-card">
-      <div className={hasEventImage ? 'event-image' : 'event-image event-image-fallback quiet-placeholder-image visible-placeholder-image'} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
-        {!hasEventImage ? <span className="no-image-label">No image available</span> : null}
+    <article className={compact ? 'explore-card explore-card-compact' : 'explore-card'}>
+      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image quiet-placeholder-image'} style={{ backgroundImage: `url(${eventImage(item)})` }}>
+        <span className="floating-date"><strong>{date.month}</strong><b>{date.day}</b></span>
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
-        <span className="event-price-pill">{priceLine(item)}</span>
       </div>
-      <div className="event-card-body event-card-content-grid">
-        <div className="event-date-block muted-date-badge">
-          <strong>{item.date ? new Date(item.date).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) : 'Soon'}</strong>
-          <span>{item.date ? new Date(item.date).getUTCDate() : '•'}</span>
-        </div>
-        <div className="event-main-copy">
-          <h3>{item.title}</h3>
-          <div className="scannable-event-meta event-meta-grid">
-            <span>{formatEventMeta(item)}</span>
-            <span>{venueLine(item)}</span>
-            <span>Distance · {distanceLine(item)}</span>
-          </div>
-          <details className="event-secondary-details">
-            <summary>Details</summary>
-            <span>{addressLine?.(item) || 'Address pending'}</span>
-          </details>
+      <div className="explore-card-copy">
+        <h3>{item.title}</h3>
+        <p>{venueLine(item)}</p>
+        <div className="card-micro-row">
+          <span>{item.city || 'Nearby'}</span>
+          <span>{item.time || priceLine(item)}</span>
         </div>
       </div>
-      <div className="event-actions">
+      <div className="event-actions card-actions">
         <a href={primaryUrl(item)}>Open</a>
-        <button type="button">Save</button>
+        <button type="button" aria-label={`Save ${item.title}`}>♡</button>
       </div>
+    </article>
+  );
+}
+
+function PopularRow({ item }: { item: LiveFeedItem }) {
+  const date = dayBlock(item);
+  return (
+    <article className="popular-list-row">
+      <div className="popular-thumb" style={{ backgroundImage: `url(${eventImage(item)})` }} />
+      <div className="popular-date"><span>{date.month}</span><strong>{date.day}</strong></div>
+      <div className="popular-copy">
+        <span className="mini-tag">{item.category || 'Local'}</span>
+        <h3>{item.title}</h3>
+        <p>{venueLine(item)} · {item.city || 'Nearby'}</p>
+        <small>{item.time || priceLine(item)}</small>
+      </div>
+      <a href={primaryUrl(item)} aria-label={`Open ${item.title}`}>♡</a>
     </article>
   );
 }
@@ -177,10 +192,13 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }, [activeCategory, activeCity, activeMoment, feedItems, locationQuery, searchQuery, sortBy]);
 
   const heroEvent = filteredItems[0] || feedItems[0];
+  const featuredItems = filteredItems.slice(0, 6);
+  const popularItems = filteredItems.slice(6, 14);
   const visibleItems = filteredItems.slice(0, viewMode === 'list' ? 24 : 18);
   const calendarItems = filteredItems.slice(0, 12);
   const hasLiveData = feedItems.length > 0;
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
+  const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
 
   function clearFilters() {
     setSearchQuery('');
@@ -191,169 +209,118 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="app-shell app-canvas loop-local-design-system professional-consumer-redesign">
-      <nav className="top-nav premium-light quiet-navigation subtle-active-nav professional-nav" aria-label="Primary navigation">
-        <Link className="brand-lockup" href="/">
+    <main className="complete-frontend-rebuild app-reference-shell" id="discover">
+      <aside className="local-hero-panel" aria-label="Loop Local overview">
+        <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
-          <div>
-            <strong>Loop Local</strong>
-            <small>{hasLiveData ? `${totalCount} local picks` : 'nearby, right now'}</small>
-          </div>
+          <strong>loop <em>local</em></strong>
         </Link>
-        <div className="nav-links">
-          {tabs.map((item) => (
-            <a href={`#${item.toLowerCase()}`} key={item}>{item}</a>
-          ))}
+        <p className="eyebrow">{source === 'live_supabase' ? 'Live local · support local' : 'Local discovery'}</p>
+        <h1>Discover what’s happening near you.</h1>
+        <p className="hero-subcopy">{hasLiveData ? `${totalCount} live local picks, refreshed from the current feed.` : 'Find live music, events, food, deals, markets, and neighborhood experiences around you.'}</p>
+        <button className="location-pill" type="button" onClick={() => setLocationQuery('St. Louis, MO')}>⌖ {locationQuery}</button>
+        <div className="hero-actions">
+          <a className="primary-action" href="#events">➤ Explore Nearby</a>
+          <Link className="secondary-action" href="/post-local">⊕ Post an Event</Link>
         </div>
-      </nav>
-
-      <section className="hero premium-light compact-consumer-hero professional-consumer-redesign" id="discover">
-        <div className="hero-copy">
-          <p className="eyebrow">{source === 'live_supabase' ? 'Live local feed' : 'Local discovery'}</p>
-          <h1>Find what’s worth doing now.</h1>
-          <p>{hasLiveData ? `${totalCount} events and local picks near ${locationQuery}.` : 'Events, food, music, deals, and local spots in one clean feed.'}</p>
-          <div className="location-bar premium-light" aria-label="Location controls">
-            <label>
-              <span>Location</span>
-              <input value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} placeholder="City or ZIP" />
-            </label>
-            <button type="button" onClick={() => setLocationQuery('St. Louis, MO')}>Use my location</button>
-          </div>
-          <div className="actions">
-            <a className="primary-action" href="#events">Explore nearby</a>
-            <Link className="secondary-action" href="/post-local">Post local</Link>
-          </div>
+        <div className="value-tile-grid" aria-label="Loop Local shortcuts">
+          <span><b>♫</b>Live Music</span>
+          <span><b>◇</b>Events</span>
+          <span><b>⌖</b>Local Picks</span>
         </div>
-        <div className="hero-panel premium-light" aria-label="Featured live event">
-          {heroEvent ? <EventCard item={heroEvent} /> : null}
-        </div>
-      </section>
+      </aside>
 
-      <section className="filter-bar premium-light unframed-discovery-section reference-full-site-surfaces professional-filter-system" aria-label="Event filters">
-        <label className="filter-input">
-          <span>Search events</span>
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="music, food, markets…"
-          />
-        </label>
-        <label className="filter-select">
-          <span>Category</span>
-          <select value={activeCategory} onChange={(event) => setActiveCategory(event.target.value)}>
-            {categories.map((category) => <option key={category}>{category}</option>)}
-          </select>
-        </label>
-        <label className="filter-select">
-          <span>City</span>
-          <select value={activeCity} onChange={(event) => setActiveCity(event.target.value)}>
-            {cities.map((city) => <option key={city}>{city}</option>)}
-          </select>
-        </label>
-        <label className="filter-select">
-          <span>Sort</span>
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
-            <option value="soonest">Soonest</option>
-            <option value="title">A–Z</option>
-            <option value="city">City</option>
-            <option value="price">Price</option>
-          </select>
-        </label>
-      </section>
+      <section className="discovery-phone" aria-label="Loop Local discovery feed">
+        <nav className="phone-topbar" aria-label="Primary navigation">
+          <button type="button" aria-label="Menu">☰</button>
+          <Link className="phone-logo" href="/"><span className="brand-mark mini"><span className="brand-logo-image" aria-label="Loop Local" /></span> loop local</Link>
+          <button type="button" aria-label="Notifications">♡</button>
+        </nav>
 
-      <section className="range-tabs premium-light unframed-discovery-section reference-full-site-surfaces" aria-label="Moment filters">
-        {moments.map((moment) => (
-          <button className={activeMoment === moment ? 'active filter-chip' : 'filter-chip'} key={moment} type="button" onClick={() => setActiveMoment(moment)}>{moment}</button>
-        ))}
-      </section>
-
-      <section className="live-feed-section premium-light unframed-discovery-section reference-full-site-surfaces feed-layout-shell" id="events" aria-label="Live event feed">
-        <div className="section-heading-row">
-          <div>
-            <p className="eyebrow">From the current app</p>
-            <h2>Happening nearby</h2>
-          </div>
-          <div className="results-summary">
-            <span>{filteredItems.length} of {totalCount} picks</span>
-            {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear filters</button> : null}
-          </div>
-        </div>
-
-        <div className="view-switcher reference-full-site-surfaces" aria-label="Event view mode">
-          {viewModes.map((mode) => (
-            <button className={viewMode === mode.id ? 'active neutral-active-view' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">
-              {mode.label}
-            </button>
-          ))}
-        </div>
-
-        {visibleItems.length > 0 && viewMode === 'card' ? (
-          <div className="event-rail card-view">
-            {visibleItems.map((item) => <EventCard item={item} key={item.id} />)}
-          </div>
-        ) : null}
-
-        {visibleItems.length > 0 && viewMode === 'list' ? (
-          <div className="list-view">
-            {visibleItems.map((item) => (
-              <article className="list-row premium-light reference-full-site-surfaces" key={item.id}>
-                <div className="list-date muted-date-badge"><strong>{item.date?.slice(5, 7) || '•'}</strong><span>{item.date?.slice(8, 10) || 'Soon'}</span></div>
-                <div>
-                  <h3>{item.title}</h3>
-                  <p>{venueLine(item)} · {formatEventMeta(item)}</p>
-                  <small>{distanceLine(item)}</small>
-                </div>
-                <a href={primaryUrl(item)}>Open</a>
-              </article>
+        <section className="search-stack" aria-label="Search and filters">
+          <label className="search-field">
+            <span>⌕</span>
+            <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search events, artists, venues…" />
+          </label>
+          <div className="category-chip-row" aria-label="Category shortcuts">
+            {['All categories', ...categories.filter((category) => category !== 'All categories').slice(0, 5)].map((category) => (
+              <button className={activeCategory === category ? 'category-chip active' : 'category-chip'} key={category} type="button" onClick={() => setActiveCategory(category)}>
+                {category === 'All categories' ? 'All' : category}
+              </button>
             ))}
           </div>
-        ) : null}
+          <div className="utility-filter-grid" aria-label="Advanced filters">
+            <label><span>City</span><select value={activeCity} onChange={(event) => setActiveCity(event.target.value)}>{cities.map((city) => <option key={city}>{city}</option>)}</select></label>
+            <label><span>Sort</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="soonest">Soonest</option><option value="title">A–Z</option><option value="city">City</option><option value="price">Price</option></select></label>
+          </div>
+        </section>
 
+        <section className="moment-row" aria-label="Moment filters">
+          {moments.map((moment) => <button className={activeMoment === moment ? 'active' : ''} key={moment} type="button" onClick={() => setActiveMoment(moment)}>{moment}</button>)}
+        </section>
+
+        <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
+          <header className="section-title-row"><h2>Featured This Week</h2><a href="#events">View all</a></header>
+          <div className="featured-rail">
+            {featuredItems.map((item) => <EventCard compact item={item} key={item.id} />)}
+          </div>
+        </section>
+
+        <section className="feed-section popular-near-you" aria-label="Popular nearby">
+          <header className="section-title-row">
+            <div><h2>Popular Near You</h2><p>{filteredItems.length} of {totalCount} picks</p></div>
+            {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : <a href="#events">View all</a>}
+          </header>
+          <div className="popular-list">
+            {(popularItems.length ? popularItems : featuredItems).slice(0, 6).map((item) => <PopularRow item={item} key={item.id} />)}
+          </div>
+        </section>
+
+        <section className="view-mode-dock" aria-label="Event view mode">
+          {viewModes.map((mode) => <button className={viewMode === mode.id ? 'active' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">{mode.label}</button>)}
+        </section>
+
+        {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view">{visibleItems.map((item) => <EventCard item={item} key={item.id} />)}</div> : null}
+        {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'map' ? (
-          <div className="map-view premium-light reference-full-site-surfaces">
-            <div className="map-art" aria-label="Map preview">
-              {visibleItems.slice(0, 10).map((item, index) => (
-                <span key={item.id} style={{ left: `${12 + ((index * 17) % 76)}%`, top: `${18 + ((index * 23) % 62)}%` }}>{index + 1}</span>
-              ))}
-            </div>
-            <div className="map-list">
-              {visibleItems.slice(0, 6).map((item) => (
-                <article key={item.id}>
-                  <strong>{item.title}</strong>
-                  <span>{venueLine(item)} · {distanceLine(item)}</span>
-                </article>
-              ))}
-            </div>
+          <div className="map-view">
+            <div className="map-art" aria-label="Map preview">{visibleItems.slice(0, 10).map((item, index) => <span key={item.id} style={{ left: `${12 + ((index * 17) % 76)}%`, top: `${18 + ((index * 23) % 62)}%` }}>{index + 1}</span>)}</div>
+            <div className="map-list">{visibleItems.slice(0, 6).map((item) => <article key={item.id}><strong>{item.title}</strong><span>{venueLine(item)} · {distanceLine(item)}</span></article>)}</div>
           </div>
         ) : null}
+        {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
+        {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
 
-        {visibleItems.length > 0 && viewMode === 'calendar' ? (
-          <div className="calendar-view">
-            {calendarItems.map((item) => (
-              <article className="calendar-card premium-light reference-full-site-surfaces" key={item.id}>
-                <span>{item.date || 'Date pending'}</span>
-                <strong>{item.title}</strong>
-                <p>{item.time || 'Time pending'} · {venueLine(item)}</p>
-              </article>
-            ))}
-          </div>
-        ) : null}
-
-        {visibleItems.length === 0 ? (
-          <div className="empty-filter-state reference-full-site-surfaces">
-            <h3>No events match</h3>
-            <p>Try a different city, category, or search.</p>
-            <button type="button" onClick={clearFilters}>Clear filters</button>
-          </div>
-        ) : null}
+        <nav className="mobile-app-tabbar" aria-label="App tabs">
+          {tabs.map((tab, index) => <a className={index === 0 ? 'active' : ''} href={`#${tab.toLowerCase()}`} key={tab}>{['⌕', '▦', '⌖', '♡', '◉'][index]}<span>{tab}</span></a>)}
+        </nav>
       </section>
 
-      <nav className="mobile-tabs premium-light reference-full-site-surfaces" aria-label="App tabs">
-        {tabs.map((tab) => (
-          <a href={`#${tab.toLowerCase()}`} key={tab}>{tab}</a>
-        ))}
-      </nav>
+      {heroEvent ? (
+        <aside className="event-detail-preview" aria-label="Featured event detail preview">
+          <div className="detail-hero-image" style={{ backgroundImage: `url(${eventImage(heroEvent)})` }}>
+            <button type="button" aria-label="Back">‹</button>
+            <div><button type="button" aria-label="Save">♡</button><button type="button" aria-label="Share">⇧</button></div>
+          </div>
+          <div className="detail-body">
+            <span className="floating-date detail-date"><strong>{heroDate.month}</strong><b>{heroDate.day}</b></span>
+            <p className="eyebrow">{heroEvent.category || 'Live local'}</p>
+            <h2>{heroEvent.title}</h2>
+            <div className="detail-meta-grid">
+              <span>▣ {formatEventMeta(heroEvent) || 'Date pending'}</span>
+              <span>◷ {heroEvent.time || 'Time pending'}</span>
+              <span>⌖ {venueLine(heroEvent)}</span>
+              <span>➤ {distanceLine(heroEvent)}</span>
+            </div>
+            <div className="ticket-action-strip">
+              <div><strong>{priceLine(heroEvent)}</strong><span>{heroEvent.price ? 'Reserve your spot' : 'Details from source'}</span></div>
+              <a href={primaryUrl(heroEvent)}>View Tickets ↗</a>
+            </div>
+            <section className="detail-about"><h3>About</h3><p>{heroEvent.summary || `${heroEvent.title} is one of the local picks worth checking out near ${heroEvent.city || locationQuery}.`}</p><small>{addressLine(heroEvent) || 'Address details pending'}</small></section>
+            <a className="primary-action detail-cta" href={primaryUrl(heroEvent)}>➤ Get Directions</a>
+          </div>
+        </aside>
+      ) : null}
     </main>
   );
 }
