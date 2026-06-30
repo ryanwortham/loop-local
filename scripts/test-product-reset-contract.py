@@ -187,28 +187,28 @@ def test_loop_local_design_system_is_authoritative():
     css = read('app/globals.css')
     shell = read('components/app-shell.tsx')
     for marker in [
-        '#050B24',
-        '#0A1538',
+        '#090817',
+        '#141126',
         '#1FB8FF',
-        '#3A8DFF',
+        '#5E6CFF',
         '#6F3BFF',
-        '#C8D2E6',
-        '#7B89A8',
-        'linear-gradient(135deg, #1FB8FF 0%, #3A8DFF 45%, #6F3BFF 100%)',
+        '#D6D0E4',
+        '#9188A5',
+        'linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%)',
         'Stay in the loop with everything happening locally.',
     ]:
         assert marker in design, f"design system doc missing marker {marker}"
     for marker in [
         'loop-local-design-system',
-        '--ll-bg-primary: #050B24',
-        '--ll-bg-secondary: #0A1538',
+        '--ll-bg-primary: #090817',
+        '--ll-bg-secondary: #141126',
         '--ll-accent-primary: #1FB8FF',
         '--ll-accent-secondary: #3A8DFF',
         '--ll-accent-purple: #6F3BFF',
-        '--ll-text-secondary: #C8D2E6',
-        '--ll-text-muted: #7B89A8',
-        '--ll-brand-gradient: linear-gradient(135deg, #1FB8FF 0%, #3A8DFF 45%, #6F3BFF 100%)',
-        '--ll-bg-gradient: linear-gradient(180deg, #050B24 0%, #07102D 100%)',
+        '--ll-text-secondary: #D6D0E4',
+        '--ll-text-muted: #9188A5',
+        '--ll-brand-gradient: linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%)',
+        '--ll-bg-gradient: linear-gradient(180deg, #090817 0%, #0D0B1D 54%, #141126 100%)',
         'brand-gradient-control',
         'dark-navy-surface',
         'native-app-motion',
@@ -231,9 +231,9 @@ def test_loop_local_quiet_premium_refinement_limits_brand_color_usage():
         assert marker in design, f"design system doc missing quiet refinement marker {marker}"
     for marker in [
         '--ll-border: rgba(255, 255, 255, 0.06)',
-        '--ll-surface: #0A1538',
-        '--ll-surface-strong: #0B163A',
-        '--ll-glow: 0 10px 24px rgba(31, 184, 255, 0.10)',
+        '--ll-surface: #17142A',
+        '--ll-surface-strong: #211A36',
+        '--ll-glow: 0 12px 26px rgba(124, 77, 255, 0.12)',
         'quiet-content-first',
         'neutral-event-chip',
         'quiet-navigation',
@@ -300,7 +300,7 @@ def test_loop_local_browsing_ui_uses_near_zero_blue_chrome():
         assert marker in design, f"design system doc missing near-zero-blue marker {marker}"
     for marker in [
         'near-zero-blue-chrome',
-        '--ll-accent-browsing: rgba(255, 255, 255, 0.72)',
+        '--ll-accent-browsing: rgba(236, 226, 255, 0.76)',
         '--ll-placeholder-opacity: .28',
         'neutral-active-view',
         'muted-date-badge',
@@ -332,7 +332,7 @@ def test_loop_local_media_visibility_recovers_from_over_muting():
         'visible-placeholder-image',
         'background-size: min(72%, 560px) auto',
         'filter: saturate(.76) contrast(1.02) brightness(1.05)',
-        'rgba(5, 11, 36, .10), rgba(5, 11, 36, .30)',
+        'rgba(9, 8, 23, .10), rgba(9, 8, 23, .28)',
     ]:
         assert marker in css, f"CSS missing media visibility recovery marker {marker}"
     assert 'visible-placeholder-image' in shell, 'event placeholder image class must be visible in the rendered card markup'
@@ -356,8 +356,8 @@ def test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse(
     ]:
         assert marker in design, f"design system doc missing card contrast marker {marker}"
     for marker in [
-        '--ll-card-surface: #101D46',
-        '--ll-card-border: rgba(255, 255, 255, 0.09)',
+        '--ll-card-surface: #221C37',
+        '--ll-card-border: rgba(255, 255, 255, 0.10)',
         '--ll-card-shadow-strong: 0 22px 52px rgba(0, 0, 0, 0.30)',
         '--ll-card-image-lift: saturate(1.06) contrast(1.08) brightness(1.06)',
         'brighter-content-card',
@@ -367,6 +367,35 @@ def test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse(
         assert marker in css, f"CSS missing brighter card separation marker {marker}"
     assert 'brighter-content-card' in shell, 'event card markup must opt into brighter premium card treatment'
     assert css.count('var(--ll-brand-gradient)') <= 1, 'card contrast pass must not reintroduce blue/gradient-heavy UI'
+
+
+def test_loop_local_palette_uses_brand_colors_without_blue_dominance():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    for marker in [
+        'Brand-aware, less-blue palette redesign',
+        'Use brand colors as accents, not as the ambient color of the whole interface.',
+        'Shift the base scheme toward ink, plum, charcoal, and warm slate neutrals.',
+    ]:
+        assert marker in design, f"design system doc missing less-blue palette marker {marker}"
+    for marker in [
+        '--ll-bg-primary: #090817',
+        '--ll-bg-secondary: #141126',
+        '--ll-bg-deep: #0D0B1D',
+        '--ll-surface: #17142A',
+        '--ll-surface-strong: #211A36',
+        '--ll-card-surface: #221C37',
+        '--ll-brand-gradient: linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%)',
+        '--ll-bg-gradient: linear-gradient(180deg, #090817 0%, #0D0B1D 54%, #141126 100%)',
+        '--ll-warm-accent: #F2B36D',
+        '--ll-rose-accent: #D96C9F',
+        'less-blue-brand-palette',
+    ]:
+        assert marker in css, f"CSS missing less-blue brand palette marker {marker}"
+    assert css.count('#050B24') <= 2, 'old blue-navy background still dominates the CSS'
+    assert css.count('#0A1538') <= 2, 'old blue card surface still dominates the CSS'
+    assert css.count('rgba(31, 184, 255') <= 1, 'blue rgba usage has become dominant again'
+    assert css.count('var(--ll-brand-gradient)') <= 1, 'brand gradient should remain rare even after palette redesign'
 
 
 def test_supabase_and_github_status_are_documented_without_secrets():
@@ -400,5 +429,6 @@ if __name__ == '__main__':
     test_loop_local_browsing_ui_uses_near_zero_blue_chrome()
     test_loop_local_media_visibility_recovers_from_over_muting()
     test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse()
+    test_loop_local_palette_uses_brand_colors_without_blue_dominance()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

@@ -191,7 +191,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="app-shell app-canvas loop-local-design-system">
+    <main className="app-shell app-canvas loop-local-design-system less-blue-brand-palette">
       <nav className="top-nav premium-light quiet-navigation subtle-active-nav" aria-label="Primary navigation">
         <Link className="brand-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>

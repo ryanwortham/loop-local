@@ -47,16 +47,20 @@ Design inspiration combines:
 ## Official colors
 
 ```css
---ll-bg-primary: #050B24;
---ll-bg-secondary: #0A1538;
+--ll-bg-primary: #090817;
+--ll-bg-secondary: #141126;
+--ll-bg-deep: #0D0B1D;
 --ll-accent-primary: #1FB8FF;
 --ll-accent-secondary: #3A8DFF;
+--ll-accent-indigo: #5E6CFF;
 --ll-accent-purple: #6F3BFF;
+--ll-warm-accent: #F2B36D;
+--ll-rose-accent: #D96C9F;
 --ll-text-primary: #FFFFFF;
---ll-text-secondary: #C8D2E6;
---ll-text-muted: #7B89A8;
---ll-brand-gradient: linear-gradient(135deg, #1FB8FF 0%, #3A8DFF 45%, #6F3BFF 100%);
---ll-bg-gradient: linear-gradient(180deg, #050B24 0%, #07102D 100%);
+--ll-text-secondary: #D6D0E4;
+--ll-text-muted: #9188A5;
+--ll-brand-gradient: linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%);
+--ll-bg-gradient: linear-gradient(180deg, #090817 0%, #0D0B1D 54%, #141126 100%);
 ```
 
 No new UI colors should be introduced unless they fit this system. If a future state needs a semantic color, derive it from these brand colors or document the exception.
@@ -195,6 +199,19 @@ Rules:
 - Increase image contrast/brightness slightly so cards feel more colorful through content, not UI chrome.
 - Keep blue/purple restrained to primary actions and logo-level accents.
 - Do not solve card contrast by tinting cards blue.
+
+## Brand-aware, less-blue palette redesign
+
+Use brand colors as accents, not as the ambient color of the whole interface.
+
+Rules:
+
+- Shift the base scheme toward ink, plum, charcoal, and warm slate neutrals.
+- Keep blue as a small brand note, not the page mood.
+- Use purple first, then softened indigo, then blue only as the final highlight in the brand gradient.
+- Let cards feel warm-premium and local-consumer, not admin-dashboard navy.
+- Add warm/rose accent tokens for tiny labels, map moments, and category flavor where needed.
+- Preserve content hierarchy: photos, event names, venues, and dates remain the hero.
 
 ## Current implementation contract
 
