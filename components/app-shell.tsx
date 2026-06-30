@@ -229,7 +229,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         </div>
       </section>
 
-      <section className="filter-bar premium-light unframed-discovery-section" aria-label="Event filters">
+      <section className="filter-bar premium-light unframed-discovery-section reference-full-site-surfaces" aria-label="Event filters">
         <label className="filter-input">
           <span>Search events</span>
           <input
@@ -262,13 +262,13 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         </label>
       </section>
 
-      <section className="range-tabs premium-light unframed-discovery-section" aria-label="Moment filters">
+      <section className="range-tabs premium-light unframed-discovery-section reference-full-site-surfaces" aria-label="Moment filters">
         {moments.map((moment) => (
           <button className={activeMoment === moment ? 'active filter-chip' : 'filter-chip'} key={moment} type="button" onClick={() => setActiveMoment(moment)}>{moment}</button>
         ))}
       </section>
 
-      <section className="live-feed-section premium-light unframed-discovery-section" id="events" aria-label="Live event feed">
+      <section className="live-feed-section premium-light unframed-discovery-section reference-full-site-surfaces" id="events" aria-label="Live event feed">
         <div className="section-heading-row">
           <div>
             <p className="eyebrow">From the current app</p>
@@ -280,7 +280,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
           </div>
         </div>
 
-        <div className="view-switcher" aria-label="Event view mode">
+        <div className="view-switcher reference-full-site-surfaces" aria-label="Event view mode">
           {viewModes.map((mode) => (
             <button className={viewMode === mode.id ? 'active neutral-active-view' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">
               {mode.label}
@@ -297,7 +297,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         {visibleItems.length > 0 && viewMode === 'list' ? (
           <div className="list-view">
             {visibleItems.map((item) => (
-              <article className="list-row premium-light" key={item.id}>
+              <article className="list-row premium-light reference-full-site-surfaces" key={item.id}>
                 <div className="list-date muted-date-badge"><strong>{item.date?.slice(5, 7) || '•'}</strong><span>{item.date?.slice(8, 10) || 'Soon'}</span></div>
                 <div>
                   <h3>{item.title}</h3>
@@ -311,7 +311,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         ) : null}
 
         {visibleItems.length > 0 && viewMode === 'map' ? (
-          <div className="map-view premium-light">
+          <div className="map-view premium-light reference-full-site-surfaces">
             <div className="map-art" aria-label="Map preview">
               {visibleItems.slice(0, 10).map((item, index) => (
                 <span key={item.id} style={{ left: `${12 + ((index * 17) % 76)}%`, top: `${18 + ((index * 23) % 62)}%` }}>{index + 1}</span>
@@ -331,7 +331,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         {visibleItems.length > 0 && viewMode === 'calendar' ? (
           <div className="calendar-view">
             {calendarItems.map((item) => (
-              <article className="calendar-card premium-light" key={item.id}>
+              <article className="calendar-card premium-light reference-full-site-surfaces" key={item.id}>
                 <span>{item.date || 'Date pending'}</span>
                 <strong>{item.title}</strong>
                 <p>{item.time || 'Time pending'} · {venueLine(item)}</p>
@@ -341,7 +341,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         ) : null}
 
         {visibleItems.length === 0 ? (
-          <div className="empty-filter-state">
+          <div className="empty-filter-state reference-full-site-surfaces">
             <h3>No events match</h3>
             <p>Try a different city, category, or search.</p>
             <button type="button" onClick={clearFilters}>Clear filters</button>
@@ -349,7 +349,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         ) : null}
       </section>
 
-      <nav className="mobile-tabs premium-light" aria-label="App tabs">
+      <nav className="mobile-tabs premium-light reference-full-site-surfaces" aria-label="App tabs">
         {tabs.map((tab) => (
           <a href={`#${tab.toLowerCase()}`} key={tab}>{tab}</a>
         ))}

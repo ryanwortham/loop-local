@@ -332,7 +332,7 @@ def test_loop_local_media_visibility_recovers_from_over_muting():
         'visible-placeholder-image',
         'background-size: min(72%, 560px) auto',
         'filter: saturate(.88) contrast(1.02) brightness(1.02)',
-        'rgba(247, 243, 234, .08), rgba(247, 243, 234, .30)',
+        'rgba(238, 246, 255, .12), rgba(7, 29, 51, .18)',
     ]:
         assert marker in css, f"CSS missing media visibility recovery marker {marker}"
     assert 'visible-placeholder-image' in shell, 'event placeholder image class must be visible in the rendered card markup'
@@ -505,6 +505,40 @@ def test_loop_local_uses_reference_inspired_white_nav_navy_hero_blue_cta_palette
     assert css.count('var(--ll-brand-gradient)') <= 1, 'gradient should be controlled; use solid blue for primary CTA'
 
 
+def test_loop_local_reference_palette_applies_to_all_site_surfaces():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    for marker in [
+        'Reference palette must cover the whole site, not only the hero.',
+        'Filters, feed cards, list/map/calendar views, mobile tabs, and Post Local must share the white/navy/royal-blue system.',
+    ]:
+        assert marker in design, f"design system doc missing full-site reference marker {marker}"
+    for marker in [
+        'reference-full-site-surfaces',
+        '--ll-field-surface: #FFFFFF',
+        '--ll-soft-blue-surface: #EEF6FF',
+        '--ll-navy-panel: #071D33',
+        '--ll-navy-panel-soft: #0A2D52',
+        '.filter-bar.reference-full-site-surfaces',
+        '.live-feed-section.reference-full-site-surfaces',
+        '.post-local-shell.reference-full-site-surfaces',
+        'background: linear-gradient(180deg, #FFFFFF, #F8FAFD)',
+        'box-shadow: 0 16px 34px rgba(7,29,51,.10)',
+        'background: linear-gradient(135deg, rgba(7, 29, 51, .96), rgba(10, 45, 82, .92))',
+        'background: rgba(0,107,255,.10)',
+        'border-color: rgba(0,107,255,.22)',
+    ]:
+        assert marker in css, f"CSS missing full-site palette marker {marker}"
+    for forbidden in [
+        'rgba(242, 166, 90',
+        'rgba(232, 93, 117',
+        '#F2EBDD',
+        'background: rgba(24,21,31,.055)',
+        'background: rgba(24,21,31,.07)',
+    ]:
+        assert forbidden not in css, f"old partial-palette artifact still affects non-hero surfaces: {forbidden}"
+
+
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
     reset = read('docs/LOOP_LOCAL_10X_PRODUCT_RESET.md')
@@ -540,5 +574,6 @@ if __name__ == '__main__':
     test_loop_local_palette_has_life_without_becoming_blue_again()
     test_loop_local_color_scheme_resets_to_clean_editorial_consumer_palette()
     test_loop_local_uses_reference_inspired_white_nav_navy_hero_blue_cta_palette()
+    test_loop_local_reference_palette_applies_to_all_site_surfaces()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

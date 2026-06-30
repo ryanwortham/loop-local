@@ -251,6 +251,18 @@ Rules:
 - Do not return to the rejected white/navy/royal-blue editorial palette or muddy plum palette.
 - For Loop Local, adapt the mood rather than the medical content: local discovery stays photo/content-led, but the frame becomes white/navy/blue.
 
+## Reference palette application scope
+
+Reference palette must cover the whole site, not only the hero.
+
+Rules:
+
+- Filters, feed cards, list/map/calendar views, mobile tabs, and Post Local must share the white/navy/royal-blue system.
+- Non-hero surfaces should mostly be white or pale blue-white with slate text.
+- Primary actions should use royal blue.
+- Important showcase panels may use deep navy.
+- Remove old warm/coral/plum residual treatments from secondary flows.
+
 ## Current implementation contract
 
 The app CSS must expose:

@@ -78,8 +78,8 @@ function TextAreaField({ label, name }: { label: string; name: string }) {
 
 export function PostLocalWizard() {
   return (
-    <main className="post-local-shell">
-      <header className="ll-nav">
+    <main className="post-local-shell reference-full-site-surfaces">
+      <header className="ll-nav reference-full-site-surfaces">
         <Link className="ll-brand" href="/">
           <Image src="/looplocal-logo.png" alt="Loop Local" width={52} height={52} />
           <span>Loop Local</span>
@@ -115,7 +115,7 @@ export function PostLocalWizard() {
       </ol>
 
       <form className="ll-form">
-        <section className="ll-card">
+        <section className="ll-card reference-full-site-surfaces">
           <p className="ll-kicker">Step 1: Profile</p>
           <h2>Business/Organization Profile</h2>
           <p>Large mobile input fields, thumb-friendly spacing, and mobile-friendly logo upload.</p>
@@ -143,7 +143,7 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card">
+        <section className="ll-card reference-full-site-surfaces">
           <p className="ll-kicker">Step 2: First Event or Promotion</p>
           <h2>Start building your first event right away</h2>
           <p>Posts stay draft/pending until approved. Save draft automatically is enabled for this app-ready form shell.</p>
@@ -186,7 +186,7 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card ll-preview-card">
+        <section className="ll-card ll-preview-card reference-full-site-surfaces">
           <p className="ll-kicker">Step 3: Preview</p>
           <h2>Preview before approval</h2>
           <p>Mobile preview card will show logo, image, title, date/time, address, category, call, website, directions, save, and share actions.</p>
@@ -198,7 +198,7 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card ll-submit-card">
+        <section className="ll-card ll-submit-card reference-full-site-surfaces">
           <p className="ll-kicker">Step 4: Submit for Approval</p>
           <h2>Your profile and first post have been submitted for review.</h2>
           <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
@@ -209,7 +209,7 @@ export function PostLocalWizard() {
         </section>
       </form>
 
-      <nav className="ll-mobile-tabs" aria-label="Mobile tabs: Discover Events Map Saved Profile">
+      <nav className="ll-mobile-tabs reference-full-site-surfaces" aria-label="Mobile tabs: Discover Events Map Saved Profile">
         <a href="#discover">⌂ Discover</a>
         <a href="#events">✦ Events</a>
         <a href="#map">⌖ Map</a>
