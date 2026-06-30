@@ -47,20 +47,20 @@ Design inspiration combines:
 ## Official colors
 
 ```css
---ll-bg-primary: #F4F7FB;
+--ll-bg-primary: #FAFBFC;
 --ll-bg-secondary: #FFFFFF;
---ll-bg-deep: #071D33;
---ll-accent-primary: #006BFF;
---ll-accent-secondary: #2F80ED;
---ll-accent-indigo: #0B56B3;
---ll-accent-purple: #0B56B3;
---ll-warm-accent: #7DB8FF;
---ll-rose-accent: #006BFF;
---ll-text-primary: #102033;
---ll-text-secondary: #425466;
---ll-text-muted: #6F7D8C;
---ll-brand-gradient: linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%);
---ll-bg-gradient: linear-gradient(180deg, #F4F7FB 0%, #FFFFFF 48%, #EDF3FA 100%);
+--ll-bg-deep: #0F172A;
+--ll-accent-primary: #2563EB;
+--ll-accent-secondary: #0EA5E9;
+--ll-accent-indigo: #1D4ED8;
+--ll-accent-purple: #1D4ED8;
+--ll-warm-accent: #F5EFE5;
+--ll-rose-accent: #E0F2FE;
+--ll-text-primary: #0F172A;
+--ll-text-secondary: #475569;
+--ll-text-muted: #64748B;
+--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%);
+--ll-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 46%, #F5F7FA 100%);
 ```
 
 No new UI colors should be introduced unless they fit this system. If a future state needs a semantic color, derive it from these brand colors or document the exception.
@@ -262,6 +262,20 @@ Rules:
 - Primary actions should use royal blue.
 - Important showcase panels may use deep navy.
 - Remove old warm/coral/plum residual treatments from secondary flows.
+
+
+## Professional consumer redesign: blue as accent only
+
+Bright off-white canvas, white cards, dark slate text, compact scanning, and tasteful Loop Local blue accents.
+
+Rules:
+
+- Do not use heavy blue sections, blue page backgrounds, blue cards, or corporate navy hero blocks.
+- Use blue for CTAs, active states, small icon dots, links, focus rings, and occasional thin accent lines.
+- Main surfaces should be white, off-white, light gray, or barely-tinted cyan.
+- Event cards should be image-led, white, balanced, mobile-friendly, and easy to scan.
+- Filters/search/navigation should feel like polished consumer app controls, not dashboard controls.
+- Preserve live feed logic, routes, filters, fields, and Post Local functionality.
 
 ## Current implementation contract
 

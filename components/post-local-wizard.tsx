@@ -78,7 +78,7 @@ function TextAreaField({ label, name }: { label: string; name: string }) {
 
 export function PostLocalWizard() {
   return (
-    <main className="post-local-shell reference-full-site-surfaces">
+    <main className="post-local-shell reference-full-site-surfaces professional-consumer-redesign">
       <header className="ll-nav reference-full-site-surfaces">
         <Link className="ll-brand" href="/">
           <Image src="/looplocal-logo.png" alt="Loop Local" width={52} height={52} />

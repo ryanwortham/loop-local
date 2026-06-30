@@ -187,30 +187,30 @@ def test_loop_local_design_system_is_authoritative():
     css = read('app/globals.css')
     shell = read('components/app-shell.tsx')
     for marker in [
-        '#F4F7FB',
+        '#FAFBFC',
         '#FFFFFF',
-        '#006BFF',
-        '#0B56B3',
-        '#0B56B3',
-        '#425466',
-        '#6F7D8C',
-        'linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%)',
+        '#2563EB',
+        '#1D4ED8',
+        '#1D4ED8',
+        '#475569',
+        '#64748B',
+        'linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
         'Stay in the loop with everything happening locally.',
     ]:
         assert marker in design, f"design system doc missing marker {marker}"
     for marker in [
         'loop-local-design-system',
-        '--ll-bg-primary: #F4F7FB',
+        '--ll-bg-primary: #FAFBFC',
         '--ll-bg-secondary: #FFFFFF',
-        '--ll-accent-primary: #006BFF',
-        '--ll-accent-secondary: #2F80ED',
-        '--ll-accent-purple: #0B56B3',
-        '--ll-text-secondary: #425466',
-        '--ll-text-muted: #6F7D8C',
-        '--ll-brand-gradient: linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%)',
-        '--ll-bg-gradient: linear-gradient(180deg, #F4F7FB 0%, #FFFFFF 48%, #EDF3FA 100%)',
+        '--ll-accent-primary: #2563EB',
+        '--ll-accent-secondary: #0EA5E9',
+        '--ll-accent-purple: #1D4ED8',
+        '--ll-text-secondary: #475569',
+        '--ll-text-muted: #64748B',
+        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
+        '--ll-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 46%, #F5F7FA 100%)',
         'brand-gradient-control',
-        'dark-navy-surface',
+        'professional-consumer-redesign',
         'native-app-motion',
     ]:
         assert marker in css, f"CSS missing design-system marker {marker}"
@@ -230,10 +230,10 @@ def test_loop_local_quiet_premium_refinement_limits_brand_color_usage():
     ]:
         assert marker in design, f"design system doc missing quiet refinement marker {marker}"
     for marker in [
-        '--ll-border: rgba(16, 32, 51, 0.08)',
+        '--ll-border: rgba(15, 23, 42, 0.08)',
         '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFD',
-        '--ll-glow: 0 12px 28px rgba(0, 107, 255, 0.18)',
+        '--ll-surface-strong: #F8FAFC',
+        '--ll-glow: 0 12px 26px rgba(37, 99, 235, 0.16)',
         'quiet-content-first',
         'neutral-event-chip',
         'quiet-navigation',
@@ -269,8 +269,8 @@ def test_loop_local_app_store_consumer_refinement_prioritizes_content():
         'scannable-event-meta',
         'quiet-placeholder-image',
         'subtle-active-nav',
-        '--ll-card-radius: 30px',
-        '--ll-card-shadow: 0 14px 34px rgba(7, 29, 51, 0.10)',
+        '--ll-card-radius: 26px',
+        '--ll-card-shadow: 0 10px 28px rgba(15, 23, 42, 0.06)',
         '--ll-section-border: transparent',
     ]:
         assert marker in css, f"CSS missing App Store refinement marker {marker}"
@@ -300,7 +300,7 @@ def test_loop_local_browsing_ui_uses_near_zero_blue_chrome():
         assert marker in design, f"design system doc missing near-zero-blue marker {marker}"
     for marker in [
         'near-zero-blue-chrome',
-        '--ll-accent-browsing: rgba(7, 29, 51, 0.72)',
+        '--ll-accent-browsing: #2563EB',
         '--ll-placeholder-opacity: .28',
         'neutral-active-view',
         'muted-date-badge',
@@ -332,7 +332,7 @@ def test_loop_local_media_visibility_recovers_from_over_muting():
         'visible-placeholder-image',
         'background-size: min(72%, 560px) auto',
         'filter: saturate(.88) contrast(1.02) brightness(1.02)',
-        'rgba(238, 246, 255, .12), rgba(7, 29, 51, .18)',
+        'rgba(238, 246, 255, .12), rgba(15, 23, 42, .18)',
     ]:
         assert marker in css, f"CSS missing media visibility recovery marker {marker}"
     assert 'visible-placeholder-image' in shell, 'event placeholder image class must be visible in the rendered card markup'
@@ -357,8 +357,8 @@ def test_loop_local_cards_have_brighter_premium_separation_without_blue_overuse(
         assert marker in design, f"design system doc missing card contrast marker {marker}"
     for marker in [
         '--ll-card-surface: #FFFFFF',
-        '--ll-card-border: rgba(16, 32, 51, 0.10)',
-        '--ll-card-shadow-strong: 0 18px 42px rgba(7, 29, 51, 0.14)',
+        '--ll-card-border: rgba(15, 23, 42, 0.08)',
+        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
         '--ll-card-image-lift: saturate(1.08) contrast(1.04) brightness(1.02)',
         'brighter-content-card',
         'box-shadow: var(--ll-card-shadow-strong)',
@@ -379,19 +379,19 @@ def test_loop_local_palette_uses_brand_colors_without_blue_dominance():
     ]:
         assert marker in design, f"design system doc missing less-blue palette marker {marker}"
     for marker in [
-        '--ll-bg-primary: #F4F7FB',
+        '--ll-bg-primary: #FAFBFC',
         '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #071D33',
+        '--ll-bg-deep: #0F172A',
         '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFD',
+        '--ll-surface-strong: #F8FAFC',
         '--ll-card-surface: #FFFFFF',
-        '--ll-brand-gradient: linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%)',
-        '--ll-bg-gradient: linear-gradient(180deg, #F4F7FB 0%, #FFFFFF 48%, #EDF3FA 100%)',
-        '--ll-warm-accent: #7DB8FF',
-        '--ll-rose-accent: #4EA3FF',
-        'less-blue-brand-palette',
+        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
+        '--ll-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFBFC 46%, #F5F7FA 100%)',
+        '--ll-warm-accent: #F5EFE5',
+        '--ll-rose-accent: #E0F2FE',
+        'professional-consumer-redesign',
     ]:
-        assert marker in css, f"CSS missing less-blue brand palette marker {marker}"
+        assert marker in css, f"CSS missing professional brand palette marker {marker}"
     assert css.count('#050B24') <= 2, 'old blue-navy background still dominates the CSS'
     assert css.count('#0A1538') <= 2, 'old blue card surface still dominates the CSS'
     assert css.count('rgba(31, 184, 255') <= 1, 'blue rgba usage has become dominant again'
@@ -408,18 +408,18 @@ def test_loop_local_palette_has_life_without_becoming_blue_again():
     ]:
         assert marker in design, f"design system doc missing lively palette marker {marker}"
     for marker in [
-        '--ll-bg-primary: #F4F7FB',
+        '--ll-bg-primary: #FAFBFC',
         '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #071D33',
+        '--ll-bg-deep: #0F172A',
         '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFD',
+        '--ll-surface-strong: #F8FAFC',
         '--ll-card-surface: #FFFFFF',
-        '--ll-card-surface-warm: #F8FAFD',
-        '--ll-card-border: rgba(16, 32, 51, 0.10)',
-        '--ll-card-shadow-strong: 0 18px 42px rgba(7, 29, 51, 0.14)',
-        '--ll-life-amber: #7DB8FF',
-        '--ll-life-rose: #4EA3FF',
-        '--ll-life-lavender: #0B56B3',
+        '--ll-card-surface-warm: #FFFDF8',
+        '--ll-card-border: rgba(15, 23, 42, 0.08)',
+        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
+        '--ll-life-amber: #F5EFE5',
+        '--ll-life-rose: #E0F2FE',
+        '--ll-life-lavender: #DBEAFE',
         '--ll-card-image-lift: saturate(1.08) contrast(1.04) brightness(1.02)',
         'life-forward-palette',
         'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,253,.92))',
@@ -440,24 +440,24 @@ def test_loop_local_color_scheme_resets_to_clean_editorial_consumer_palette():
     ]:
         assert marker in design, f"design system doc missing clean editorial reset marker {marker}"
     for marker in [
-        '--ll-bg-primary: #F4F7FB',
+        '--ll-bg-primary: #FAFBFC',
         '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #071D33',
+        '--ll-bg-deep: #0F172A',
         '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFD',
+        '--ll-surface-strong: #F8FAFC',
         '--ll-card-surface: #FFFFFF',
-        '--ll-card-surface-warm: #F8FAFD',
-        '--ll-text-primary: #102033',
-        '--ll-text-secondary: #425466',
-        '--ll-text-muted: #6F7D8C',
-        '--ll-brand-gradient: linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%)',
-        '--ll-accent-primary: #006BFF',
-        '--ll-accent-purple: #0B56B3',
-        '--ll-accent-secondary: #2F80ED',
-        '--ll-warm-accent: #7DB8FF',
-        '--ll-rose-accent: #4EA3FF',
-        '--ll-card-border: rgba(16, 32, 51, 0.10)',
-        '--ll-card-shadow-strong: 0 18px 42px rgba(7, 29, 51, 0.14)',
+        '--ll-card-surface-warm: #FFFDF8',
+        '--ll-text-primary: #0F172A',
+        '--ll-text-secondary: #475569',
+        '--ll-text-muted: #64748B',
+        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
+        '--ll-accent-primary: #2563EB',
+        '--ll-accent-purple: #1D4ED8',
+        '--ll-accent-secondary: #0EA5E9',
+        '--ll-warm-accent: #F5EFE5',
+        '--ll-rose-accent: #E0F2FE',
+        '--ll-card-border: rgba(15, 23, 42, 0.08)',
+        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
         '--ll-card-image-lift: saturate(1.08) contrast(1.04) brightness(1.02)',
         'clean-editorial-palette',
     ]:
@@ -480,23 +480,23 @@ def test_loop_local_uses_reference_inspired_white_nav_navy_hero_blue_cta_palette
     ]:
         assert marker in design, f"design system doc missing reference palette marker {marker}"
     for marker in [
-        '--ll-bg-primary: #F4F7FB',
+        '--ll-bg-primary: #FAFBFC',
         '--ll-bg-secondary: #FFFFFF',
-        '--ll-bg-deep: #071D33',
+        '--ll-bg-deep: #0F172A',
         '--ll-surface: #FFFFFF',
-        '--ll-surface-strong: #F8FAFD',
+        '--ll-surface-strong: #F8FAFC',
         '--ll-card-surface: #FFFFFF',
-        '--ll-text-primary: #102033',
-        '--ll-text-secondary: #425466',
-        '--ll-text-muted: #6F7D8C',
-        '--ll-accent-primary: #006BFF',
-        '--ll-accent-secondary: #2F80ED',
-        '--ll-brand-gradient: linear-gradient(135deg, #073763 0%, #0B56B3 54%, #006BFF 100%)',
-        '--ll-hero-overlay: linear-gradient(105deg, rgba(7, 29, 51, 0.96) 0%, rgba(10, 45, 82, 0.88) 52%, rgba(0, 107, 255, 0.66) 100%)',
-        '--ll-card-border: rgba(16, 32, 51, 0.10)',
-        '--ll-card-shadow-strong: 0 18px 42px rgba(7, 29, 51, 0.14)',
-        'reference-navy-blue-palette',
-        'background: var(--ll-hero-overlay)',
+        '--ll-text-primary: #0F172A',
+        '--ll-text-secondary: #475569',
+        '--ll-text-muted: #64748B',
+        '--ll-accent-primary: #2563EB',
+        '--ll-accent-secondary: #0EA5E9',
+        '--ll-brand-gradient: linear-gradient(135deg, #2563EB 0%, #0EA5E9 100%)',
+        '--ll-hero-overlay: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+        '--ll-card-border: rgba(15, 23, 42, 0.08)',
+        '--ll-card-shadow-strong: 0 18px 45px rgba(15, 23, 42, 0.08)',
+        'professional-consumer-redesign',
+        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
         'background: var(--ll-accent-primary)',
     ]:
         assert marker in css, f"CSS missing reference palette marker {marker}"
@@ -514,19 +514,17 @@ def test_loop_local_reference_palette_applies_to_all_site_surfaces():
     ]:
         assert marker in design, f"design system doc missing full-site reference marker {marker}"
     for marker in [
-        'reference-full-site-surfaces',
+        'professional-consumer-redesign',
         '--ll-field-surface: #FFFFFF',
-        '--ll-soft-blue-surface: #EEF6FF',
-        '--ll-navy-panel: #071D33',
-        '--ll-navy-panel-soft: #0A2D52',
-        '.filter-bar.reference-full-site-surfaces',
-        '.live-feed-section.reference-full-site-surfaces',
-        '.post-local-shell.reference-full-site-surfaces',
-        'background: linear-gradient(180deg, #FFFFFF, #F8FAFD)',
-        'box-shadow: 0 16px 34px rgba(7,29,51,.10)',
-        'background: linear-gradient(135deg, rgba(7, 29, 51, .96), rgba(10, 45, 82, .92))',
-        'background: rgba(0,107,255,.10)',
-        'border-color: rgba(0,107,255,.22)',
+        '--ll-soft-blue-surface: #F0F8FF',
+                '.filter-bar.professional-filter-system',
+        '.feed-layout-shell',
+        '.post-local-shell.professional-consumer-redesign',
+        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+        'box-shadow: var(--ll-premium-shadow)',
+        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+        'background: var(--ll-blue-accent)',
+        'border-color: rgba(37, 99, 235, 0.18)',
     ]:
         assert marker in css, f"CSS missing full-site palette marker {marker}"
     for forbidden in [
@@ -538,6 +536,59 @@ def test_loop_local_reference_palette_applies_to_all_site_surfaces():
     ]:
         assert forbidden not in css, f"old partial-palette artifact still affects non-hero surfaces: {forbidden}"
 
+
+
+def test_loop_local_top_to_bottom_consumer_redesign_uses_blue_as_accent_only():
+    css = read('app/globals.css')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    shell = read('components/app-shell.tsx')
+    post = read('components/post-local-wizard.tsx')
+    for marker in [
+        'Professional consumer redesign: blue as accent only',
+        'Bright off-white canvas, white cards, dark slate text, compact scanning, and tasteful Loop Local blue accents.',
+        'Do not use heavy blue sections, blue page backgrounds, blue cards, or corporate navy hero blocks.',
+    ]:
+        assert marker in design, f"design system missing professional redesign marker {marker}"
+    for marker in [
+        'professional-consumer-redesign',
+        '--ll-page-bg: #FAFBFC',
+        '--ll-page-bg-soft: #F5F7FA',
+        '--ll-blue-accent: #2563EB',
+        '--ll-cyan-accent: #E8F5FF',
+        '--ll-warm-paper: #FFFDF8',
+        '--ll-premium-shadow: 0 18px 45px rgba(15, 23, 42, 0.08)',
+        '--ll-subtle-shadow: 0 10px 28px rgba(15, 23, 42, 0.06)',
+        '.hero.professional-consumer-redesign',
+        '.event-card.professional-event-card',
+        '.filter-bar.professional-filter-system',
+        '.top-nav.professional-nav',
+        '.post-local-shell.professional-consumer-redesign',
+        'background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+        'background: var(--ll-blue-accent)',
+        'box-shadow: var(--ll-premium-shadow)',
+    ]:
+        assert marker in css, f"CSS missing professional redesign marker {marker}"
+    for marker in [
+        'professional-consumer-redesign',
+        'professional-event-card',
+        'professional-filter-system',
+        'professional-nav',
+        'feed-layout-shell',
+        'event-card-content-grid',
+    ]:
+        assert marker in shell, f"home markup missing redesigned class {marker}"
+    assert 'professional-consumer-redesign' in post, 'Post Local route must share the professional redesign class'
+    for forbidden in [
+        'background: var(--ll-hero-overlay)',
+        'background: linear-gradient(135deg, rgba(7, 29, 51, .96), rgba(10, 45, 82, .92))',
+        'reference-navy-blue-palette',
+        'less-blue-brand-palette',
+        'dark-navy-surface',
+        '--ll-navy-panel:',
+        '--ll-navy-panel-soft:',
+    ]:
+        assert forbidden not in css + shell + post, f"old heavy-blue/reference palette artifact remains: {forbidden}"
+    assert css.count('rgba(0,107,255') <= 6, 'raw blue rgba accents should be rare; use tokens and neutral surfaces'
 
 def test_supabase_and_github_status_are_documented_without_secrets():
     native = read('docs/NATIVE_DISTRIBUTION.md')
@@ -575,5 +626,6 @@ if __name__ == '__main__':
     test_loop_local_color_scheme_resets_to_clean_editorial_consumer_palette()
     test_loop_local_uses_reference_inspired_white_nav_navy_hero_blue_cta_palette()
     test_loop_local_reference_palette_applies_to_all_site_surfaces()
+    test_loop_local_top_to_bottom_consumer_redesign_uses_blue_as_accent_only()
     test_supabase_and_github_status_are_documented_without_secrets()
     print('loop_local_10x_product_reset_contract_ok')

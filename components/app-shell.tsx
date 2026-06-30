@@ -106,13 +106,13 @@ function EventCard({ item }: { item: LiveFeedItem }) {
   const hasEventImage = Boolean(item.image_url);
 
   return (
-    <article className="event-card premium-light content-first-event-card brighter-content-card">
+    <article className="event-card premium-light content-first-event-card brighter-content-card professional-event-card">
       <div className={hasEventImage ? 'event-image' : 'event-image event-image-fallback quiet-placeholder-image visible-placeholder-image'} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
         {!hasEventImage ? <span className="no-image-label">No image available</span> : null}
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
         <span className="event-price-pill">{priceLine(item)}</span>
       </div>
-      <div className="event-card-body">
+      <div className="event-card-body event-card-content-grid">
         <div className="event-date-block muted-date-badge">
           <strong>{item.date ? new Date(item.date).toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) : 'Soon'}</strong>
           <span>{item.date ? new Date(item.date).getUTCDate() : '•'}</span>
@@ -191,8 +191,8 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="app-shell app-canvas loop-local-design-system less-blue-brand-palette">
-      <nav className="top-nav premium-light quiet-navigation subtle-active-nav" aria-label="Primary navigation">
+    <main className="app-shell app-canvas loop-local-design-system professional-consumer-redesign">
+      <nav className="top-nav premium-light quiet-navigation subtle-active-nav professional-nav" aria-label="Primary navigation">
         <Link className="brand-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
           <div>
@@ -207,7 +207,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         </div>
       </nav>
 
-      <section className="hero premium-light compact-consumer-hero" id="discover">
+      <section className="hero premium-light compact-consumer-hero professional-consumer-redesign" id="discover">
         <div className="hero-copy">
           <p className="eyebrow">{source === 'live_supabase' ? 'Live local feed' : 'Local discovery'}</p>
           <h1>Find what’s worth doing now.</h1>
@@ -229,7 +229,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         </div>
       </section>
 
-      <section className="filter-bar premium-light unframed-discovery-section reference-full-site-surfaces" aria-label="Event filters">
+      <section className="filter-bar premium-light unframed-discovery-section reference-full-site-surfaces professional-filter-system" aria-label="Event filters">
         <label className="filter-input">
           <span>Search events</span>
           <input
@@ -268,7 +268,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         ))}
       </section>
 
-      <section className="live-feed-section premium-light unframed-discovery-section reference-full-site-surfaces" id="events" aria-label="Live event feed">
+      <section className="live-feed-section premium-light unframed-discovery-section reference-full-site-surfaces feed-layout-shell" id="events" aria-label="Live event feed">
         <div className="section-heading-row">
           <div>
             <p className="eyebrow">From the current app</p>
