@@ -47,20 +47,20 @@ Design inspiration combines:
 ## Official colors
 
 ```css
---ll-bg-primary: #120D1D;
---ll-bg-secondary: #1B1428;
---ll-bg-deep: #0F0B18;
---ll-accent-primary: #1FB8FF;
---ll-accent-secondary: #3A8DFF;
---ll-accent-indigo: #5E6CFF;
---ll-accent-purple: #6F3BFF;
---ll-warm-accent: #F2B36D;
---ll-rose-accent: #D96C9F;
---ll-text-primary: #FFFFFF;
---ll-text-secondary: #E0D8E8;
---ll-text-muted: #A69AB4;
---ll-brand-gradient: linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%);
---ll-bg-gradient: linear-gradient(180deg, #120D1D 0%, #181123 48%, #21172D 100%);
+--ll-bg-primary: #F7F3EA;
+--ll-bg-secondary: #FFFFFF;
+--ll-bg-deep: #EEE7DA;
+--ll-accent-primary: #E85D75;
+--ll-accent-secondary: #2F80ED;
+--ll-accent-indigo: #8B5CF6;
+--ll-accent-purple: #8B5CF6;
+--ll-warm-accent: #F2A65A;
+--ll-rose-accent: #E85D75;
+--ll-text-primary: #18151F;
+--ll-text-secondary: #4E4656;
+--ll-text-muted: #817889;
+--ll-brand-gradient: linear-gradient(135deg, #E85D75 0%, #8B5CF6 62%, #2F80ED 100%);
+--ll-bg-gradient: linear-gradient(180deg, #F7F3EA 0%, #FFF9F0 48%, #EEE7DA 100%);
 ```
 
 No new UI colors should be introduced unless they fit this system. If a future state needs a semantic color, derive it from these brand colors or document the exception.
@@ -225,6 +225,19 @@ Rules:
 - Give cards enough brightness and warmth to feel like consumer content, not admin panels.
 - Let photos and fallback media carry the richest color.
 - Use amber, rose, and lavender sparingly for local/community energy.
+
+## Clean editorial consumer palette reset
+
+Stop iterating on the muddy dark palette. The Loop Local interface should feel like a premium local discovery consumer app, not a purple/blue dashboard.
+
+Rules:
+
+- Use warm daylight neutrals, white cards, ink typography, and coral/berry/lavender brand accents.
+- Keep blue only as a small brand-gradient tail, not as the app mood.
+- Let photography and real local content provide most color.
+- Use white and warm ivory surfaces so the app feels welcoming and alive.
+- Preserve premium restraint: no neon, no crypto gradients, no heavy glow.
+- Category flavor may use coral, amber, lavender, sage, and berry tints at low opacity.
 
 ## Current implementation contract
 
