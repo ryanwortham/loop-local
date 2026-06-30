@@ -1,48 +1,54 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root {
-  --ll-bg-primary: #090817;
-  --ll-bg-secondary: #141126;
-  --ll-bg-deep: #0D0B1D;
+  --ll-bg-primary: #120D1D;
+  --ll-bg-secondary: #1B1428;
+  --ll-bg-deep: #0F0B18;
   --ll-accent-primary: #1FB8FF;
   --ll-accent-secondary: #3A8DFF;
   --ll-accent-purple: #6F3BFF;
   --ll-warm-accent: #F2B36D;
   --ll-rose-accent: #D96C9F;
   --ll-text-primary: #FFFFFF;
-  --ll-text-secondary: #D6D0E4;
-  --ll-text-muted: #9188A5;
+  --ll-text-secondary: #E0D8E8;
+  --ll-text-muted: #A69AB4;
   --ll-border: rgba(255, 255, 255, 0.06);
   --ll-border-strong: rgba(255, 255, 255, 0.10);
-  --ll-surface: #17142A;
-  --ll-surface-strong: #211A36;
+  --ll-surface: #211934;
+  --ll-surface-strong: #2A2040;
   --ll-surface-soft: rgba(255, 255, 255, 0.035);
   --ll-brand-gradient: linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%);
-  --ll-bg-gradient: linear-gradient(180deg, #090817 0%, #0D0B1D 54%, #141126 100%);
+  --ll-bg-gradient: linear-gradient(180deg, #120D1D 0%, #181123 48%, #21172D 100%);
   --ll-glow: 0 12px 26px rgba(124, 77, 255, 0.12);
   --ll-glow-purple: 0 10px 24px rgba(111, 59, 255, 0.08);
   --ll-ease: cubic-bezier(.2,.8,.2,1);
   --ll-card-radius: 30px;
   --ll-card-shadow: 0 16px 36px rgba(0, 0, 0, 0.20);
-  --ll-card-surface: #221C37;
-  --ll-card-border: rgba(255, 255, 255, 0.10);
-  --ll-card-shadow-strong: 0 22px 52px rgba(0, 0, 0, 0.30);
-  --ll-card-image-lift: saturate(1.06) contrast(1.08) brightness(1.06);
+  --ll-card-surface: #2B2242;
+  --ll-card-surface-warm: #332542;
+  --ll-card-border: rgba(255, 255, 255, 0.13);
+  --ll-card-shadow-strong: 0 24px 58px rgba(0, 0, 0, 0.28);
+  --ll-card-image-lift: saturate(1.16) contrast(1.08) brightness(1.10);
   --ll-section-border: transparent;
   --ll-placeholder-opacity: .28;
-  --ll-accent-browsing: rgba(236, 226, 255, 0.76);
+  --ll-accent-browsing: rgba(255, 226, 189, 0.84);
+  --ll-life-amber: #FFD18A;
+  --ll-life-rose: #F08BB8;
+  --ll-life-lavender: #B89CFF;
 }
 
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; background: var(--ll-bg-primary); }
+.life-forward-palette { color: var(--ll-text-primary); }
 body {
   margin: 0;
   min-height: 100vh;
   color: var(--ll-text-primary);
   background:
-    radial-gradient(circle at 16% -12%, rgba(124, 77, 255, 0.075), transparent 28rem),
-    radial-gradient(circle at 88% 0%, rgba(242, 179, 109, 0.045), transparent 34rem),
+    radial-gradient(circle at 14% -10%, rgba(255, 209, 138, 0.105), transparent 30rem),
+    radial-gradient(circle at 86% 0%, rgba(240, 139, 184, 0.075), transparent 32rem),
+    radial-gradient(circle at 52% 18%, rgba(184, 156, 255, 0.055), transparent 38rem),
     var(--ll-bg-gradient);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "cv01", "ss03";
@@ -200,7 +206,7 @@ button { -webkit-tap-highlight-color: transparent; }
   gap: 24px;
   padding: 8px 10px;
   border-radius: 999px;
-  background: rgba(9, 8, 23, 0.66);
+  background: rgba(18, 13, 29, 0.72);
   border-color: rgba(255,255,255,.035);
   box-shadow: 0 10px 24px rgba(0,0,0,.14);
 }
@@ -477,7 +483,9 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
 
 .brighter-content-card {
   border-color: var(--ll-card-border);
-  background: linear-gradient(180deg, var(--ll-card-surface), #171326);
+  background:
+    linear-gradient(135deg, rgba(255, 209, 138, .16), rgba(240, 139, 184, .10)),
+    linear-gradient(180deg, var(--ll-card-surface), var(--ll-card-surface-warm));
   box-shadow: var(--ll-card-shadow-strong);
 }
 .event-image {
@@ -498,14 +506,14 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, rgba(9, 8, 23, .02), rgba(9, 8, 23, .30));
+  background: linear-gradient(180deg, rgba(18, 13, 29, .00), rgba(18, 13, 29, .22));
 }
 .event-image-fallback { background-color: var(--ll-bg-secondary); }
 
 .quiet-placeholder-image,
 .visible-placeholder-image {
   position: relative;
-  background-color: #171326;
+  background-color: #241A35;
 }
 
 .quiet-placeholder-image::before {
@@ -517,13 +525,13 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
   background-position: center;
   background-size: min(72%, 560px) auto;
   opacity: var(--ll-placeholder-opacity);
-  filter: saturate(.76) contrast(1.02) brightness(1.05);
+  filter: saturate(.92) contrast(1.03) brightness(1.09);
   z-index: -2;
 }
 
 .quiet-placeholder-image::after,
 .visible-placeholder-image::after {
-  background: linear-gradient(180deg, rgba(9, 8, 23, .10), rgba(9, 8, 23, .28));
+  background: linear-gradient(180deg, rgba(18, 13, 29, .04), rgba(18, 13, 29, .18));
 }
 
 .no-image-label {
@@ -547,7 +555,7 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
   border-radius: 18px;
   padding: 9px 6px;
   color: var(--ll-accent-browsing);
-  background: rgba(255,255,255,.052);
+  background: linear-gradient(180deg, rgba(255, 209, 138, .13), rgba(255,255,255,.052));
 }
 .event-date-block strong { font-size: .76rem; font-weight: 700; text-transform: uppercase; }
 .event-date-block span { color: var(--ll-text-primary); font-size: 1.42rem; font-weight: 700; }
@@ -563,7 +571,7 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
   border-radius: 999px;
   padding: 7px 10px;
   color: var(--ll-text-secondary);
-  background: rgba(12,10,24,.68);
+  background: rgba(35, 25, 47, .72);
   backdrop-filter: blur(14px);
   font-size: .72rem;
   font-weight: 600;
@@ -574,7 +582,11 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
 .chip-food-drink,
 .chip-family,
 .chip-kids,
-.chip-festivals { background: rgba(12,10,24,.68); color: var(--ll-text-secondary); }
+.chip-festivals { color: var(--ll-text-secondary); }
+.chip-live-music { background: rgba(240, 139, 184, .15); }
+.chip-food-drink { background: rgba(255, 209, 138, .14); }
+.chip-family, .chip-kids { background: rgba(184, 156, 255, .13); }
+.chip-festivals { background: rgba(255, 209, 138, .12); }
 
 .event-secondary-details {
   margin-top: 12px;
@@ -644,8 +656,8 @@ p { color: var(--ll-text-secondary); line-height: 1.6; font-weight: 400; }
   min-height: 100vh;
   color: var(--ll-text-primary);
   background:
-    radial-gradient(circle at 18% 0%, rgba(124, 77, 255, .06), transparent 30rem),
-    radial-gradient(circle at 82% 5%, rgba(242, 179, 109, .04), transparent 32rem),
+    radial-gradient(circle at 18% 0%, rgba(255, 209, 138, .09), transparent 30rem),
+    radial-gradient(circle at 82% 5%, rgba(240, 139, 184, .07), transparent 32rem),
     var(--ll-bg-gradient);
   padding: 18px min(5vw, 48px) 96px;
 }

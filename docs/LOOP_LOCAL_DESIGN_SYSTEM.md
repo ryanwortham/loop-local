@@ -47,9 +47,9 @@ Design inspiration combines:
 ## Official colors
 
 ```css
---ll-bg-primary: #090817;
---ll-bg-secondary: #141126;
---ll-bg-deep: #0D0B1D;
+--ll-bg-primary: #120D1D;
+--ll-bg-secondary: #1B1428;
+--ll-bg-deep: #0F0B18;
 --ll-accent-primary: #1FB8FF;
 --ll-accent-secondary: #3A8DFF;
 --ll-accent-indigo: #5E6CFF;
@@ -57,10 +57,10 @@ Design inspiration combines:
 --ll-warm-accent: #F2B36D;
 --ll-rose-accent: #D96C9F;
 --ll-text-primary: #FFFFFF;
---ll-text-secondary: #D6D0E4;
---ll-text-muted: #9188A5;
+--ll-text-secondary: #E0D8E8;
+--ll-text-muted: #A69AB4;
 --ll-brand-gradient: linear-gradient(135deg, #7C4DFF 0%, #5E6CFF 48%, #1FB8FF 100%);
---ll-bg-gradient: linear-gradient(180deg, #090817 0%, #0D0B1D 54%, #141126 100%);
+--ll-bg-gradient: linear-gradient(180deg, #120D1D 0%, #181123 48%, #21172D 100%);
 ```
 
 No new UI colors should be introduced unless they fit this system. If a future state needs a semantic color, derive it from these brand colors or document the exception.
@@ -212,6 +212,19 @@ Rules:
 - Let cards feel warm-premium and local-consumer, not admin-dashboard navy.
 - Add warm/rose accent tokens for tiny labels, map moments, and category flavor where needed.
 - Preserve content hierarchy: photos, event names, venues, and dates remain the hero.
+
+## Livelier brand palette correction
+
+The app should feel alive, local, and premium — not flat or cave-dark.
+
+Rules:
+
+- Add life with warm ambient light, brighter plum surfaces, rose/amber micro-accents, and clearer media.
+- Keep the less-blue direction; blue should not return as ambient chrome.
+- Lift the background from near-black into deep plum/ink so the page breathes.
+- Give cards enough brightness and warmth to feel like consumer content, not admin panels.
+- Let photos and fallback media carry the richest color.
+- Use amber, rose, and lavender sparingly for local/community energy.
 
 ## Current implementation contract
 
