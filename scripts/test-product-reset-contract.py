@@ -90,7 +90,8 @@ def test_home_preserves_search_filters_views_and_feed_logic():
         'setViewMode',
         'matchesMoment',
         'sortItems',
-        'primaryUrl',
+        'eventDetailPath',
+        'eventExternalUrl',
         'visibleItems',
         'calendarItems',
         "viewMode === 'card'",
@@ -218,6 +219,41 @@ def test_loop_local_hero_headline_is_not_oversized_after_polish():
     ]:
         assert marker in css, f'CSS missing hero headline size fix marker {marker}'
 
+
+def test_loop_local_real_event_detail_pages_exist_and_cards_link_internally():
+    shell = read('components/app-shell.tsx')
+    route = read('app/events/[slug]/page.tsx')
+    css = read('app/globals.css')
+    feed = read('lib/live-feed.ts')
+    for marker in [
+        'event-detail-route-real-page',
+        'getEventBySlug',
+        'generateStaticParams',
+        'generateMetadata',
+        'notFound()',
+        'EventDetailPage',
+        'event-detail-page-shell',
+        'event-detail-hero-panel',
+        'event-detail-info-card',
+        'event-detail-map-card',
+        'event-detail-related-card',
+        'Back to Discover',
+        'Get directions',
+        'View source',
+        'Reserve / tickets',
+    ]:
+        assert marker in route + css, f'missing real event detail page marker {marker}'
+    for marker in [
+        'export function eventSlug',
+        'export function eventDetailPath',
+        'export function eventExternalUrl',
+        'export async function getEventBySlug',
+        'eventDetailPath(item)',
+    ]:
+        assert marker in feed + shell, f'missing detail routing/data helper marker {marker}'
+    assert 'href={eventDetailPath(item)}' in shell, 'event cards must link to internal /events/[slug] detail pages'
+    assert 'href={eventExternalUrl(heroEvent)}' in shell, 'hero detail preview must preserve external ticket/source CTA separately'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -244,5 +280,6 @@ if __name__ == '__main__':
     test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy()
     test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art()
     test_loop_local_hero_headline_is_not_oversized_after_polish()
+    test_loop_local_real_event_detail_pages_exist_and_cards_link_internally()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

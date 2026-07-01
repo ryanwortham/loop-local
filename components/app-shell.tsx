@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { LiveFeedItem } from '@/lib/live-feed';
+import { eventDetailPath, eventExternalUrl, type LiveFeedItem } from '@/lib/live-feed';
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
@@ -45,14 +45,6 @@ function distanceLine(item: LiveFeedItem): string {
 function categoryClass(category?: string): string {
   const key = (category || 'local').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   return `event-chip chip-${key}`;
-}
-
-function primaryUrl(item: LiveFeedItem): string {
-  if (item.ticketUrl) return item.ticketUrl;
-  if (item.ticket_url) return item.ticket_url;
-  if (item.event_url) return item.event_url;
-  if (item.slug) return `/events/${item.slug}`;
-  return '#events';
 }
 
 function itemSearchText(item: LiveFeedItem): string {
@@ -129,7 +121,7 @@ function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: bo
         </div>
       </div>
       <div className="event-actions card-actions">
-        <a href={primaryUrl(item)}>Open</a>
+        <a href={eventDetailPath(item)}>Open</a>
         <button type="button" aria-label={`Save ${item.title}`}>♡</button>
       </div>
     </article>
@@ -148,7 +140,7 @@ function PopularRow({ item }: { item: LiveFeedItem }) {
         <p>{venueLine(item)} · {item.city || 'Nearby'}</p>
         <small>{item.time || priceLine(item)}</small>
       </div>
-      <a href={primaryUrl(item)} aria-label={`Open ${item.title}`}>♡</a>
+      <a href={eventDetailPath(item)} aria-label={`Open ${item.title}`}>♡</a>
     </article>
   );
 }
@@ -314,10 +306,10 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
             </div>
             <div className="ticket-action-strip">
               <div><strong>{priceLine(heroEvent)}</strong><span>{heroEvent.price ? 'Reserve your spot' : 'Details from source'}</span></div>
-              <a href={primaryUrl(heroEvent)}>View Tickets ↗</a>
+              <a href={eventExternalUrl(heroEvent)}>View Tickets ↗</a>
             </div>
             <section className="detail-about"><h3>About</h3><p>{heroEvent.summary || `${heroEvent.title} is one of the local picks worth checking out near ${heroEvent.city || locationQuery}.`}</p><small>{addressLine(heroEvent) || 'Address details pending'}</small></section>
-            <a className="primary-action detail-cta" href={primaryUrl(heroEvent)}>➤ Get Directions</a>
+            <a className="primary-action detail-cta" href={eventDetailPath(heroEvent)}>➤ View Event Page</a>
           </div>
         </aside>
       ) : null}

@@ -62,6 +62,32 @@ function cleanItems(items: LiveFeedItem[]): LiveFeedItem[] {
     });
 }
 
+export function eventSlug(item: LiveFeedItem): string {
+  if (item.slug) return item.slug;
+  const base = [item.title, item.city, item.id]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96);
+  return base || item.id;
+}
+
+export function eventDetailPath(item: LiveFeedItem): string {
+  return `/events/${eventSlug(item)}`;
+}
+
+export function eventExternalUrl(item: LiveFeedItem): string {
+  return item.ticketUrl || item.ticket_url || item.event_url || item.venueUrl || item.website || '#';
+}
+
+export async function getEventBySlug(slug: string): Promise<LiveFeedItem | null> {
+  const feed = await getLiveFeed(120);
+  return feed.items.find((item) => eventSlug(item) === slug || item.slug === slug || item.id === slug) || null;
+}
+
 export async function getLiveFeed(limit = 24): Promise<LiveFeedResponse> {
   const url = new URL('/api/feed', referenceFeedBaseUrl);
 
