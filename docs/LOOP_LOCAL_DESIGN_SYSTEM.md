@@ -333,3 +333,19 @@ The app CSS must expose:
 ```
 
 These markers are contract anchors for tests and future designers/developers.
+
+
+## UX polish pass: tighter spacing, mobile layout, card density, detail preview, bottom nav, and hierarchy.
+
+Preserve the complete frontend rebuild; polish density and hierarchy without reverting to older palette iterations.
+
+Focus areas:
+
+- tighten desktop gutters so the three-panel shell feels intentional rather than spread out
+- make the center discovery phone breathe less and scan faster
+- reduce event-card height and action weight while keeping imagery visible
+- make popular rows denser and easier to skim
+- refine the right detail preview with a shorter image, clearer metadata rhythm, and sticky CTA feel
+- improve mobile layout with safe-area bottom padding, smaller cards, and a compact app-style bottom nav
+
+This pass is refinement only: do not remove Supabase/feed/search/filter/map/calendar/Post Local behavior.

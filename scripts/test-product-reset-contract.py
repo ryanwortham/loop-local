@@ -141,6 +141,42 @@ def test_post_local_preserves_form_fields_and_uploads():
         assert marker in post, f'Post Local field/functionality removed: {marker}'
 
 
+
+def test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy():
+    css = read('app/globals.css')
+    shell = read('components/app-shell.tsx')
+    design = read('docs/LOOP_LOCAL_DESIGN_SYSTEM.md')
+    for marker in [
+        'UX polish pass: tighter spacing, mobile layout, card density, detail preview, bottom nav, and hierarchy.',
+        'Preserve the complete frontend rebuild; polish density and hierarchy without reverting to older palette iterations.',
+    ]:
+        assert marker in design, f'design doc missing UX polish marker {marker}'
+    for marker in [
+        'ux-polish-pass',
+        '--ll-polish-page-gutter: clamp(10px, 1.4vw, 18px)',
+        '--ll-polish-card-gap: 10px',
+        '--ll-polish-compact-shadow: 0 10px 30px rgba(7, 17, 43, 0.075)',
+        '.complete-frontend-rebuild.ux-polish-pass',
+        '.featured-rail.polished-card-density',
+        '.popular-list.polished-list-density',
+        '.event-detail-preview.polished-detail-preview',
+        '.mobile-app-tabbar.polished-bottom-nav',
+        '@media (max-width: 520px)',
+        'padding-bottom: max(92px, env(safe-area-inset-bottom) + 76px)',
+    ]:
+        assert marker in css, f'CSS missing UX polish marker {marker}'
+    for marker in [
+        'ux-polish-pass',
+        'polished-card-density',
+        'polished-list-density',
+        'polished-detail-preview',
+        'polished-bottom-nav',
+        'polished-view-dock',
+    ]:
+        assert marker in shell, f'home shell missing UX polish class {marker}'
+    for preserved in ['complete-frontend-rebuild', 'app-reference-shell', 'discovery-phone', 'event-detail-preview', 'mobile-app-tabbar']:
+        assert preserved in shell + css, f'polish pass must preserve rebuild anchor {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -164,5 +200,6 @@ if __name__ == '__main__':
     test_home_preserves_search_filters_views_and_feed_logic()
     test_event_media_and_placeholder_assets_stay_intentional()
     test_post_local_preserves_form_fields_and_uploads()
+    test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -209,7 +209,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -261,7 +261,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
         <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
           <header className="section-title-row"><h2>Featured This Week</h2><a href="#events">View all</a></header>
-          <div className="featured-rail">
+          <div className="featured-rail polished-card-density">
             {featuredItems.map((item) => <EventCard compact item={item} key={item.id} />)}
           </div>
         </section>
@@ -271,16 +271,16 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
             <div><h2>Popular Near You</h2><p>{filteredItems.length} of {totalCount} picks</p></div>
             {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : <a href="#events">View all</a>}
           </header>
-          <div className="popular-list">
+          <div className="popular-list polished-list-density">
             {(popularItems.length ? popularItems : featuredItems).slice(0, 6).map((item) => <PopularRow item={item} key={item.id} />)}
           </div>
         </section>
 
-        <section className="view-mode-dock" aria-label="Event view mode">
+        <section className="view-mode-dock polished-view-dock" aria-label="Event view mode">
           {viewModes.map((mode) => <button className={viewMode === mode.id ? 'active' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">{mode.label}</button>)}
         </section>
 
-        {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view">{visibleItems.map((item) => <EventCard item={item} key={item.id} />)}</div> : null}
+        {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'map' ? (
           <div className="map-view">
@@ -291,13 +291,13 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
         {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
 
-        <nav className="mobile-app-tabbar" aria-label="App tabs">
+        <nav className="mobile-app-tabbar polished-bottom-nav" aria-label="App tabs">
           {tabs.map((tab, index) => <a className={index === 0 ? 'active' : ''} href={`#${tab.toLowerCase()}`} key={tab}>{['⌕', '▦', '⌖', '♡', '◉'][index]}<span>{tab}</span></a>)}
         </nav>
       </section>
 
       {heroEvent ? (
-        <aside className="event-detail-preview" aria-label="Featured event detail preview">
+        <aside className="event-detail-preview polished-detail-preview" aria-label="Featured event detail preview">
           <div className="detail-hero-image" style={{ backgroundImage: `url(${eventImage(heroEvent)})` }}>
             <button type="button" aria-label="Back">‹</button>
             <div><button type="button" aria-label="Save">♡</button><button type="button" aria-label="Share">⇧</button></div>
