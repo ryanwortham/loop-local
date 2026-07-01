@@ -116,7 +116,7 @@ function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: bo
 
   return (
     <article className={compact ? 'explore-card explore-card-compact' : 'explore-card'}>
-      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image quiet-placeholder-image'} style={{ backgroundImage: `url(${eventImage(item)})` }}>
+      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image quiet-placeholder-image'} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
         <span className="floating-date"><strong>{date.month}</strong><b>{date.day}</b></span>
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
       </div>
@@ -140,7 +140,7 @@ function PopularRow({ item }: { item: LiveFeedItem }) {
   const date = dayBlock(item);
   return (
     <article className="popular-list-row">
-      <div className="popular-thumb" style={{ backgroundImage: `url(${eventImage(item)})` }} />
+      <div className={item.image_url ? 'popular-thumb' : 'popular-thumb quiet-popular-placeholder'} style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined} />
       <div className="popular-date"><span>{date.month}</span><strong>{date.day}</strong></div>
       <div className="popular-copy">
         <span className="mini-tag">{item.category || 'Local'}</span>

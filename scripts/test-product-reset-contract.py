@@ -177,6 +177,30 @@ def test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy():
     for preserved in ['complete-frontend-rebuild', 'app-reference-shell', 'discovery-phone', 'event-detail-preview', 'mobile-app-tabbar']:
         assert preserved in shell + css, f'polish pass must preserve rebuild anchor {preserved}'
 
+
+def test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art():
+    css = read('app/globals.css')
+    shell = read('components/app-shell.tsx')
+    for marker in [
+        'card-overflow-media-fix',
+        '--ll-card-media-featured-height: 112px',
+        '--ll-card-media-standard-height: 144px',
+        '-webkit-line-clamp: 2',
+        'overflow-wrap: anywhere',
+        'text-overflow: ellipsis',
+        'background-size: min(76%, 360px) auto',
+        'background-repeat: no-repeat',
+        'background-color: #07112B',
+        '.quiet-popular-placeholder',
+    ]:
+        assert marker in css, f'CSS missing card overflow/media fix marker {marker}'
+    for marker in [
+        "style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}",
+        "className={item.image_url ? 'popular-thumb' : 'popular-thumb quiet-popular-placeholder'}",
+        "style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined}",
+    ]:
+        assert marker in shell, f'card markup still forces placeholder crop or missing containment marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -201,5 +225,6 @@ if __name__ == '__main__':
     test_event_media_and_placeholder_assets_stay_intentional()
     test_post_local_preserves_form_fields_and_uploads()
     test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy()
+    test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

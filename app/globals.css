@@ -26,6 +26,8 @@
   --ll-polish-page-gutter: clamp(10px, 1.4vw, 18px);
   --ll-polish-card-gap: 10px;
   --ll-polish-compact-shadow: 0 10px 30px rgba(7, 17, 43, 0.075);
+  --ll-card-media-featured-height: 112px;
+  --ll-card-media-standard-height: 144px;
 }
 
 * { box-sizing: border-box; }
@@ -910,4 +912,118 @@ button { -webkit-tap-highlight-color: transparent; }
   .ux-polish-pass .popular-date span { font-size: .56rem; }
   .ux-polish-pass .popular-date strong { font-size: .96rem; }
   .ux-polish-pass .mobile-app-tabbar.polished-bottom-nav { position: fixed; left: 10px; right: 10px; width: auto; margin: 0; }
+}
+
+
+/* card-overflow-media-fix: clamp copy and contain branded placeholder art instead of cover-cropping the Loop Local logo. */
+.ux-polish-pass .explore-card,
+.ux-polish-pass .popular-list-row {
+  min-width: 0;
+}
+
+.ux-polish-pass .explore-card-image {
+  min-height: var(--ll-card-media-featured-height);
+  max-height: var(--ll-card-media-featured-height);
+  background-color: #EEF6FF;
+  background-size: cover;
+  background-position: center;
+}
+
+.ux-polish-pass .explore-card:not(.explore-card-compact) .explore-card-image {
+  min-height: var(--ll-card-media-standard-height);
+  max-height: var(--ll-card-media-standard-height);
+}
+
+.ux-polish-pass .quiet-placeholder-image {
+  background-color: #07112B;
+  background-image: radial-gradient(circle at 88% 32%, rgba(21, 94, 239, 0.18), transparent 34%), linear-gradient(145deg, #07112B 0%, #0B1633 100%);
+}
+
+.ux-polish-pass .quiet-placeholder-image::before {
+  background-size: min(76%, 360px) auto;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: .74;
+}
+
+.ux-polish-pass .quiet-popular-placeholder {
+  background-color: #07112B;
+  background-image: url('/looplocal-event-placeholder.jpg'), linear-gradient(145deg, #07112B 0%, #0B1633 100%);
+  background-size: min(82%, 220px) auto, cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.ux-polish-pass .explore-card-copy,
+.ux-polish-pass .popular-copy,
+.ux-polish-pass .card-micro-row,
+.ux-polish-pass .section-title-row,
+.ux-polish-pass .detail-body {
+  min-width: 0;
+}
+
+.ux-polish-pass .explore-card-copy h3,
+.ux-polish-pass .popular-copy h3,
+.ux-polish-pass .detail-body h2,
+.ux-polish-pass .calendar-card strong,
+.ux-polish-pass .map-list strong {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.ux-polish-pass .explore-card-copy p,
+.ux-polish-pass .popular-copy p,
+.ux-polish-pass .detail-about p,
+.ux-polish-pass .detail-about small,
+.ux-polish-pass .map-list span,
+.ux-polish-pass .calendar-card p {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.ux-polish-pass .popular-copy h3 {
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.ux-polish-pass .card-micro-row span,
+.ux-polish-pass .popular-copy small,
+.ux-polish-pass .section-title-row p,
+.ux-polish-pass .ticket-action-strip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ux-polish-pass .event-chip {
+  max-width: min(122px, 58%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ux-polish-pass .card-actions a,
+.ux-polish-pass .card-actions button {
+  flex-shrink: 0;
+}
+
+@media (max-width: 520px) {
+  .ux-polish-pass .explore-card-image {
+    min-height: 104px;
+    max-height: 104px;
+  }
+  .ux-polish-pass .explore-card:not(.explore-card-compact) .explore-card-image {
+    min-height: 132px;
+    max-height: 132px;
+  }
+  .ux-polish-pass .quiet-placeholder-image::before {
+    background-size: min(82%, 280px) auto;
+  }
 }
