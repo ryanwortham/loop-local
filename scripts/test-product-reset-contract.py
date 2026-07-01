@@ -201,6 +201,23 @@ def test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art():
     ]:
         assert marker in shell, f'card markup still forces placeholder crop or missing containment marker {marker}'
 
+
+def test_loop_local_hero_headline_is_not_oversized_after_polish():
+    css = read('app/globals.css')
+    for marker in [
+        'hero-headline-size-fix',
+        '.ux-polish-pass .local-hero-panel h1 { font-size: clamp(2.2rem, 3.9vw, 3.85rem); line-height: .98; letter-spacing: -.065em; }',
+        '.ux-polish-pass .hero-logo-lockup { margin-bottom: clamp(20px, 4vh, 34px); }',
+        '.ux-polish-pass .hero-subcopy { margin: 14px 0 14px; max-width: 24rem; }',
+        '.ux-polish-pass .local-hero-panel { justify-content: flex-start; }',
+        '.ux-polish-pass .hero-actions { margin-top: 18px; gap: 9px; }',
+        '@media (max-width: 860px)',
+        '.ux-polish-pass .local-hero-panel h1 { font-size: clamp(2rem, 9vw, 3.15rem); letter-spacing: -.06em; }',
+        '@media (max-width: 520px)',
+        '.ux-polish-pass .local-hero-panel h1 { font-size: clamp(1.9rem, 10vw, 2.75rem); }',
+    ]:
+        assert marker in css, f'CSS missing hero headline size fix marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -226,5 +243,6 @@ if __name__ == '__main__':
     test_post_local_preserves_form_fields_and_uploads()
     test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy()
     test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art()
+    test_loop_local_hero_headline_is_not_oversized_after_polish()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

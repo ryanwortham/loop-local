@@ -1027,3 +1027,19 @@ button { -webkit-tap-highlight-color: transparent; }
     background-size: min(82%, 280px) auto;
   }
 }
+
+
+/* hero-headline-size-fix: keep “Discover what’s happening near you.” premium, not oversized. */
+.ux-polish-pass .hero-logo-lockup { margin-bottom: clamp(20px, 4vh, 34px); }
+.ux-polish-pass .local-hero-panel h1 { font-size: clamp(2.2rem, 3.9vw, 3.85rem); line-height: .98; letter-spacing: -.065em; }
+.ux-polish-pass .hero-subcopy { margin: 14px 0 14px; max-width: 24rem; }
+.ux-polish-pass .local-hero-panel { justify-content: flex-start; }
+.ux-polish-pass .hero-actions { margin-top: 18px; gap: 9px; }
+
+@media (max-width: 860px) {
+  .ux-polish-pass .local-hero-panel h1 { font-size: clamp(2rem, 9vw, 3.15rem); letter-spacing: -.06em; }
+}
+
+@media (max-width: 520px) {
+  .ux-polish-pass .local-hero-panel h1 { font-size: clamp(1.9rem, 10vw, 2.75rem); }
+}
