@@ -6,6 +6,18 @@ import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fal
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
+type LocalSubmission = {
+  entityName?: string;
+  eventTitle?: string;
+  eventDate?: string;
+  eventCategory?: string;
+  eventCity?: string;
+  locationName?: string;
+  postType?: string;
+  status?: string;
+  submittedAt?: string;
+};
+
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
 const tabs = ['Discover', 'Events', 'Map', 'Saved', 'Profile'];
 const tabToViewMode = (tab: string): ViewMode => {
@@ -178,6 +190,16 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     }
   });
   const [showSavedPanel, setShowSavedPanel] = useState(false);
+  const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
+  const [pendingSubmissions, setPendingSubmissions] = useState<LocalSubmission[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
+      return Array.isArray(stored) ? stored.filter((item): item is LocalSubmission => item && typeof item === 'object') : [];
+    } catch {
+      return [];
+    }
+  });
   const [shareStatus, setShareStatus] = useState('');
 
   useEffect(() => {
@@ -248,12 +270,30 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setSortBy('soonest');
   }
 
+  function loadPendingSubmissions() {
+    try {
+      const stored = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
+      setPendingSubmissions(Array.isArray(stored) ? stored.filter((item): item is LocalSubmission => item && typeof item === 'object') : []);
+    } catch {
+      setPendingSubmissions([]);
+    }
+  }
+
+  function clearPendingSubmissions() {
+    localStorage.setItem('looplocal:post-local-submissions', '[]');
+    setPendingSubmissions([]);
+  }
+
   function handleTabSelect(tab: string) {
     if (tab === 'Saved') {
       setShowSavedPanel((value) => !value);
       return;
     }
-    if (tab === 'Profile') return;
+    if (tab === 'Profile') {
+      loadPendingSubmissions();
+      setShowSubmissionPanel((value) => !value);
+      return;
+    }
     setViewMode(tabToViewMode(tab));
     document.getElementById(tab === 'Map' ? 'map' : 'events')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
@@ -379,6 +419,26 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
             <div className="popular-list polished-list-density">
               {(savedItems.length ? savedItems : featuredItems.slice(0, 3)).map((item) => <PopularRow isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}
             </div>
+          </section>
+        ) : null}
+        {showSubmissionPanel ? (
+          <section className="pending-submissions-panel post-submission-review-panel-pass" aria-label="Pending local submissions">
+            <header className="section-title-row">
+              <div><h2>Review queue</h2><p>{pendingSubmissions.length ? `${pendingSubmissions.length} pending local submissions` : 'Pending local submissions will appear here after Post Local submit.'}</p></div>
+              <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
+            </header>
+            {pendingSubmissions.length ? (
+              <div className="pending-submission-grid">
+                {pendingSubmissions.slice(0, 6).map((submission, index) => (
+                  <article className="pending-submission-card" key={`${submission.submittedAt || submission.eventTitle || 'submission'}-${index}`}>
+                    <span>{submission.status || 'pending_review'}</span>
+                    <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
+                    <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
+                    <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
+                  </article>
+                ))}
+              </div>
+            ) : <p className="pending-submission-empty">No pending local submissions yet. Submit a valid Post Local draft to seed the queue.</p>}
           </section>
         ) : null}
         {shareStatus ? <p className="share-status" role="status">{shareStatus}</p> : null}

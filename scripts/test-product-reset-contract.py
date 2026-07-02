@@ -511,6 +511,40 @@ def test_loop_local_post_local_draft_validation_and_live_preview_are_real():
     ]:
         assert preserved in post, f'functional draft pass removed preserved field/functionality {preserved}'
 
+
+def test_loop_local_pending_post_submissions_surface_in_discovery_review_panel():
+    shell = read('components/app-shell.tsx')
+    post = read('components/post-local-wizard.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'post-submission-review-panel-pass',
+        'LocalSubmission',
+        'pendingSubmissions',
+        'showSubmissionPanel',
+        'loadPendingSubmissions',
+        'clearPendingSubmissions',
+        'looplocal:post-local-submissions',
+        'pending-submissions-panel',
+        'Review queue',
+        'Pending local submissions',
+        'Open Post Local',
+    ]:
+        assert marker in shell, f'missing pending submission review panel marker {marker}'
+    for marker in [
+        'looplocal:post-local-submissions',
+        'pending_review',
+    ]:
+        assert marker in post, f'Post Local submission storage marker missing {marker}'
+    for marker in [
+        'post-submission-review-panel-pass',
+        '.pending-submissions-panel',
+        '.pending-submission-card',
+        '.pending-submission-empty',
+    ]:
+        assert marker in css, f'missing pending submission CSS marker {marker}'
+    for preserved in ['saved-events-panel', 'showSavedPanel', 'handleTabSelect', 'eventDetailPath(item)', 'getLiveFeed']:
+        assert preserved in shell + read('lib/live-feed.ts'), f'pending submission panel removed preserved behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -545,5 +579,6 @@ if __name__ == '__main__':
     test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real()
     test_loop_local_saved_and_share_interactions_are_real_not_static_icons()
     test_loop_local_post_local_draft_validation_and_live_preview_are_real()
+    test_loop_local_pending_post_submissions_surface_in_discovery_review_panel()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
