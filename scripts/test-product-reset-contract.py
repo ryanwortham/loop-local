@@ -688,6 +688,37 @@ def test_loop_local_review_queue_status_lifecycle_controls_are_local_and_exporte
     ]:
         assert preserved in shell, f'review status lifecycle removed preserved local workflow {preserved}'
 
+
+def test_loop_local_reviewer_notes_attach_to_local_submissions_and_handoff():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'reviewer-notes-pass',
+        'reviewerNote',
+        'reviewerNoteUpdatedAt',
+        'updateLocalSubmissionReviewerNote',
+        'Reviewer note',
+        'Internal note for changes, approval context, or publish handoff',
+        'value={submission.reviewerNote || \'\'}',
+        'onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)}',
+        'reviewerNoteUpdatedAt: new Date().toISOString()',
+    ]:
+        assert marker in shell, f'missing reviewer notes marker {marker}'
+    for marker in [
+        'reviewer-notes-pass',
+        '.reviewer-note-field',
+        '.reviewer-note-field textarea',
+    ]:
+        assert marker in css, f'missing reviewer notes CSS marker {marker}'
+    for preserved in [
+        'buildOperatorHandoffPayload',
+        'parseOperatorHandoffPayload',
+        'updateLocalSubmissionStatus',
+        'statusUpdatedAt',
+        'looplocal:post-local-submissions',
+    ]:
+        assert preserved in shell, f'reviewer notes removed preserved review workflow {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -727,5 +758,6 @@ if __name__ == '__main__':
     test_loop_local_operator_handoff_exports_local_review_queue_json()
     test_loop_local_operator_handoff_import_restores_review_queue_json()
     test_loop_local_review_queue_status_lifecycle_controls_are_local_and_exported()
+    test_loop_local_reviewer_notes_attach_to_local_submissions_and_handoff()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

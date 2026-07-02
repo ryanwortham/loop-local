@@ -2162,3 +2162,31 @@ button { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 520px) {
   .review-status-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+/* reviewer-notes-pass: local operator notes attach to review queue submissions and travel through export/import. */
+.reviewer-note-field {
+  display: grid;
+  gap: 6px;
+}
+.reviewer-note-field span {
+  color: var(--ll-rebuild-slate);
+  font-size: .72rem;
+  font-weight: 900;
+}
+.reviewer-note-field textarea {
+  min-height: 62px;
+  resize: vertical;
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 14px;
+  padding: 9px 10px;
+  background: rgba(255,255,255,.92);
+  color: var(--ll-rebuild-slate);
+  font: inherit;
+  font-size: .76rem;
+  outline: none;
+}
+.reviewer-note-field textarea:focus {
+  border-color: rgba(37,99,235,.45);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.08);
+}

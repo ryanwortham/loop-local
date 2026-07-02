@@ -24,6 +24,8 @@ type LocalSubmission = {
   submittedAt?: string;
   approvedAt?: string;
   statusUpdatedAt?: string;
+  reviewerNote?: string;
+  reviewerNoteUpdatedAt?: string;
 };
 
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
@@ -353,6 +355,12 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setOperatorExportStatus(`Marked ${status.replace('_', ' ')}`);
   }
 
+  function updateLocalSubmissionReviewerNote(indexToUpdate: number, reviewerNote: string) {
+    const next = pendingSubmissions.map((submission, index) => index === indexToUpdate ? { ...submission, reviewerNote, reviewerNoteUpdatedAt: new Date().toISOString() } : submission);
+    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(next));
+    setPendingSubmissions(next);
+  }
+
   function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
     // local-publish-workflow-pass legacy action label: Approve to discovery; review-status-lifecycle-pass UI label: Publish locally
     const approved = localSubmissionToFeedItem({ ...submission, status: 'published_local', approvedAt: new Date().toISOString(), statusUpdatedAt: new Date().toISOString() }, indexToApprove);
@@ -432,7 +440,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -576,6 +584,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                     <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
                     <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                     <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
+                    <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={submission.reviewerNote || ''} onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)} placeholder="Internal note for changes, approval context, or publish handoff" rows={2} /></label>
                     <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'needs_changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
                   </article>
                 ))}
