@@ -12,10 +12,15 @@ type LocalSubmission = {
   eventDate?: string;
   eventCategory?: string;
   eventCity?: string;
+  eventState?: string;
+  eventZip?: string;
+  eventDescription?: string;
   locationName?: string;
+  ticketUrl?: string;
   postType?: string;
   status?: string;
   submittedAt?: string;
+  approvedAt?: string;
 };
 
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
@@ -119,14 +124,39 @@ function dayBlock(item: LiveFeedItem) {
   };
 }
 
+function localSubmissionToFeedItem(submission: LocalSubmission, index: number): LiveFeedItem {
+  return {
+    id: `local-approved-${submission.submittedAt || index}`,
+    title: submission.eventTitle || 'Locally approved submission',
+    summary: submission.eventDescription || `${submission.entityName || 'A local contributor'} submitted this event through Post Local.`,
+    category: submission.eventCategory || submission.postType || 'Community',
+    type: submission.postType || 'Event',
+    business: submission.entityName || submission.locationName || 'Local contributor',
+    location: submission.locationName || submission.entityName || 'Local venue',
+    city: submission.eventCity || 'Nearby',
+    state: submission.eventState || 'MO',
+    zip: submission.eventZip,
+    date: submission.eventDate,
+    startsAt: submission.eventDate,
+    time: 'Time pending',
+    source: 'local_approved',
+    ticketUrl: submission.ticketUrl,
+    imageState: 'fallback',
+    visualKey: 'community',
+    fallbackLabel: 'Locally approved',
+  };
+}
+
 function EventCard({ item, compact = false, isSaved = false, onSave }: { item: LiveFeedItem; compact?: boolean; isSaved?: boolean; onSave?: (item: LiveFeedItem) => void }) {
   const hasEventImage = Boolean(item.image_url);
   const date = dayBlock(item);
+  const isLocalApproved = item.source === 'local_approved';
 
   return (
     <article className={compact ? 'explore-card explore-card-compact' : 'explore-card'}>
       <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
         {!hasEventImage ? <span className="fallback-visual-label">{fallbackVisualLabel(item)}</span> : null}
+        {isLocalApproved ? <span className="local-approved-badge">Locally approved</span> : null}
         <span className="floating-date"><strong>{date.month}</strong><b>{date.day}</b></span>
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
       </div>
@@ -200,26 +230,41 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
       return [];
     }
   });
+  const [approvedLocalItems, setApprovedLocalItems] = useState<LiveFeedItem[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = JSON.parse(localStorage.getItem('looplocal:approved-local-events') || '[]');
+      return Array.isArray(stored) ? stored.filter((item): item is LiveFeedItem => item && typeof item === 'object' && typeof item.id === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
   const [shareStatus, setShareStatus] = useState('');
 
   useEffect(() => {
     localStorage.setItem('looplocal:saved-events', JSON.stringify(savedEventIds));
   }, [savedEventIds]);
 
+  useEffect(() => {
+    localStorage.setItem('looplocal:approved-local-events', JSON.stringify(approvedLocalItems));
+  }, [approvedLocalItems]);
+
+  const combinedFeedItems = useMemo(() => [...approvedLocalItems, ...feedItems], [approvedLocalItems, feedItems]);
+
   const categories = useMemo(
-    () => ['All categories', ...Array.from(new Set(feedItems.map((item) => item.category).filter(Boolean) as string[])).sort()],
-    [feedItems],
+    () => ['All categories', ...Array.from(new Set(combinedFeedItems.map((item) => item.category).filter(Boolean) as string[])).sort()],
+    [combinedFeedItems],
   );
 
   const cities = useMemo(
-    () => ['All cities', ...Array.from(new Set(feedItems.map((item) => item.city).filter(Boolean) as string[])).sort()],
-    [feedItems],
+    () => ['All cities', ...Array.from(new Set(combinedFeedItems.map((item) => item.city).filter(Boolean) as string[])).sort()],
+    [combinedFeedItems],
   );
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     const location = locationQuery.trim().toLowerCase();
-    const filtered = feedItems.filter((item) => {
+    const filtered = combinedFeedItems.filter((item) => {
       const matchesSearch = !query || itemSearchText(item).includes(query);
       const matchesLocation = !location || location === 'st. louis, mo' || itemSearchText(item).includes(location);
       const matchesCategory = activeCategory === 'All categories' || item.category === activeCategory;
@@ -227,17 +272,17 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
       return matchesSearch && matchesLocation && matchesCategory && matchesCity && matchesMoment(item, activeMoment);
     });
     return sortItems(filtered, sortBy);
-  }, [activeCategory, activeCity, activeMoment, feedItems, locationQuery, searchQuery, sortBy]);
+  }, [activeCategory, activeCity, activeMoment, combinedFeedItems, locationQuery, searchQuery, sortBy]);
 
-  const heroEvent = filteredItems[0] || feedItems[0];
+  const heroEvent = filteredItems[0] || combinedFeedItems[0];
   const featuredItems = filteredItems.slice(0, 6);
   const popularItems = filteredItems.slice(6, 14);
   const visibleItems = filteredItems.slice(0, viewMode === 'list' ? 24 : 18);
   const calendarItems = filteredItems.slice(0, 12);
-  const hasLiveData = feedItems.length > 0;
+  const hasLiveData = combinedFeedItems.length > 0;
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
-  const savedItems = feedItems.filter((item) => savedEventIds.includes(item.id));
+  const savedItems = combinedFeedItems.filter((item) => savedEventIds.includes(item.id));
 
   function isSavedEvent(item: LiveFeedItem): boolean {
     return savedEventIds.includes(item.id);
@@ -284,6 +329,19 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setPendingSubmissions([]);
   }
 
+  function removeLocalSubmission(indexToRemove: number) {
+    const next = pendingSubmissions.filter((_, index) => index !== indexToRemove);
+    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(next));
+    setPendingSubmissions(next);
+  }
+
+  function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
+    const approved = localSubmissionToFeedItem({ ...submission, status: 'approved_local', approvedAt: new Date().toISOString() }, indexToApprove);
+    setApprovedLocalItems((current) => current.some((item) => item.id === approved.id) ? current : [approved, ...current]);
+    removeLocalSubmission(indexToApprove);
+    setShareStatus('Locally approved');
+  }
+
   function handleTabSelect(tab: string) {
     if (tab === 'Saved') {
       setShowSavedPanel((value) => !value);
@@ -299,7 +357,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -435,6 +493,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                     <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
                     <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                     <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
+                    <div className="pending-submission-actions"><button className="approve-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Approve to discovery</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
                   </article>
                 ))}
               </div>

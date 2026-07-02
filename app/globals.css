@@ -2030,3 +2030,29 @@ button { -webkit-tap-highlight-color: transparent; }
   background: #FFFFFF;
   font-weight: 750;
 }
+
+
+/* local-publish-workflow-pass: approve local Post Local submissions into discovery feed. */
+.local-approved-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 2;
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #065F46;
+  background: #D1FAE5;
+  box-shadow: 0 8px 20px rgba(6,95,70,.16);
+  font-size: .66rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.pending-submission-actions button.approve-local {
+  color: #065F46;
+  background: #D1FAE5;
+}
+.pending-submission-actions button.remove-local {
+  color: #991B1B;
+  background: #FEE2E2;
+}
