@@ -617,6 +617,39 @@ def test_loop_local_operator_handoff_exports_local_review_queue_json():
     ]:
         assert preserved in shell, f'operator handoff export removed preserved local workflow {preserved}'
 
+
+def test_loop_local_operator_handoff_import_restores_review_queue_json():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'operator-handoff-import-pass',
+        'importOperatorHandoff',
+        'parseOperatorHandoffPayload',
+        'operatorImportText',
+        'setOperatorImportText',
+        'Import queue JSON',
+        'Paste exported review queue JSON',
+        'pendingSubmissions: parsed.pendingSubmissions',
+        'approvedLocalEvents: parsed.approvedLocalEvents',
+        'localStorage.setItem(\'looplocal:post-local-submissions\'',
+        'localStorage.setItem(\'looplocal:approved-local-events\'',
+    ]:
+        assert marker in shell, f'missing operator handoff import marker {marker}'
+    for marker in [
+        'operator-handoff-import-pass',
+        '.operator-import-area',
+        '.operator-import-area textarea',
+    ]:
+        assert marker in css, f'missing operator handoff import CSS marker {marker}'
+    for preserved in [
+        'buildOperatorHandoffPayload',
+        'copyOperatorHandoff',
+        'downloadOperatorHandoff',
+        'approveLocalSubmission',
+        'combinedFeedItems',
+    ]:
+        assert preserved in shell, f'operator import removed preserved export/local workflow {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -654,5 +687,6 @@ if __name__ == '__main__':
     test_loop_local_pending_post_submissions_surface_in_discovery_review_panel()
     test_loop_local_local_publish_workflow_approves_submissions_into_discovery_feed()
     test_loop_local_operator_handoff_exports_local_review_queue_json()
+    test_loop_local_operator_handoff_import_restores_review_queue_json()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

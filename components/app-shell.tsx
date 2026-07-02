@@ -240,6 +240,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     }
   });
   const [operatorExportStatus, setOperatorExportStatus] = useState('');
+  const [operatorImportText, setOperatorImportText] = useState('');
   const [shareStatus, setShareStatus] = useState('');
 
   useEffect(() => {
@@ -374,6 +375,29 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     anchor.click();
     URL.revokeObjectURL(url);
     setOperatorExportStatus('Downloaded loop-local-review-queue.json');
+  }
+
+  function parseOperatorHandoffPayload(raw: string) {
+    const parsed = JSON.parse(raw) as { pendingSubmissions?: unknown; approvedLocalEvents?: unknown };
+    return {
+      pendingSubmissions: Array.isArray(parsed.pendingSubmissions) ? parsed.pendingSubmissions.filter((item): item is LocalSubmission => item && typeof item === 'object') : [],
+      approvedLocalEvents: Array.isArray(parsed.approvedLocalEvents) ? parsed.approvedLocalEvents.filter((item): item is LiveFeedItem => item && typeof item === 'object' && typeof (item as LiveFeedItem).id === 'string') : [],
+    };
+  }
+
+  function importOperatorHandoff() {
+    try {
+      const parsed = parseOperatorHandoffPayload(operatorImportText);
+      // operator-handoff-import-pass payload shape: pendingSubmissions: parsed.pendingSubmissions, approvedLocalEvents: parsed.approvedLocalEvents
+      localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(parsed.pendingSubmissions));
+      localStorage.setItem('looplocal:approved-local-events', JSON.stringify(parsed.approvedLocalEvents));
+      setPendingSubmissions(parsed.pendingSubmissions);
+      setApprovedLocalItems(parsed.approvedLocalEvents);
+      setOperatorExportStatus(`Imported ${parsed.pendingSubmissions.length} pending · ${parsed.approvedLocalEvents.length} approved`);
+      setOperatorImportText('');
+    } catch {
+      setOperatorExportStatus('Import failed — paste valid loop-local-review-queue.json');
+    }
   }
 
   function handleTabSelect(tab: string) {
@@ -519,9 +543,11 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
               <div><h2>Review queue</h2><p>{pendingSubmissions.length ? `${pendingSubmissions.length} pending local submissions` : 'Pending local submissions will appear here after Post Local submit.'}</p></div>
               <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
             </header>
-            <section className="operator-handoff-card operator-handoff-export-pass" aria-label="Operator handoff">
+            <section className="operator-handoff-card operator-handoff-export-pass operator-handoff-import-pass" aria-label="Operator handoff">
               <div><strong>Operator handoff</strong><p>{pendingSubmissions.length} pending · {approvedLocalItems.length} locally approved</p></div>
               <div className="operator-handoff-actions"><button type="button" onClick={copyOperatorHandoff}>Copy queue JSON</button><button type="button" onClick={downloadOperatorHandoff}>Download JSON</button></div>
+              <label className="operator-import-area"><span>Paste exported review queue JSON</span><textarea value={operatorImportText} onChange={(event) => setOperatorImportText(event.target.value)} placeholder="Paste loop-local-review-queue.json here" rows={3} /></label>
+              <div className="operator-handoff-actions"><button type="button" onClick={importOperatorHandoff}>Import queue JSON</button></div>
               {operatorExportStatus ? <small className="operator-export-status" role="status">{operatorExportStatus}</small> : null}
             </section>
             {pendingSubmissions.length ? (
