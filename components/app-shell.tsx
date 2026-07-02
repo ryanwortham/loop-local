@@ -6,6 +6,8 @@ import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fal
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
+type SubmissionStatus = 'pending_review' | 'needs_changes' | 'approved_local' | 'published_local';
+
 type LocalSubmission = {
   entityName?: string;
   eventTitle?: string;
@@ -18,9 +20,10 @@ type LocalSubmission = {
   locationName?: string;
   ticketUrl?: string;
   postType?: string;
-  status?: string;
+  status?: SubmissionStatus | string;
   submittedAt?: string;
   approvedAt?: string;
+  statusUpdatedAt?: string;
 };
 
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
@@ -285,6 +288,12 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
   const savedItems = combinedFeedItems.filter((item) => savedEventIds.includes(item.id));
+  const reviewStatusCounts = useMemo(() => ({
+    pendingCount: pendingSubmissions.filter((item) => !item.status || item.status === 'pending_review').length,
+    needsChangesCount: pendingSubmissions.filter((item) => item.status === 'needs_changes').length,
+    approvedCount: pendingSubmissions.filter((item) => item.status === 'approved_local').length,
+    publishedCount: approvedLocalItems.length,
+  }), [approvedLocalItems.length, pendingSubmissions]);
 
   function isSavedEvent(item: LiveFeedItem): boolean {
     return savedEventIds.includes(item.id);
@@ -337,8 +346,16 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setPendingSubmissions(next);
   }
 
+  function updateLocalSubmissionStatus(indexToUpdate: number, status: SubmissionStatus) {
+    const next = pendingSubmissions.map((submission, index) => index === indexToUpdate ? { ...submission, status, statusUpdatedAt: new Date().toISOString() } : submission);
+    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(next));
+    setPendingSubmissions(next);
+    setOperatorExportStatus(`Marked ${status.replace('_', ' ')}`);
+  }
+
   function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
-    const approved = localSubmissionToFeedItem({ ...submission, status: 'approved_local', approvedAt: new Date().toISOString() }, indexToApprove);
+    // local-publish-workflow-pass legacy action label: Approve to discovery; review-status-lifecycle-pass UI label: Publish locally
+    const approved = localSubmissionToFeedItem({ ...submission, status: 'published_local', approvedAt: new Date().toISOString(), statusUpdatedAt: new Date().toISOString() }, indexToApprove);
     setApprovedLocalItems((current) => current.some((item) => item.id === approved.id) ? current : [approved, ...current]);
     removeLocalSubmission(indexToApprove);
     setShareStatus('Locally approved');
@@ -415,7 +432,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -543,6 +560,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
               <div><h2>Review queue</h2><p>{pendingSubmissions.length ? `${pendingSubmissions.length} pending local submissions` : 'Pending local submissions will appear here after Post Local submit.'}</p></div>
               <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
             </header>
+            <div className="review-status-summary" aria-label="Review status summary"><span>{reviewStatusCounts.pendingCount} pending</span><span>{reviewStatusCounts.needsChangesCount} needs changes</span><span>{reviewStatusCounts.approvedCount} approved only</span><span>{reviewStatusCounts.publishedCount} published locally</span></div>
             <section className="operator-handoff-card operator-handoff-export-pass operator-handoff-import-pass" aria-label="Operator handoff">
               <div><strong>Operator handoff</strong><p>{pendingSubmissions.length} pending · {approvedLocalItems.length} locally approved</p></div>
               <div className="operator-handoff-actions"><button type="button" onClick={copyOperatorHandoff}>Copy queue JSON</button><button type="button" onClick={downloadOperatorHandoff}>Download JSON</button></div>
@@ -558,7 +576,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                     <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
                     <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                     <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
-                    <div className="pending-submission-actions"><button className="approve-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Approve to discovery</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
+                    <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'needs_changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
                   </article>
                 ))}
               </div>

@@ -2128,3 +2128,37 @@ button { -webkit-tap-highlight-color: transparent; }
   border-color: rgba(37,99,235,.46);
   box-shadow: 0 0 0 4px rgba(37,99,235,.08);
 }
+
+
+/* review-status-lifecycle-pass: local-only submission status controls before publishing. */
+.review-status-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.review-status-summary span {
+  border: 1px solid rgba(148,163,184,.22);
+  border-radius: 14px;
+  padding: 9px;
+  color: var(--ll-rebuild-slate);
+  background: #FFFFFF;
+  font-size: .72rem;
+  font-weight: 900;
+  text-align: center;
+}
+.pending-submission-actions button.needs-changes-local {
+  color: #92400E;
+  background: #FEF3C7;
+}
+.pending-submission-actions button.approve-only-local,
+.pending-submission-actions button.approve-local {
+  color: #1D4ED8;
+  background: #DBEAFE;
+}
+.pending-submission-actions button.publish-local {
+  color: #065F46;
+  background: #D1FAE5;
+}
+@media (max-width: 520px) {
+  .review-status-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
