@@ -77,7 +77,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const hasSourceUrl = sourceUrl !== '#';
 
   return (
-    <main className="event-detail-route-real-page event-detail-page-shell complete-frontend-rebuild ux-polish-pass">
+    <main className="event-detail-route-real-page event-detail-page-shell event-detail-polish-pass event-detail-premium-shell complete-frontend-rebuild ux-polish-pass">
       <nav className="event-detail-topbar" aria-label="Event detail navigation">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -86,25 +86,38 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <Link className="secondary-action" href="/#events">← Back to Discover</Link>
       </nav>
 
-      <section className="event-detail-hero-panel">
+      <section className="event-detail-hero-panel event-detail-media-safe">
         <div className={event.image_url ? 'event-detail-page-image' : 'event-detail-page-image quiet-placeholder-image'} style={event.image_url ? { backgroundImage: `url(${eventImage(event)})` } : undefined}>
           <span className="floating-date event-detail-page-date"><strong>{date.month}</strong><b>{date.day}</b></span>
         </div>
-        <div className="event-detail-page-copy">
-          <p className="eyebrow">{event.category || 'Live local'}</p>
+        <div className="event-detail-page-copy event-detail-content-card">
+          <div className="event-detail-hero-kicker-row">
+            <p className="eyebrow">{event.category || 'Live local'}</p>
+            <span>{event.city || 'Nearby'}</span>
+          </div>
           <h1>{event.title}</h1>
           <p>{event.summary || `${event.title} is a local pick worth checking out near ${event.city || 'you'}.`}</p>
-          <div className="event-detail-action-row">
+          <div className="event-detail-quick-facts" aria-label="Quick event facts">
+            <span><b>When</b>{eventTimeLine(event)}</span>
+            <span><b>Where</b>{venueLine(event)}</span>
+            <span><b>Price</b>{priceLine(event)}</span>
+          </div>
+          <div className="event-detail-action-row event-detail-action-cluster">
             {hasSourceUrl ? <a className="primary-action" href={sourceUrl}>Reserve / tickets ↗</a> : null}
             <a className="secondary-action" href={`https://www.google.com/maps/search/?api=1&query=${mapQuery(event)}`}>Get directions</a>
             {hasSourceUrl ? <a className="secondary-action" href={sourceUrl}>View source</a> : null}
+          </div>
+          <div className="event-detail-sticky-cta-bar" aria-label="Event actions">
+            <button type="button">Save event</button>
+            <button type="button">Share event</button>
+            <a href={`data:text/calendar;charset=utf8,${encodeURIComponent(`BEGIN:VCALENDAR\nVERSION:2.0\nSUMMARY:${event.title}\nDESCRIPTION:${event.summary || ''}\nEND:VCALENDAR`)}`}>Add to calendar</a>
           </div>
         </div>
       </section>
 
       <section className="event-detail-content-grid">
         <article className="event-detail-info-card">
-          <h2>Event details</h2>
+          <h2>Plan your visit</h2>
           <dl>
             <div><dt>When</dt><dd>{eventTimeLine(event)}</dd></div>
             <div><dt>Where</dt><dd>{venueLine(event)}</dd></div>
@@ -123,7 +136,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       </section>
 
       {related.length ? (
-        <section className="event-detail-related-card">
+        <section className="event-detail-related-card event-detail-related-polished">
           <header className="section-title-row"><h2>More like this</h2><Link href="/#events">Explore all</Link></header>
           <div className="event-detail-related-grid">
             {related.map((item) => (

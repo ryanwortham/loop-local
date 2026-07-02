@@ -322,6 +322,39 @@ def test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow
     ]:
         assert preserved in post, f'premium wizard removed Post Local field/functionality {preserved}'
 
+
+def test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobile():
+    route = read('app/events/[slug]/page.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'event-detail-polish-pass',
+        'event-detail-premium-shell',
+        'event-detail-sticky-cta-bar',
+        'event-detail-quick-facts',
+        'event-detail-hero-kicker-row',
+        'event-detail-media-safe',
+        'event-detail-content-card',
+        'event-detail-action-cluster',
+        'event-detail-related-polished',
+        'Save event',
+        'Share event',
+        'Add to calendar',
+        'Plan your visit',
+    ]:
+        assert marker in route + css, f'missing event detail polish marker {marker}'
+    for preserved in [
+        'generateStaticParams',
+        'generateMetadata',
+        'getEventBySlug',
+        'notFound()',
+        'eventExternalUrl(event)',
+        'eventDetailPath(item)',
+        'Reserve / tickets',
+        'Get directions',
+        'Open in Maps',
+    ]:
+        assert preserved in route, f'event detail polish removed preserved detail behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -351,5 +384,6 @@ if __name__ == '__main__':
     test_loop_local_real_event_detail_pages_exist_and_cards_link_internally()
     test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery_ui()
     test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow()
+    test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobile()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
