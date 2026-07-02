@@ -457,6 +457,60 @@ def test_loop_local_saved_and_share_interactions_are_real_not_static_icons():
     for preserved in ['eventDetailPath(item)', 'eventExternalUrl(heroEvent)', 'viewMode', 'handleTabSelect']:
         assert preserved in shell, f'saved/share pass removed preserved behavior {preserved}'
 
+
+def test_loop_local_post_local_draft_validation_and_live_preview_are_real():
+    post = read('components/post-local-wizard.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'post-local-functional-draft-pass',
+        'PostLocalDraft',
+        'defaultDraft',
+        'draftStatus',
+        'submitStatus',
+        'validationErrors',
+        'updateDraft',
+        'validateDraft',
+        'handleSubmit',
+        'localStorage.setItem',
+        'looplocal:post-local-draft',
+        'looplocal:post-local-submissions',
+        'value={draft.eventTitle}',
+        'value={draft.entityName}',
+        'value={draft.eventCategory}',
+        'Live draft preview',
+        'Required before review',
+        'Ready for review',
+        'Draft saved locally',
+    ]:
+        assert marker in post, f'missing Post Local functional draft marker {marker}'
+    for marker in [
+        'post-local-functional-draft-pass',
+        '.post-draft-status-bar',
+        '.post-validation-summary',
+        '.ll-field-error',
+        '.post-submit-success',
+    ]:
+        assert marker in css, f'missing Post Local functional draft CSS marker {marker}'
+    for preserved in [
+        'FileDropInput',
+        'Business/community/entity name',
+        'Contact name',
+        'Email',
+        'Phone number',
+        'Street address',
+        'Website',
+        'Entity type',
+        'Event title',
+        'Event date',
+        'Start time',
+        'End time',
+        'Website/ticket link',
+        'Submit for Approval',
+        'mobile_date_picker_contract',
+        'mobile_time_picker_contract',
+    ]:
+        assert preserved in post, f'functional draft pass removed preserved field/functionality {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -490,5 +544,6 @@ if __name__ == '__main__':
     test_loop_local_live_data_quality_and_image_fallbacks_are_normalized()
     test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real()
     test_loop_local_saved_and_share_interactions_are_real_not_static_icons()
+    test_loop_local_post_local_draft_validation_and_live_preview_are_real()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

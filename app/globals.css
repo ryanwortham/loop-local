@@ -1902,3 +1902,63 @@ button { -webkit-tap-highlight-color: transparent; }
   font-size: .76rem;
   font-weight: 850;
 }
+
+
+/* post-local-functional-draft-pass: draft persistence, validation, live preview, and local review handoff. */
+.post-draft-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1160px;
+  margin: 0 auto 18px;
+  border: 1px solid var(--ll-rebuild-border);
+  border-radius: 999px;
+  padding: 10px 14px;
+  color: var(--ll-rebuild-muted);
+  background: rgba(255,255,255,.92);
+  box-shadow: var(--ll-polish-compact-shadow);
+  font-size: .82rem;
+  font-weight: 850;
+}
+.post-draft-status-bar strong {
+  color: var(--ll-rebuild-blue);
+}
+.post-validation-summary {
+  border: 1px solid rgba(220, 38, 38, .22);
+  border-radius: 22px;
+  padding: 14px 16px;
+  color: #991B1B;
+  background: #FEF2F2;
+}
+.post-validation-summary strong { display: block; margin-bottom: 3px; }
+.post-validation-summary p { margin: 0; color: #B91C1C; }
+.ll-field-error {
+  display: block;
+  margin-top: 6px;
+  color: #B91C1C;
+  font-size: .75rem;
+  font-weight: 850;
+}
+.ll-field input[aria-invalid="true"],
+.ll-field select[aria-invalid="true"],
+.ll-field textarea[aria-invalid="true"] {
+  border-color: rgba(220, 38, 38, .45);
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, .08);
+}
+.post-submit-success {
+  margin: 12px 0;
+  border: 1px solid rgba(22, 163, 74, .22);
+  border-radius: 18px;
+  padding: 12px 14px;
+  color: #166534;
+  background: #F0FDF4;
+  font-weight: 850;
+}
+@media (max-width: 680px) {
+  .post-draft-status-bar {
+    align-items: flex-start;
+    border-radius: 22px;
+    flex-direction: column;
+  }
+}
