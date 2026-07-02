@@ -1814,3 +1814,33 @@ button { -webkit-tap-highlight-color: transparent; }
 [data-visual-key="community"] {
   --ll-category-fallback-gradient: radial-gradient(circle at 18% 20%, rgba(255,255,255,.30), transparent 24%), linear-gradient(135deg, #0F766E, #155EEF);
 }
+
+
+/* navigation-interaction-polish: mobile app tabs are real controls, not dead hash links. */
+.mobile-app-tabbar button {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-width: 0;
+  border: 0;
+  border-radius: 16px;
+  padding: 9px 6px;
+  color: var(--ll-rebuild-muted);
+  background: transparent;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+.mobile-app-tabbar button span,
+.mobile-app-tabbar a span { font-size: .64rem; }
+.mobile-app-tabbar button.active,
+.mobile-app-tabbar a.active {
+  color: var(--ll-rebuild-blue);
+  background: var(--ll-rebuild-cyan);
+}
+.mobile-app-tabbar button:focus-visible {
+  outline: 3px solid rgba(21,94,239,.20);
+  outline-offset: 2px;
+}

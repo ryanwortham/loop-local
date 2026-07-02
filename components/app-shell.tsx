@@ -8,6 +8,11 @@ type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
 const tabs = ['Discover', 'Events', 'Map', 'Saved', 'Profile'];
+const tabToViewMode = (tab: string): ViewMode => {
+  if (tab === 'Map') return 'map';
+  if (tab === 'Events') return 'list';
+  return 'card';
+};
 const viewModes: Array<{ id: ViewMode; label: string }> = [
   { id: 'card', label: 'Cards' },
   { id: 'list', label: 'List' },
@@ -122,7 +127,7 @@ function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: bo
         </div>
       </div>
       <div className="event-actions card-actions">
-        <a href={eventDetailPath(item)}>Open</a>
+        <Link href={eventDetailPath(item)}>Open</Link>
         <button type="button" aria-label={`Save ${item.title}`}>♡</button>
       </div>
     </article>
@@ -141,7 +146,7 @@ function PopularRow({ item }: { item: LiveFeedItem }) {
         <p>{venueLine(item)} · {item.city || 'Nearby'}</p>
         <small>{item.time || priceLine(item)}</small>
       </div>
-      <a href={eventDetailPath(item)} aria-label={`Open ${item.title}`}>♡</a>
+      <Link href={eventDetailPath(item)} aria-label={`Open ${item.title}`}>♡</Link>
     </article>
   );
 }
@@ -201,8 +206,14 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setSortBy('soonest');
   }
 
+  function handleTabSelect(tab: string) {
+    setViewMode(tabToViewMode(tab));
+    if (tab === 'Saved' || tab === 'Profile') return;
+    document.getElementById(tab === 'Map' ? 'map' : 'events')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -276,7 +287,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'map' ? (
-          <section className="map-experience-upgrade map-discovery-shell" aria-label="Map discovery view">
+          <section className="map-experience-upgrade map-discovery-shell" id="map" aria-label="Map discovery view">
             <div className="map-control-bar">
               <span className="map-radius-chip">Within 10 mi</span>
               <span className="map-neighborhood-chip">Near {activeCity === 'All cities' ? locationQuery : activeCity}</span>
@@ -285,7 +296,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
             <div className="map-canvas-premium" aria-label="Premium local map preview">
               <span className="map-route-line" />
               {visibleItems.slice(0, 10).map((item, index) => (
-                <a
+                <Link
                   className="map-pin-cluster"
                   href={eventDetailPath(item)}
                   key={item.id}
@@ -294,13 +305,13 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                 >
                   <b>{index + 1}</b>
                   <span>{item.category || 'Local'}</span>
-                </a>
+                </Link>
               ))}
               <article className="map-selected-event-card">
                 <small>Closest highlight</small>
                 <strong>{visibleItems[0]?.title}</strong>
                 <span>{venueLine(visibleItems[0])} · {distanceLine(visibleItems[0])}</span>
-                <div><a href={eventDetailPath(visibleItems[0])}>Open event</a><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine(visibleItems[0]) || venueLine(visibleItems[0]) || visibleItems[0]?.city || visibleItems[0]?.title || 'event')}`}>Directions</a></div>
+                <div><Link href={eventDetailPath(visibleItems[0])}>Open event</Link><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine(visibleItems[0]) || venueLine(visibleItems[0]) || visibleItems[0]?.city || visibleItems[0]?.title || 'event')}`}>Directions</a></div>
               </article>
             </div>
             <aside className="map-side-results" aria-label="Map results list">
@@ -308,17 +319,27 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                 <article key={item.id}>
                   <b>{index + 1}</b>
                   <div><strong>{item.title}</strong><span>{venueLine(item)} · {distanceLine(item)}</span></div>
-                  <a href={eventDetailPath(item)}>Open event</a>
+                  <Link href={eventDetailPath(item)}>Open event</Link>
                 </article>
               ))}
             </aside>
           </section>
         ) : null}
-        {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
+        {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view" id="calendar">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
         {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
 
         <nav className="mobile-app-tabbar polished-bottom-nav" aria-label="App tabs">
-          {tabs.map((tab, index) => <a className={index === 0 ? 'active' : ''} href={`#${tab.toLowerCase()}`} key={tab}>{['⌕', '▦', '⌖', '♡', '◉'][index]}<span>{tab}</span></a>)}
+          {tabs.map((tab, index) => (
+            <button
+              aria-pressed={viewMode === tabToViewMode(tab)}
+              className={viewMode === tabToViewMode(tab) ? 'active' : ''}
+              key={tab}
+              onClick={() => handleTabSelect(tab)}
+              type="button"
+            >
+              {['⌕', '▦', '⌖', '♡', '◉'][index]}<span>{tab}</span>
+            </button>
+          ))}
         </nav>
       </section>
 

@@ -392,6 +392,32 @@ def test_loop_local_live_data_quality_and_image_fallbacks_are_normalized():
     for preserved in ['getLiveFeed', 'LiveFeedItem', 'eventDetailPath', 'eventExternalUrl', 'getEventBySlug']:
         assert preserved in feed, f'live data quality pass removed preserved feed helper {preserved}'
 
+
+def test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'navigation-interaction-polish',
+        'handleTabSelect',
+        'tabToViewMode',
+        'id="map"',
+        'id="calendar"',
+        'type="button"',
+        'setViewMode(tabToViewMode(tab))',
+        'aria-pressed={viewMode === tabToViewMode(tab)}',
+        'href={eventDetailPath(item)}',
+    ]:
+        assert marker in shell, f'missing navigation interaction polish marker {marker}'
+    for marker in [
+        'navigation-interaction-polish',
+        '.mobile-app-tabbar button',
+        '.mobile-app-tabbar button.active',
+        '.mobile-app-tabbar a.active',
+    ]:
+        assert marker in css, f'missing navigation interaction CSS marker {marker}'
+    assert '<a className="map-pin-cluster"' not in shell, 'map pins should use Next Link for internal /events navigation'
+    assert '<a href={eventDetailPath(item)}' not in shell, 'event detail internal links should use Link, not raw anchors'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -423,5 +449,6 @@ if __name__ == '__main__':
     test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow()
     test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobile()
     test_loop_local_live_data_quality_and_image_fallbacks_are_normalized()
+    test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
