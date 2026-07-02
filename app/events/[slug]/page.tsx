@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { eventDetailPath, eventExternalUrl, eventSlug, getEventBySlug, getLiveFeed, type LiveFeedItem } from '@/lib/live-feed';
+import { eventDetailPath, eventExternalUrl, eventImageState, eventSlug, eventVisualKey, fallbackVisualLabel, getEventBySlug, getLiveFeed, type LiveFeedItem } from '@/lib/live-feed';
 
 type EventDetailPageProps = {
   params: Promise<{ slug: string }>;
@@ -87,7 +87,8 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       </nav>
 
       <section className="event-detail-hero-panel event-detail-media-safe">
-        <div className={event.image_url ? 'event-detail-page-image' : 'event-detail-page-image quiet-placeholder-image'} style={event.image_url ? { backgroundImage: `url(${eventImage(event)})` } : undefined}>
+        <div className={event.image_url ? 'event-detail-page-image' : 'event-detail-page-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(event)} data-visual-key={eventVisualKey(event)} style={event.image_url ? { backgroundImage: `url(${eventImage(event)})` } : undefined}>
+          {!event.image_url ? <span className="fallback-visual-label">{fallbackVisualLabel(event)}</span> : null}
           <span className="floating-date event-detail-page-date"><strong>{date.month}</strong><b>{date.day}</b></span>
         </div>
         <div className="event-detail-page-copy event-detail-content-card">
@@ -141,7 +142,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           <div className="event-detail-related-grid">
             {related.map((item) => (
               <Link className="popular-list-row" href={eventDetailPath(item)} key={item.id}>
-                <div className={item.image_url ? 'popular-thumb' : 'popular-thumb quiet-popular-placeholder'} style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined} />
+                <div className={item.image_url ? 'popular-thumb' : 'popular-thumb local-photo-fallback quiet-popular-placeholder'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>{!item.image_url ? <span>{fallbackVisualLabel(item)}</span> : null}</div>
                 <div className="popular-copy">
                   <span className="mini-tag">{item.category || 'Local'}</span>
                   <h3>{item.title}</h3>

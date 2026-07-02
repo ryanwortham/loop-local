@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { eventDetailPath, eventExternalUrl, type LiveFeedItem } from '@/lib/live-feed';
+import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, type LiveFeedItem } from '@/lib/live-feed';
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
@@ -108,7 +108,8 @@ function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: bo
 
   return (
     <article className={compact ? 'explore-card explore-card-compact' : 'explore-card'}>
-      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image quiet-placeholder-image'} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
+      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
+        {!hasEventImage ? <span className="fallback-visual-label">{fallbackVisualLabel(item)}</span> : null}
         <span className="floating-date"><strong>{date.month}</strong><b>{date.day}</b></span>
         <span className={categoryClass(item.category)}>{item.category || item.type || 'Local'}</span>
       </div>
@@ -132,7 +133,7 @@ function PopularRow({ item }: { item: LiveFeedItem }) {
   const date = dayBlock(item);
   return (
     <article className="popular-list-row">
-      <div className={item.image_url ? 'popular-thumb' : 'popular-thumb quiet-popular-placeholder'} style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined} />
+      <div className={item.image_url ? 'popular-thumb' : 'popular-thumb local-photo-fallback quiet-popular-placeholder'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>{!item.image_url ? <span>{fallbackVisualLabel(item)}</span> : null}</div>
       <div className="popular-date"><span>{date.month}</span><strong>{date.day}</strong></div>
       <div className="popular-copy">
         <span className="mini-tag">{item.category || 'Local'}</span>
@@ -323,8 +324,8 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
       {heroEvent ? (
         <aside className="event-detail-preview polished-detail-preview" aria-label="Featured event detail preview">
-          <div className="detail-hero-image" style={{ backgroundImage: `url(${eventImage(heroEvent)})` }}>
-            <button type="button" aria-label="Back">‹</button>
+          <div className={heroEvent.image_url ? 'detail-hero-image' : 'detail-hero-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(heroEvent)} data-visual-key={eventVisualKey(heroEvent)} style={heroEvent.image_url ? { backgroundImage: `url(${eventImage(heroEvent)})` } : undefined}>
+            {!heroEvent.image_url ? <span className="fallback-visual-label">{fallbackVisualLabel(heroEvent)}</span> : null}
             <div><button type="button" aria-label="Save">♡</button><button type="button" aria-label="Share">⇧</button></div>
           </div>
           <div className="detail-body">

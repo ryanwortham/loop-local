@@ -197,7 +197,7 @@ def test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art():
         assert marker in css, f'CSS missing card overflow/media fix marker {marker}'
     for marker in [
         "style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}",
-        "className={item.image_url ? 'popular-thumb' : 'popular-thumb quiet-popular-placeholder'}",
+        "className={item.image_url ? 'popular-thumb' : 'popular-thumb local-photo-fallback quiet-popular-placeholder'}",
         "style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined}",
     ]:
         assert marker in shell, f'card markup still forces placeholder crop or missing containment marker {marker}'
@@ -355,6 +355,43 @@ def test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobil
     ]:
         assert preserved in route, f'event detail polish removed preserved detail behavior {preserved}'
 
+
+def test_loop_local_live_data_quality_and_image_fallbacks_are_normalized():
+    feed = read('lib/live-feed.ts')
+    shell = read('components/app-shell.tsx')
+    route = read('app/events/[slug]/page.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'live-data-quality-pass',
+        'normalizeFeedItem',
+        'normalizeCategory',
+        'cleanTitle',
+        'eventVisualKey',
+        'eventImageState',
+        'categoryPhotoFallback',
+        'fallbackVisualLabel',
+    ]:
+        assert marker in feed, f'missing live data quality helper marker {marker}'
+    for marker in [
+        'data-image-state={eventImageState(item)}',
+        'data-visual-key={eventVisualKey(item)}',
+        'local-photo-fallback',
+        'fallbackVisualLabel(item)',
+    ]:
+        assert marker in shell + route, f'missing normalized image fallback markup {marker}'
+    for marker in [
+        'live-data-quality-pass',
+        '.local-photo-fallback',
+        '[data-visual-key="live-music"]',
+        '[data-visual-key="sports"]',
+        '[data-visual-key="family"]',
+        '[data-image-state="fallback"]',
+        'background-image: var(--ll-category-fallback-gradient)',
+    ]:
+        assert marker in css, f'missing category fallback CSS marker {marker}'
+    for preserved in ['getLiveFeed', 'LiveFeedItem', 'eventDetailPath', 'eventExternalUrl', 'getEventBySlug']:
+        assert preserved in feed, f'live data quality pass removed preserved feed helper {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -385,5 +422,6 @@ if __name__ == '__main__':
     test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery_ui()
     test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow()
     test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobile()
+    test_loop_local_live_data_quality_and_image_fallbacks_are_normalized()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

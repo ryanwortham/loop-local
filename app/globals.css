@@ -1744,3 +1744,73 @@ button { -webkit-tap-highlight-color: transparent; }
   .event-detail-hero-kicker-row { align-items: flex-start; flex-direction: column; }
   .event-detail-hero-kicker-row span { max-width: 100%; }
 }
+
+
+/* live-data-quality-pass: normalized feed data + category-aware image fallbacks for missing live photos. */
+:root {
+  --ll-category-fallback-gradient: radial-gradient(circle at 18% 18%, rgba(255,255,255,.30), transparent 26%), linear-gradient(135deg, #155EEF, #7DD3FC);
+}
+.local-photo-fallback[data-image-state="fallback"] {
+  position: relative;
+  overflow: hidden;
+  background-color: #0F1F3D;
+  background-image: var(--ll-category-fallback-gradient);
+  background-size: cover;
+  background-position: center;
+}
+.local-photo-fallback[data-image-state="fallback"]::before {
+  display: none;
+}
+.local-photo-fallback[data-image-state="fallback"]::after {
+  content: '';
+  position: absolute;
+  inset: auto -18% -42% 24%;
+  height: 82%;
+  border-radius: 999px;
+  background: rgba(255,255,255,.18);
+  transform: rotate(-18deg);
+}
+.local-photo-fallback .fallback-visual-label,
+.popular-thumb.local-photo-fallback span {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 2;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.42);
+  border-radius: 999px;
+  padding: 7px 10px;
+  color: #FFFFFF;
+  background: rgba(7,17,43,.28);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: blur(10px);
+}
+.popular-thumb.local-photo-fallback span {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  max-width: none;
+  padding: 5px 7px;
+  font-size: .58rem;
+  text-align: center;
+}
+[data-visual-key="live-music"] {
+  --ll-category-fallback-gradient: radial-gradient(circle at 24% 20%, rgba(255,255,255,.34), transparent 24%), linear-gradient(135deg, #7C3AED, #155EEF 52%, #06B6D4);
+}
+[data-visual-key="sports"] {
+  --ll-category-fallback-gradient: radial-gradient(circle at 24% 18%, rgba(255,255,255,.30), transparent 22%), linear-gradient(135deg, #16A34A, #155EEF);
+}
+[data-visual-key="family"] {
+  --ll-category-fallback-gradient: radial-gradient(circle at 18% 20%, rgba(255,255,255,.32), transparent 24%), linear-gradient(135deg, #F97316, #F59E0B 48%, #155EEF);
+}
+[data-visual-key="food-drink"] {
+  --ll-category-fallback-gradient: radial-gradient(circle at 18% 20%, rgba(255,255,255,.30), transparent 24%), linear-gradient(135deg, #EF4444, #F97316 55%, #155EEF);
+}
+[data-visual-key="community"] {
+  --ll-category-fallback-gradient: radial-gradient(circle at 18% 20%, rgba(255,255,255,.30), transparent 24%), linear-gradient(135deg, #0F766E, #155EEF);
+}

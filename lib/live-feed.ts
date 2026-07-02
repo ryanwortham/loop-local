@@ -1,5 +1,7 @@
 export const referenceFeedBaseUrl = 'https://replaced-gaming-selected-spectacular.trycloudflare.com';
 
+// live-data-quality-pass: normalize live feed text/categories and attach category-aware image fallback metadata.
+
 export type LiveFeedItem = {
   id: string;
   title: string;
@@ -28,6 +30,9 @@ export type LiveFeedItem = {
   website?: string;
   price?: string;
   image_url?: string;
+  visualKey?: string;
+  imageState?: 'photo' | 'fallback';
+  fallbackLabel?: string;
   endsAt?: string | null;
   timezone?: string;
   artists?: string[];
@@ -51,10 +56,74 @@ export const emptyLiveFeed: LiveFeedResponse = {
   items: [],
 };
 
+function cleanTitle(value: string): string {
+  return value
+    .replace(/\s+/g, ' ')
+    .replace(/\s+-\s+$/, '')
+    .replace(/^(ticketmaster|eventbrite)\s*[:\-]\s*/i, '')
+    .trim();
+}
+
+function normalizeCategory(value?: string): string {
+  const raw = (value || '').trim();
+  if (!raw) return 'Local';
+  if (/music|concert|band|artist/i.test(raw)) return 'Live Music';
+  if (/sport|game|team/i.test(raw)) return 'Sports';
+  if (/family|kid/i.test(raw)) return 'Family';
+  if (/fundraiser|charity|benefit/i.test(raw)) return 'Fundraisers';
+  return raw;
+}
+
+export function eventVisualKey(item: LiveFeedItem): string {
+  const category = normalizeCategory(item.category || item.type).toLowerCase();
+  if (/music|concert|artist/.test(category)) return 'live-music';
+  if (/sport|game/.test(category)) return 'sports';
+  if (/family|kid/.test(category)) return 'family';
+  if (/food|drink|happy/.test(category)) return 'food-drink';
+  if (/fundraiser|community/.test(category)) return 'community';
+  return 'local';
+}
+
+export function eventImageState(item: LiveFeedItem): 'photo' | 'fallback' {
+  return item.image_url ? 'photo' : 'fallback';
+}
+
+export function fallbackVisualLabel(item: LiveFeedItem): string {
+  const category = normalizeCategory(item.category || item.type);
+  if (eventImageState(item) === 'photo') return '';
+  if (category === 'Live Music') return 'Live music';
+  if (category === 'Sports') return 'Game day';
+  if (category === 'Family') return 'Family pick';
+  if (category === 'Fundraisers') return 'Local cause';
+  return 'Local pick';
+}
+
+function categoryPhotoFallback(item: LiveFeedItem): LiveFeedItem {
+  return {
+    ...item,
+    visualKey: eventVisualKey(item),
+    imageState: eventImageState(item),
+    fallbackLabel: fallbackVisualLabel(item),
+  };
+}
+
+function normalizeFeedItem(item: LiveFeedItem): LiveFeedItem {
+  return categoryPhotoFallback({
+    ...item,
+    title: cleanTitle(item.title || ''),
+    category: normalizeCategory(item.category || item.type),
+    city: item.city?.trim(),
+    business: item.business?.trim(),
+    location: item.location?.trim(),
+    summary: item.summary?.trim(),
+  });
+}
+
 function cleanItems(items: LiveFeedItem[]): LiveFeedItem[] {
   const seen = new Set<string>();
   return items
     .filter((item) => item && item.id && item.title)
+    .map(normalizeFeedItem)
     .filter((item) => {
       if (seen.has(item.id)) return false;
       seen.add(item.id);
