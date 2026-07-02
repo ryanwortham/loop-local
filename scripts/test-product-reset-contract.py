@@ -98,7 +98,7 @@ def test_home_preserves_search_filters_views_and_feed_logic():
         "viewMode === 'list'",
         "viewMode === 'map'",
         "viewMode === 'calendar'",
-        'map-view',
+        'map-discovery-shell',
         'calendar-view',
         'empty-filter-state',
     ]:
@@ -254,6 +254,34 @@ def test_loop_local_real_event_detail_pages_exist_and_cards_link_internally():
     assert 'href={eventDetailPath(item)}' in shell, 'event cards must link to internal /events/[slug] detail pages'
     assert 'href={eventExternalUrl(heroEvent)}' in shell, 'hero detail preview must preserve external ticket/source CTA separately'
 
+
+def test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery_ui():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'map-experience-upgrade',
+        'map-discovery-shell',
+        'map-control-bar',
+        'map-radius-chip',
+        'map-neighborhood-chip',
+        'map-canvas-premium',
+        'map-route-line',
+        'map-pin-cluster',
+        'map-selected-event-card',
+        'map-side-results',
+        'Open event',
+        'Directions',
+    ]:
+        assert marker in shell + css, f'missing map upgrade marker {marker}'
+    for preserved in [
+        "viewMode === 'map'",
+        'visibleItems.slice(0, 10)',
+        'setViewMode',
+        'eventDetailPath(item)',
+        'distanceLine(item)',
+    ]:
+        assert preserved in shell, f'map upgrade removed preserved feed/view behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -281,5 +309,6 @@ if __name__ == '__main__':
     test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art()
     test_loop_local_hero_headline_is_not_oversized_after_polish()
     test_loop_local_real_event_detail_pages_exist_and_cards_link_internally()
+    test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery_ui()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

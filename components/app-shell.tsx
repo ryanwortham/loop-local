@@ -275,10 +275,43 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow item={item} key={item.id} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'map' ? (
-          <div className="map-view">
-            <div className="map-art" aria-label="Map preview">{visibleItems.slice(0, 10).map((item, index) => <span key={item.id} style={{ left: `${12 + ((index * 17) % 76)}%`, top: `${18 + ((index * 23) % 62)}%` }}>{index + 1}</span>)}</div>
-            <div className="map-list">{visibleItems.slice(0, 6).map((item) => <article key={item.id}><strong>{item.title}</strong><span>{venueLine(item)} · {distanceLine(item)}</span></article>)}</div>
-          </div>
+          <section className="map-experience-upgrade map-discovery-shell" aria-label="Map discovery view">
+            <div className="map-control-bar">
+              <span className="map-radius-chip">Within 10 mi</span>
+              <span className="map-neighborhood-chip">Near {activeCity === 'All cities' ? locationQuery : activeCity}</span>
+              <button type="button" onClick={() => setSortBy('city')}>Group by area</button>
+            </div>
+            <div className="map-canvas-premium" aria-label="Premium local map preview">
+              <span className="map-route-line" />
+              {visibleItems.slice(0, 10).map((item, index) => (
+                <a
+                  className="map-pin-cluster"
+                  href={eventDetailPath(item)}
+                  key={item.id}
+                  style={{ left: `${10 + ((index * 19) % 78)}%`, top: `${16 + ((index * 29) % 62)}%` }}
+                  aria-label={`Open event ${item.title}`}
+                >
+                  <b>{index + 1}</b>
+                  <span>{item.category || 'Local'}</span>
+                </a>
+              ))}
+              <article className="map-selected-event-card">
+                <small>Closest highlight</small>
+                <strong>{visibleItems[0]?.title}</strong>
+                <span>{venueLine(visibleItems[0])} · {distanceLine(visibleItems[0])}</span>
+                <div><a href={eventDetailPath(visibleItems[0])}>Open event</a><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine(visibleItems[0]) || venueLine(visibleItems[0]) || visibleItems[0]?.city || visibleItems[0]?.title || 'event')}`}>Directions</a></div>
+              </article>
+            </div>
+            <aside className="map-side-results" aria-label="Map results list">
+              {visibleItems.slice(0, 6).map((item, index) => (
+                <article key={item.id}>
+                  <b>{index + 1}</b>
+                  <div><strong>{item.title}</strong><span>{venueLine(item)} · {distanceLine(item)}</span></div>
+                  <a href={eventDetailPath(item)}>Open event</a>
+                </article>
+              ))}
+            </aside>
+          </section>
         ) : null}
         {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
         {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
