@@ -282,6 +282,46 @@ def test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery
     ]:
         assert preserved in shell, f'map upgrade removed preserved feed/view behavior {preserved}'
 
+
+def test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow():
+    post = read('components/post-local-wizard.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'post-local-premium-wizard',
+        'post-local-command-center',
+        'post-wizard-shell-grid',
+        'post-wizard-stage-card',
+        'post-wizard-stepper',
+        'post-wizard-trust-card',
+        'post-wizard-live-preview',
+        'post-wizard-mobile-dock',
+        'Premium submission flow',
+        'Start with your profile',
+        'Build the first post',
+        'Preview your listing',
+        'Submit for approval',
+    ]:
+        assert marker in post + css, f'missing premium Post Local wizard marker {marker}'
+    for preserved in [
+        'FileDropInput',
+        'Business/community/entity name',
+        'Contact name',
+        'Email',
+        'Phone number',
+        'Street address',
+        'Website',
+        'Entity type',
+        'Event title',
+        'Event date',
+        'Start time',
+        'End time',
+        'Website/ticket link',
+        'Submit for Approval',
+        'mobile_date_picker_contract',
+        'mobile_time_picker_contract',
+    ]:
+        assert preserved in post, f'premium wizard removed Post Local field/functionality {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -310,5 +350,6 @@ if __name__ == '__main__':
     test_loop_local_hero_headline_is_not_oversized_after_polish()
     test_loop_local_real_event_detail_pages_exist_and_cards_link_internally()
     test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery_ui()
+    test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

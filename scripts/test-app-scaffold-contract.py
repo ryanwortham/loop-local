@@ -88,12 +88,12 @@ def test_post_local_route_matches_current_app_contract():
     route = read("app/post-local/page.tsx") + read("components/post-local-wizard.tsx")
     for needle in [
         "Post Local",
-        "Share something amazing nearby.",
+        "Share something locals will actually want to find.",
         "List Your Business",
         "Post an Event",
         "Join as a Community Organization",
         "Step 1: Profile",
-        "Business/Organization Profile",
+        "Start with your profile",
         "logo",
         "contact_name",
         "entity_type",
@@ -104,8 +104,8 @@ def test_post_local_route_matches_current_app_contract():
         "event_date",
         "start_time",
         "end_time",
-        "Step 3: Preview",
-        "Step 4: Submit for Approval",
+        "Preview your listing",
+        "Submit for approval",
         "Submit for Approval",
         "Draft/pending until approved",
     ]:

@@ -46,6 +46,13 @@ const postTypes = [
   'Job Posting',
 ];
 
+const wizardSteps = [
+  ['01', 'Start with your profile', 'Who is posting?'],
+  ['02', 'Build the first post', 'What should locals see?'],
+  ['03', 'Preview your listing', 'Mobile-first review'],
+  ['04', 'Submit for approval', 'Human review before live'],
+];
+
 function TextField({ label, name, type = 'text' }: { label: string; name: string; type?: string }) {
   return (
     <label className="ll-field">
@@ -78,46 +85,62 @@ function TextAreaField({ label, name }: { label: string; name: string }) {
 
 export function PostLocalWizard() {
   return (
-    <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell">
-      <header className="ll-nav post-app-topbar">
+    <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard">
+      <header className="ll-nav post-app-topbar post-local-command-center">
         <Link className="ll-brand" href="/">
           <Image src="/looplocal-logo.png" alt="Loop Local" width={52} height={52} />
           <span>Loop Local</span>
         </Link>
         <nav aria-label="Loop Local navigation">
-          <a href="#discover">Discover</a>
-          <a href="#events">Events</a>
-          <a href="#businesses">Businesses</a>
-          <a href="#dashboards">Dashboards</a>
-          <a href="/post-local#first-post">Post Local</a>
+          <Link href="/#discover">Discover</Link>
+          <Link href="/#events">Events</Link>
+          <Link href="/#map">Map</Link>
+          <Link href="/post-local#first-post">Post Local</Link>
         </nav>
       </header>
 
-      <section className="ll-hero" id="first-post">
-        <p className="ll-kicker">Loop Local · Post Local</p>
-        <h1>Share something amazing nearby.</h1>
-        <p>List Your Business, Post an Event, or Join as a Community Organization.</p>
-        <div className="ll-choice-row" aria-label="submission type shortcuts">
-          <button type="button">List Your Business</button>
-          <button type="button">Post an Event</button>
-          <button type="button">Join as a Community Organization</button>
-        </div>
-        <div className="ll-success-note">
-          Your profile has been submitted for review. Once approved, you’ll be able to post events and promotions.
-        </div>
+      <section className="post-wizard-shell-grid" id="first-post">
+        <aside className="post-wizard-trust-card" aria-label="Premium submission flow">
+          <p className="ll-kicker">Premium submission flow</p>
+          <h1>Share something locals will actually want to find.</h1>
+          <p>List a business, publish an event, submit a promotion, or join as a community organization — all in one guided approval flow.</p>
+          <div className="post-trust-metrics">
+            <span><strong>4</strong> guided steps</span>
+            <span><strong>0</strong> instant public posts</span>
+            <span><strong>100%</strong> review-first</span>
+          </div>
+          <div className="ll-choice-row" aria-label="submission type shortcuts">
+            <button type="button">List Your Business</button>
+            <button type="button">Post an Event</button>
+            <button type="button">Join as a Community Organization</button>
+          </div>
+          <div className="ll-success-note">
+            Your profile has been submitted for review. Once approved, you’ll be able to post events and promotions.
+          </div>
+        </aside>
+
+        <aside className="post-wizard-live-preview" aria-label="Post Local mobile preview">
+          <span className="mini-tag">Live Preview</span>
+          <div className="ll-phone-card">
+            <span>Loop Local Preview</span>
+            <strong>Your event title</strong>
+            <p>Category · Date · Location</p>
+            <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
+          </div>
+          <p>Preview your listing before approval so the card feels ready for the discovery feed.</p>
+        </aside>
       </section>
 
-      <ol className="ll-progress" aria-label="progress indicator">
-        <li><strong>Step 1</strong><span>Profile</span></li>
-        <li><strong>Step 2</strong><span>First Event or Promotion</span></li>
-        <li><strong>Step 3</strong><span>Preview</span></li>
-        <li><strong>Step 4</strong><span>Submit for Approval</span></li>
+      <ol className="ll-progress post-wizard-stepper" aria-label="progress indicator">
+        {wizardSteps.map(([number, title, detail]) => (
+          <li key={number}><strong>{number}</strong><span>{title}</span><small>{detail}</small></li>
+        ))}
       </ol>
 
-      <form className="ll-form">
-        <section className="ll-card post-flow-card">
+      <form className="ll-form post-wizard-form">
+        <section className="ll-card post-flow-card post-wizard-stage-card">
           <p className="ll-kicker">Step 1: Profile</p>
-          <h2>Business/Organization Profile</h2>
+          <h2>Start with your profile</h2>
           <p>Large mobile input fields, thumb-friendly spacing, and mobile-friendly logo upload.</p>
           <FileDropInput
             name="logo"
@@ -143,9 +166,9 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card post-flow-card">
+        <section className="ll-card post-flow-card post-wizard-stage-card">
           <p className="ll-kicker">Step 2: First Event or Promotion</p>
-          <h2>Start building your first event right away</h2>
+          <h2>Build the first post</h2>
           <p>Posts stay draft/pending until approved. Save draft automatically is enabled for this app-ready form shell.</p>
           <div className="ll-pending-pill">Save draft automatically · Draft/pending until approved</div>
           <fieldset className="ll-radio-grid">
@@ -186,9 +209,9 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card ll-preview-card post-flow-card">
+        <section className="ll-card ll-preview-card post-flow-card post-wizard-stage-card">
           <p className="ll-kicker">Step 3: Preview</p>
-          <h2>Preview before approval</h2>
+          <h2>Preview your listing</h2>
           <p>Mobile preview card will show logo, image, title, date/time, address, category, call, website, directions, save, and share actions.</p>
           <div className="ll-phone-card">
             <span>Loop Local Preview</span>
@@ -198,9 +221,9 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card ll-submit-card post-flow-card">
+        <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card">
           <p className="ll-kicker">Step 4: Submit for Approval</p>
-          <h2>Your profile and first post have been submitted for review.</h2>
+          <h2>Submit for approval</h2>
           <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
           <div className="ll-submit-actions">
             <Link href="/">Back to discovery</Link>
@@ -209,11 +232,11 @@ export function PostLocalWizard() {
         </section>
       </form>
 
-      <nav className="ll-mobile-tabs mobile-app-tabbar" aria-label="Mobile tabs: Discover Events Map Saved Profile">
-        <a href="#discover">⌂ Discover</a>
-        <a href="#events">✦ Events</a>
-        <a href="#map">⌖ Map</a>
-        <a href="#saved">♡ Saved</a>
+      <nav className="post-wizard-mobile-dock ll-mobile-tabs mobile-app-tabbar" aria-label="Mobile tabs: Discover Events Map Saved Profile">
+        <Link href="/#discover">⌂ Discover</Link>
+        <Link href="/#events">✦ Events</Link>
+        <Link href="/#map">⌖ Map</Link>
+        <a href="#first-post">⊕ Post</a>
         <a href="#profile">◉ Profile</a>
       </nav>
     </main>
