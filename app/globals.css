@@ -1844,3 +1844,61 @@ button { -webkit-tap-highlight-color: transparent; }
   outline: 3px solid rgba(21,94,239,.20);
   outline-offset: 2px;
 }
+
+
+/* saved-share-interaction-pass: saved event persistence, share/copy feedback, and saved drawer polish. */
+.event-actions button.is-saved,
+.detail-hero-image button.is-saved,
+.popular-actions button.is-saved,
+.event-detail-sticky-cta-bar button.is-saved {
+  color: #FFFFFF;
+  background: var(--ll-rebuild-blue);
+}
+.popular-actions {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+.popular-actions button,
+.popular-actions a {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--ll-rebuild-border);
+  border-radius: 50%;
+  color: var(--ll-rebuild-slate);
+  background: #FFFFFF;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+.saved-events-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--ll-rebuild-border);
+  border-radius: 24px;
+  background: #FFFFFF;
+  box-shadow: var(--ll-polish-compact-shadow);
+}
+.saved-events-panel .section-title-row button {
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--ll-rebuild-blue);
+  background: var(--ll-rebuild-cyan);
+  font-weight: 850;
+  cursor: pointer;
+}
+.share-status {
+  margin: 10px 0 0;
+  border: 1px solid var(--ll-rebuild-border);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--ll-rebuild-blue);
+  background: var(--ll-rebuild-cyan);
+  font-size: .76rem;
+  font-weight: 850;
+}

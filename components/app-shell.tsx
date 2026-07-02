@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, type LiveFeedItem } from '@/lib/live-feed';
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
@@ -107,7 +107,7 @@ function dayBlock(item: LiveFeedItem) {
   };
 }
 
-function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: boolean }) {
+function EventCard({ item, compact = false, isSaved = false, onSave }: { item: LiveFeedItem; compact?: boolean; isSaved?: boolean; onSave?: (item: LiveFeedItem) => void }) {
   const hasEventImage = Boolean(item.image_url);
   const date = dayBlock(item);
 
@@ -128,13 +128,13 @@ function EventCard({ item, compact = false }: { item: LiveFeedItem; compact?: bo
       </div>
       <div className="event-actions card-actions">
         <Link href={eventDetailPath(item)}>Open</Link>
-        <button type="button" aria-label={`Save ${item.title}`}>♡</button>
+        <button className={isSaved ? 'is-saved' : ''} type="button" aria-label={`${isSaved ? 'Unsave' : 'Save'} ${item.title}`} onClick={() => onSave?.(item)}>{isSaved ? '♥' : '♡'}</button>
       </div>
     </article>
   );
 }
 
-function PopularRow({ item }: { item: LiveFeedItem }) {
+function PopularRow({ item, isSaved = false, onSave }: { item: LiveFeedItem; isSaved?: boolean; onSave?: (item: LiveFeedItem) => void }) {
   const date = dayBlock(item);
   return (
     <article className="popular-list-row">
@@ -146,7 +146,10 @@ function PopularRow({ item }: { item: LiveFeedItem }) {
         <p>{venueLine(item)} · {item.city || 'Nearby'}</p>
         <small>{item.time || priceLine(item)}</small>
       </div>
-      <Link href={eventDetailPath(item)} aria-label={`Open ${item.title}`}>♡</Link>
+      <div className="popular-actions">
+        <button className={isSaved ? 'is-saved' : ''} type="button" aria-label={`${isSaved ? 'Unsave' : 'Save'} ${item.title}`} onClick={() => onSave?.(item)}>{isSaved ? '♥' : '♡'}</button>
+        <Link href={eventDetailPath(item)} aria-label={`Open ${item.title}`}>↗</Link>
+      </div>
     </article>
   );
 }
@@ -165,6 +168,21 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   const [activeMoment, setActiveMoment] = useState('All');
   const [sortBy, setSortBy] = useState('soonest');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [savedEventIds, setSavedEventIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = JSON.parse(localStorage.getItem('looplocal:saved-events') || '[]');
+      return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showSavedPanel, setShowSavedPanel] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('looplocal:saved-events', JSON.stringify(savedEventIds));
+  }, [savedEventIds]);
 
   const categories = useMemo(
     () => ['All categories', ...Array.from(new Set(feedItems.map((item) => item.category).filter(Boolean) as string[])).sort()],
@@ -197,6 +215,30 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   const hasLiveData = feedItems.length > 0;
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
+  const savedItems = feedItems.filter((item) => savedEventIds.includes(item.id));
+
+  function isSavedEvent(item: LiveFeedItem): boolean {
+    return savedEventIds.includes(item.id);
+  }
+
+  function toggleSavedEvent(item: LiveFeedItem) {
+    setSavedEventIds((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [item.id, ...current]);
+  }
+
+  async function handleShareEvent(item: LiveFeedItem) {
+    const url = `${window.location.origin}${eventDetailPath(item)}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: item.title, text: item.summary || venueLine(item), url });
+        setShareStatus('Shared event');
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setShareStatus('Copied event link');
+    } catch {
+      setShareStatus('Share canceled');
+    }
+  }
 
   function clearFilters() {
     setSearchQuery('');
@@ -207,13 +249,17 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   function handleTabSelect(tab: string) {
+    if (tab === 'Saved') {
+      setShowSavedPanel((value) => !value);
+      return;
+    }
+    if (tab === 'Profile') return;
     setViewMode(tabToViewMode(tab));
-    if (tab === 'Saved' || tab === 'Profile') return;
     document.getElementById(tab === 'Map' ? 'map' : 'events')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -266,7 +312,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
           <header className="section-title-row"><h2>Featured This Week</h2><a href="#events">View all</a></header>
           <div className="featured-rail polished-card-density">
-            {featuredItems.map((item) => <EventCard compact item={item} key={item.id} />)}
+            {featuredItems.map((item) => <EventCard compact isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}
           </div>
         </section>
 
@@ -276,7 +322,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
             {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : <a href="#events">View all</a>}
           </header>
           <div className="popular-list polished-list-density">
-            {(popularItems.length ? popularItems : featuredItems).slice(0, 6).map((item) => <PopularRow item={item} key={item.id} />)}
+            {(popularItems.length ? popularItems : featuredItems).slice(0, 6).map((item) => <PopularRow isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}
           </div>
         </section>
 
@@ -284,8 +330,8 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
           {viewModes.map((mode) => <button className={viewMode === mode.id ? 'active' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">{mode.label}</button>)}
         </section>
 
-        {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard item={item} key={item.id} />)}</div> : null}
-        {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow item={item} key={item.id} />)}</div> : null}
+        {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}</div> : null}
+        {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'map' ? (
           <section className="map-experience-upgrade map-discovery-shell" id="map" aria-label="Map discovery view">
             <div className="map-control-bar">
@@ -327,6 +373,15 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         ) : null}
         {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view" id="calendar">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
         {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
+        {showSavedPanel ? (
+          <section className="saved-events-panel" aria-label="Saved events">
+            <header className="section-title-row"><div><h2>Saved events</h2><p>{savedItems.length ? `${savedItems.length} saved locally` : 'Save events to compare plans later.'}</p></div><button type="button" onClick={() => setShowSavedPanel(false)}>Close</button></header>
+            <div className="popular-list polished-list-density">
+              {(savedItems.length ? savedItems : featuredItems.slice(0, 3)).map((item) => <PopularRow isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}
+            </div>
+          </section>
+        ) : null}
+        {shareStatus ? <p className="share-status" role="status">{shareStatus}</p> : null}
 
         <nav className="mobile-app-tabbar polished-bottom-nav" aria-label="App tabs">
           {tabs.map((tab, index) => (
@@ -347,7 +402,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         <aside className="event-detail-preview polished-detail-preview" aria-label="Featured event detail preview">
           <div className={heroEvent.image_url ? 'detail-hero-image' : 'detail-hero-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(heroEvent)} data-visual-key={eventVisualKey(heroEvent)} style={heroEvent.image_url ? { backgroundImage: `url(${eventImage(heroEvent)})` } : undefined}>
             {!heroEvent.image_url ? <span className="fallback-visual-label">{fallbackVisualLabel(heroEvent)}</span> : null}
-            <div><button type="button" aria-label="Save">♡</button><button type="button" aria-label="Share">⇧</button></div>
+            <div><button className={isSavedEvent(heroEvent) ? 'is-saved' : ''} type="button" aria-label={isSavedEvent(heroEvent) ? 'Unsave featured event' : 'Save featured event'} onClick={() => toggleSavedEvent(heroEvent)}>{isSavedEvent(heroEvent) ? '♥' : '♡'}</button><button type="button" aria-label="Share" onClick={() => handleShareEvent(heroEvent)}>⇧</button></div>
           </div>
           <div className="detail-body">
             <span className="floating-date detail-date"><strong>{heroDate.month}</strong><b>{heroDate.day}</b></span>

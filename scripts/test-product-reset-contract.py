@@ -324,7 +324,7 @@ def test_loop_local_post_local_premium_wizard_preserves_fields_and_improves_flow
 
 
 def test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobile():
-    route = read('app/events/[slug]/page.tsx')
+    route = read('app/events/[slug]/page.tsx') + read('components/event-detail-client-actions.tsx')
     css = read('app/globals.css')
     for marker in [
         'event-detail-polish-pass',
@@ -418,6 +418,45 @@ def test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_
     assert '<a className="map-pin-cluster"' not in shell, 'map pins should use Next Link for internal /events navigation'
     assert '<a href={eventDetailPath(item)}' not in shell, 'event detail internal links should use Link, not raw anchors'
 
+
+def test_loop_local_saved_and_share_interactions_are_real_not_static_icons():
+    shell = read('components/app-shell.tsx')
+    route = read('app/events/[slug]/page.tsx') + read('components/event-detail-client-actions.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'saved-share-interaction-pass',
+        'useEffect',
+        'savedEventIds',
+        'toggleSavedEvent',
+        'isSavedEvent',
+        'localStorage.setItem',
+        'looplocal:saved-events',
+        'handleShareEvent',
+        'navigator.share',
+        'navigator.clipboard.writeText',
+        'saved-events-panel',
+        'showSavedPanel',
+    ]:
+        assert marker in shell, f'missing saved/share homepage marker {marker}'
+    for marker in [
+        'event-detail-client-actions',
+        'SavedShareActions',
+        'saved-share-interaction-pass',
+        'looplocal:saved-events',
+        'navigator.share',
+        'navigator.clipboard.writeText',
+    ]:
+        assert marker in route, f'missing saved/share event detail marker {marker}'
+    for marker in [
+        'saved-share-interaction-pass',
+        '.saved-events-panel',
+        '.event-actions button.is-saved',
+        '.event-detail-sticky-cta-bar button.is-saved',
+    ]:
+        assert marker in css, f'missing saved/share CSS marker {marker}'
+    for preserved in ['eventDetailPath(item)', 'eventExternalUrl(heroEvent)', 'viewMode', 'handleTabSelect']:
+        assert preserved in shell, f'saved/share pass removed preserved behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -450,5 +489,6 @@ if __name__ == '__main__':
     test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobile()
     test_loop_local_live_data_quality_and_image_fallbacks_are_normalized()
     test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real()
+    test_loop_local_saved_and_share_interactions_are_real_not_static_icons()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { SavedShareActions } from '@/components/event-detail-client-actions';
 import { eventDetailPath, eventExternalUrl, eventImageState, eventSlug, eventVisualKey, fallbackVisualLabel, getEventBySlug, getLiveFeed, type LiveFeedItem } from '@/lib/live-feed';
 
 type EventDetailPageProps = {
@@ -108,11 +109,13 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <a className="secondary-action" href={`https://www.google.com/maps/search/?api=1&query=${mapQuery(event)}`}>Get directions</a>
             {hasSourceUrl ? <a className="secondary-action" href={sourceUrl}>View source</a> : null}
           </div>
-          <div className="event-detail-sticky-cta-bar" aria-label="Event actions">
-            <button type="button">Save event</button>
-            <button type="button">Share event</button>
-            <a href={`data:text/calendar;charset=utf8,${encodeURIComponent(`BEGIN:VCALENDAR\nVERSION:2.0\nSUMMARY:${event.title}\nDESCRIPTION:${event.summary || ''}\nEND:VCALENDAR`)}`}>Add to calendar</a>
-          </div>
+          <SavedShareActions
+            calendarHref={`data:text/calendar;charset=utf8,${encodeURIComponent(`BEGIN:VCALENDAR\nVERSION:2.0\nSUMMARY:${event.title}\nDESCRIPTION:${event.summary || ''}\nEND:VCALENDAR`)}`}
+            eventId={event.id}
+            summary={event.summary || eventTimeLine(event)}
+            title={event.title}
+            url={eventDetailPath(event)}
+          />
         </div>
       </section>
 
