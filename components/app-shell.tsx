@@ -239,6 +239,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
       return [];
     }
   });
+  const [operatorExportStatus, setOperatorExportStatus] = useState('');
   const [shareStatus, setShareStatus] = useState('');
 
   useEffect(() => {
@@ -340,6 +341,39 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setApprovedLocalItems((current) => current.some((item) => item.id === approved.id) ? current : [approved, ...current]);
     removeLocalSubmission(indexToApprove);
     setShareStatus('Locally approved');
+  }
+
+  function buildOperatorHandoffPayload() {
+    return {
+      exportedAt: new Date().toISOString(),
+      source: 'loop-local-browser-review-queue',
+      pendingCount: pendingSubmissions.length,
+      approvedCount: approvedLocalItems.length,
+      pendingSubmissions,
+      approvedLocalEvents: approvedLocalItems,
+    };
+  }
+
+  async function copyOperatorHandoff() {
+    const payload = JSON.stringify(buildOperatorHandoffPayload(), null, 2);
+    try {
+      await navigator.clipboard.writeText(payload);
+      setOperatorExportStatus('Operator handoff JSON copied');
+    } catch {
+      setOperatorExportStatus('Copy unavailable — use Download JSON');
+    }
+  }
+
+  function downloadOperatorHandoff() {
+    const payload = JSON.stringify(buildOperatorHandoffPayload(), null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'loop-local-review-queue.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setOperatorExportStatus('Downloaded loop-local-review-queue.json');
   }
 
   function handleTabSelect(tab: string) {
@@ -485,6 +519,11 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
               <div><h2>Review queue</h2><p>{pendingSubmissions.length ? `${pendingSubmissions.length} pending local submissions` : 'Pending local submissions will appear here after Post Local submit.'}</p></div>
               <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
             </header>
+            <section className="operator-handoff-card operator-handoff-export-pass" aria-label="Operator handoff">
+              <div><strong>Operator handoff</strong><p>{pendingSubmissions.length} pending · {approvedLocalItems.length} locally approved</p></div>
+              <div className="operator-handoff-actions"><button type="button" onClick={copyOperatorHandoff}>Copy queue JSON</button><button type="button" onClick={downloadOperatorHandoff}>Download JSON</button></div>
+              {operatorExportStatus ? <small className="operator-export-status" role="status">{operatorExportStatus}</small> : null}
+            </section>
             {pendingSubmissions.length ? (
               <div className="pending-submission-grid">
                 {pendingSubmissions.slice(0, 6).map((submission, index) => (

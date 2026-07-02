@@ -2056,3 +2056,47 @@ button { -webkit-tap-highlight-color: transparent; }
   color: #991B1B;
   background: #FEE2E2;
 }
+
+
+/* operator-handoff-export-pass: copy/download local review queue JSON for admin handoff. */
+.operator-handoff-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(37,99,235,.16);
+  border-radius: 20px;
+  padding: 13px;
+  background: linear-gradient(135deg, #EFF6FF, #FFFFFF);
+}
+.operator-handoff-card strong {
+  color: var(--ll-rebuild-slate);
+}
+.operator-handoff-card p,
+.operator-export-status {
+  margin: 4px 0 0;
+  color: var(--ll-rebuild-muted);
+  font-size: .78rem;
+  font-weight: 750;
+}
+.operator-handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.operator-handoff-actions button {
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: #FFFFFF;
+  background: var(--ll-rebuild-blue);
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+.operator-handoff-actions button:last-child {
+  color: var(--ll-rebuild-blue);
+  background: #DBEAFE;
+}
+.operator-export-status {
+  display: block;
+}
