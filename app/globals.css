@@ -2556,3 +2556,55 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* mobile-interaction-qa-pass: visible tap/focus diagnostics and dead-anchor hardening for home + Post Local. */
+.mobile-interaction-qa-pass .mobile-qa-target {
+  min-height: 44px;
+  min-width: 44px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(21,94,239,.18);
+}
+.mobile-interaction-qa-pass :is(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid rgba(21,94,239,.28);
+  outline-offset: 3px;
+}
+.mobile-interaction-qa-pass :is(button, a):active {
+  transform: scale(.985);
+  filter: saturate(1.04);
+}
+.mobile-interaction-qa-pass :is(#profile, #first-post, #preview-listing, #submit-for-approval, #events, #map) {
+  scroll-margin-top: 82px;
+  scroll-margin-bottom: 126px;
+}
+
+@media (max-width: 920px) {
+  .mobile-interaction-qa-pass .mobile-qa-home-menu {
+    pointer-events: auto;
+  }
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .post-wizard-mobile-dock {
+    z-index: 46;
+    pointer-events: auto;
+  }
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .post-app-topbar {
+    z-index: 42;
+  }
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .post-wizard-stage-card,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .post-wizard-shell-grid,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .post-draft-status-bar {
+    position: relative;
+    z-index: 1;
+  }
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-choice-row button,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-submit-actions button,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-submit-actions a,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-field input,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-field select,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-field textarea,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .ll-radio-grid label {
+    min-height: 48px;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+}

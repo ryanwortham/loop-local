@@ -209,7 +209,7 @@ export function PostLocalWizard() {
   }
 
   return (
-    <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard post-local-functional-draft-pass">
+    <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard post-local-functional-draft-pass mobile-interaction-qa-pass">
       <header className="ll-nav post-app-topbar post-local-command-center">
         <Link className="ll-brand" href="/">
           <Image src="/looplocal-logo.png" alt="Loop Local" width={52} height={52} />
@@ -291,7 +291,7 @@ export function PostLocalWizard() {
           <textarea readOnly name="event_description" value={draft.eventDescription} />
         </div>
 
-        <section className="ll-card post-flow-card post-wizard-stage-card">
+        <section className="ll-card post-flow-card post-wizard-stage-card" id="profile">
           <p className="ll-kicker">Step 1: Profile</p>
           <h2>Start with your profile</h2>
           <p>Large mobile input fields, thumb-friendly spacing, and mobile-friendly logo upload.</p>
@@ -362,7 +362,7 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card ll-preview-card post-flow-card post-wizard-stage-card">
+        <section className="ll-card ll-preview-card post-flow-card post-wizard-stage-card" id="preview-listing">
           <p className="ll-kicker">Step 3: Preview</p>
           <h2>Preview your listing</h2>
           <p>Mobile preview card will show logo, image, title, date/time, address, category, call, website, directions, save, and share actions.</p>
@@ -374,7 +374,7 @@ export function PostLocalWizard() {
           </div>
         </section>
 
-        <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card">
+        <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card" id="submit-for-approval">
           <p className="ll-kicker">Step 4: Submit for Approval</p>
           <h2>Submit for approval</h2>
           <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
@@ -386,12 +386,12 @@ export function PostLocalWizard() {
         </section>
       </form>
 
-      <nav className="post-wizard-mobile-dock ll-mobile-tabs mobile-app-tabbar" aria-label="Mobile tabs: Discover Events Map Saved Profile">
-        <Link href="/#discover">⌂ Discover</Link>
-        <Link href="/#events">✦ Events</Link>
-        <Link href="/#map">⌖ Map</Link>
-        <a href="#first-post">⊕ Post</a>
-        <a href="#profile">◉ Profile</a>
+      <nav className="post-wizard-mobile-dock ll-mobile-tabs mobile-app-tabbar mobile-qa-post-dock" aria-label="Post Local mobile tabs">
+        <Link className="mobile-qa-target" href="/#discover">⌂ Discover</Link>
+        <a className="mobile-qa-target" href="#first-post">✦ Post</a>
+        <a className="mobile-qa-target" href="#preview-listing">⌖ Preview</a>
+        <a className="mobile-qa-target" href="#submit-for-approval">✓ Submit</a>
+        <a className="mobile-qa-target" href="#profile">◉ Profile details</a>
       </nav>
     </main>
   );

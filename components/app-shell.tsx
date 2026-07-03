@@ -480,7 +480,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass mobile-interaction-qa-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -503,16 +503,16 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
       <section className="discovery-phone" aria-label="Loop Local discovery feed">
         <nav className="phone-topbar" aria-label="Primary navigation">
-          <button type="button" aria-label="Menu" aria-expanded={showMobileMenu} onClick={toggleMobileMenu}>☰</button>
-          <Link className="phone-logo" href="/"><span className="brand-mark mini"><span className="brand-logo-image" aria-label="Loop Local" /></span> loop local</Link>
-          <button type="button" aria-label="Saved events" onClick={() => setShowSavedPanel(true)}>♡</button>
+          <button className="mobile-qa-target" type="button" aria-label="Menu" aria-expanded={showMobileMenu} onClick={toggleMobileMenu}>☰</button>
+          <Link className="phone-logo mobile-qa-target" href="/"><span className="brand-mark mini"><span className="brand-logo-image" aria-label="Loop Local" /></span> loop local</Link>
+          <button className="mobile-qa-target" type="button" aria-label="Open Saved Events" onClick={() => setShowSavedPanel(true)}>♡</button>
         </nav>
         {showMobileMenu ? (
-          <section className="mobile-menu-panel" aria-label="Mobile menu">
-            <button type="button" onClick={() => { setShowMobileMenu(false); document.getElementById('events')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Explore nearby</button>
-            <Link href="/post-local" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
-            <button type="button" onClick={() => { setShowSubmissionPanel(true); setShowMobileMenu(false); }}>Review queue</button>
-            <button type="button" onClick={() => { setShowSavedPanel(true); setShowMobileMenu(false); }}>Saved events</button>
+          <section className="mobile-menu-panel mobile-qa-home-menu" aria-label="Mobile menu">
+            <button className="mobile-qa-target" type="button" onClick={() => { setShowMobileMenu(false); document.getElementById('events')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Explore nearby</button>
+            <Link className="mobile-qa-target" href="/post-local" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
+            <button className="mobile-qa-target" type="button" aria-label="Open Review Queue" onClick={() => { setShowSubmissionPanel(true); setShowMobileMenu(false); }}>Review queue</button>
+            <button className="mobile-qa-target" type="button" onClick={() => { setShowSavedPanel(true); setShowMobileMenu(false); }}>Saved events</button>
           </section>
         ) : null}
 

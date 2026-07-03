@@ -898,6 +898,47 @@ def test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable():
     ]:
         assert preserved in shell + css, f'mobile tap reliability removed preserved behavior {preserved}'
 
+
+def test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps():
+    shell = read('components/app-shell.tsx')
+    post = read('components/post-local-wizard.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'mobile-interaction-qa-pass',
+        'mobile-qa-target',
+        'mobile-qa-home-menu',
+        'mobile-qa-post-dock',
+        'id="profile"',
+        'id="submit-for-approval"',
+        'href="#submit-for-approval"',
+        'aria-label="Post Local mobile tabs"',
+        'aria-label="Open Review Queue"',
+        'aria-label="Open Saved Events"',
+    ]:
+        assert marker in shell + post, f'missing mobile interaction QA shell/post marker {marker}'
+    for marker in [
+        'mobile-interaction-qa-pass',
+        '.mobile-interaction-qa-pass .mobile-qa-target',
+        '.mobile-interaction-qa-pass :is(button, a, input, select, textarea):focus-visible',
+        '.mobile-interaction-qa-pass :is(button, a):active',
+        'outline: 3px solid rgba(21,94,239,.28)',
+        '-webkit-tap-highlight-color: rgba(21,94,239,.18)',
+        'scroll-margin-top: 82px',
+        'scroll-margin-bottom: 126px',
+        '.post-mobile-reference-shell.mobile-interaction-qa-pass .post-wizard-mobile-dock',
+        'z-index: 46',
+    ]:
+        assert marker in css, f'missing mobile interaction QA CSS marker {marker}'
+    assert 'href="#profile">◉ Profile</a>' not in post, 'dead mobile #profile dock link should be replaced with a real profile target label'
+    for preserved in [
+        'mobile-tap-reliability-pass',
+        'post-local-functional-draft-pass',
+        'handleSubmit',
+        'FileDropInput',
+        'looplocal:post-local-submissions',
+    ]:
+        assert preserved in shell + post + css, f'mobile interaction QA removed preserved behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -943,5 +984,6 @@ if __name__ == '__main__':
     test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap()
     test_loop_local_mobile_first_homepage_polish_feels_intentional_after_containment()
     test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable()
+    test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
