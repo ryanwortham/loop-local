@@ -965,6 +965,30 @@ def test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks():
     ]:
         assert marker in smoke, f'missing mobile browser smoke harness marker {marker}'
 
+
+def test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up():
+    pkg = read('package.json')
+    runner = read('scripts/run-mobile-smoke-with-server.mjs') if (ROOT / 'scripts/run-mobile-smoke-with-server.mjs').exists() else ''
+    for marker in [
+        '"test:mobile:full"',
+        'run-mobile-smoke-with-server.mjs',
+        'test:mobile:smoke',
+    ]:
+        assert marker in pkg, f'missing self-contained mobile smoke package marker {marker}'
+    for marker in [
+        'mobile-smoke-full-runner-pass',
+        'spawn',
+        'npm run build',
+        'npm run start -- -p',
+        'waitForServer',
+        'LOOP_LOCAL_SMOKE_URL',
+        'npm run test:mobile:smoke',
+        'killServer',
+        'SIGTERM',
+        'loop_local_mobile_smoke_full_runner_ok',
+    ]:
+        assert marker in runner, f'missing self-contained mobile smoke runner marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1012,5 +1036,6 @@ if __name__ == '__main__':
     test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable()
     test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps()
     test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks()
+    test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
