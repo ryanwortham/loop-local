@@ -90,10 +90,24 @@ async function main() {
   await page.locator('textarea[name="eventDescription"]').fill('Submitted for API-backed review from the mobile smoke test.');
   await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'valid Submit for Approval button');
   await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
-  await page.getByText('Submission ID').waitFor({ timeout });
+  await page.locator('.post-submit-success').getByText('Submission ID').waitFor({ timeout });
+  const lookupSubmissionId = (await page.locator('.post-submit-success code').first().textContent())?.trim();
+  if (!lookupSubmissionId) fail('submitter-status-lookup-pass: missing lookupSubmissionId after submit');
   await Promise.all([
     page.waitForURL(/\/post-local\/status\//, { timeout }),
     page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
+  ]);
+  await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
+
+  // submitter-status-lookup-pass: returning submitters can enter a Submission ID lookup from Post Local.
+  await page.goto(`${baseURL}/post-local`, { waitUntil: 'domcontentloaded' });
+  await page.getByLabel('Submission ID lookup').waitFor({ timeout });
+  await page.getByText('Check an existing submission').waitFor({ timeout });
+  await page.getByText('Enter your Submission ID', { exact: true }).waitFor({ timeout });
+  await page.getByPlaceholder('local-event-name-178...').fill(lookupSubmissionId);
+  await Promise.all([
+    page.waitForURL(/\/post-local\/status\//, { timeout }),
+    page.getByRole('button', { name: 'View status' }).click({ timeout }),
   ]);
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
 

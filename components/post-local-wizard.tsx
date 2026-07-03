@@ -174,6 +174,7 @@ export function PostLocalWizard() {
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
   const [submitStatus, setSubmitStatus] = useState('Required before review');
   const [submittedSubmissionId, setSubmittedSubmissionId] = useState('');
+  const [statusLookupId, setStatusLookupId] = useState('');
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
 
   useEffect(() => {
@@ -226,6 +227,13 @@ export function PostLocalWizard() {
     });
     if (!response.ok) throw new Error('Failed to submit Post Local draft');
     return response.json();
+  }
+
+  function handleStatusLookup(event: FormEvent<HTMLFormElement>) {
+    // submitter-status-lookup-pass: let returning submitters check an existing submission by ID.
+    event.preventDefault();
+    if (!statusLookupId.trim()) return;
+    window.location.href = `/post-local/status/${encodeURIComponent(statusLookupId.trim())}`;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -431,6 +439,25 @@ export function PostLocalWizard() {
           </div>
         </section>
       </form>
+
+      <section className="ll-card post-flow-card submission-status-lookup-card submitter-status-lookup-pass" aria-label="Submission ID lookup">
+        <p className="ll-kicker">Submission ID lookup</p>
+        <h2>Check an existing submission</h2>
+        <p>Already submitted something? Enter your Submission ID to reopen the live review status page.</p>
+        <form className="submission-status-lookup-form" onSubmit={handleStatusLookup}>
+          <label className="ll-field">
+            <span>Enter your Submission ID</span>
+            <input
+              name="submission_status_lookup"
+              onChange={(event) => setStatusLookupId(event.target.value)}
+              placeholder="local-event-name-178..."
+              type="text"
+              value={statusLookupId}
+            />
+          </label>
+          <button type="submit" disabled={!statusLookupId.trim()}>View status</button>
+        </form>
+      </section>
 
       <nav className="post-wizard-mobile-dock ll-mobile-tabs mobile-app-tabbar mobile-qa-post-dock" aria-label="Post Local mobile tabs">
         <Link className="mobile-qa-target" href="/#discover">⌂ Discover</Link>

@@ -1200,6 +1200,41 @@ def test_loop_local_submitter_status_page_tracks_review_and_publish_state():
     ]:
         assert marker in api_smoke, f'missing API smoke submitter status marker {marker}'
 
+
+def test_loop_local_post_local_status_lookup_by_submission_id():
+    post = read('components/post-local-wizard.tsx')
+    css = read('app/globals.css')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'submitter-status-lookup-pass',
+        'statusLookupId',
+        'setStatusLookupId',
+        'handleStatusLookup',
+        'Check an existing submission',
+        'Enter your Submission ID',
+        'Submission ID lookup',
+        'View status',
+        "window.location.href = `/post-local/status/${encodeURIComponent(statusLookupId.trim())}`",
+    ]:
+        assert marker in post, f'missing Post Local status lookup marker {marker}'
+    for marker in [
+        'submitter-status-lookup-pass',
+        '.submission-status-lookup-card',
+        '.submission-status-lookup-form',
+        '.submission-status-lookup-form input',
+        '.submission-status-lookup-form button',
+    ]:
+        assert marker in css, f'missing status lookup CSS marker {marker}'
+    for marker in [
+        'submitter-status-lookup-pass',
+        'Submission ID lookup',
+        'Enter your Submission ID',
+        'View status',
+        'lookupSubmissionId',
+        'page.waitForURL(/\\/post-local\\/status\\//',
+    ]:
+        assert marker in mobile_smoke, f'missing status lookup mobile smoke marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1253,5 +1288,6 @@ if __name__ == '__main__':
     test_loop_local_local_submissions_api_has_direct_crud_smoke_tests()
     test_loop_local_post_local_media_survives_submit_review_publish()
     test_loop_local_submitter_status_page_tracks_review_and_publish_state()
+    test_loop_local_post_local_status_lookup_by_submission_id()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

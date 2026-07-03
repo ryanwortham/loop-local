@@ -2621,3 +2621,42 @@ body {
     touch-action: manipulation;
   }
 }
+
+
+/* submitter-status-lookup-pass: returning Post Local submitters can reopen status by ID. */
+.submission-status-lookup-card {
+  margin: 0 auto max(118px, env(safe-area-inset-bottom) + 92px);
+  background: linear-gradient(135deg, #FFFFFF, #F8FBFF);
+}
+.submission-status-lookup-card h2 { margin: 0 0 8px; color: var(--ll-rebuild-ink); }
+.submission-status-lookup-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 16px;
+}
+.submission-status-lookup-form input {
+  min-height: 48px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.submission-status-lookup-form button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 18px;
+  background: var(--ll-rebuild-blue);
+  color: #FFFFFF;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 16px 30px rgba(21,94,239,.18);
+}
+.submission-status-lookup-form button:disabled {
+  cursor: not-allowed;
+  opacity: .48;
+  box-shadow: none;
+}
+@media (max-width: 640px) {
+  .submission-status-lookup-form { grid-template-columns: 1fr; }
+  .submission-status-lookup-form button { width: 100%; }
+}
