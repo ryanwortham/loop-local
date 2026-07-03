@@ -989,6 +989,68 @@ def test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up()
     ]:
         assert marker in runner, f'missing self-contained mobile smoke runner marker {marker}'
 
+
+def test_loop_local_api_backed_post_local_submissions_persist_through_review_queue():
+    post = read('components/post-local-wizard.tsx')
+    shell = read('components/app-shell.tsx')
+    api = read('app/api/local-submissions/route.ts') if (ROOT / 'app/api/local-submissions/route.ts').exists() else ''
+    store = read('lib/local-submissions-store.ts') if (ROOT / 'lib/local-submissions-store.ts').exists() else ''
+    smoke = read('scripts/mobile-interaction-smoke.mjs')
+    pkg = read('package.json')
+    for marker in [
+        'api-backed-local-submissions-pass',
+        'LocalSubmissionRecord',
+        'readLocalSubmissionsStore',
+        'writeLocalSubmissionsStore',
+        'submissionToFeedItem',
+        'createLocalSubmission',
+        'updateLocalSubmission',
+        'deleteLocalSubmission',
+        'publishedLocalEvents',
+        'runtime-data/local-submissions.json',
+    ]:
+        assert marker in api + store, f'missing API-backed local submissions store marker {marker}'
+    for marker in [
+        'api-backed-local-submissions-pass',
+        'export async function GET',
+        'export async function POST',
+        'export async function PATCH',
+        'export async function DELETE',
+        '/api/local-submissions',
+        'NextResponse.json',
+    ]:
+        assert marker in api, f'missing API-backed local submissions route marker {marker}'
+    for marker in [
+        'api-backed-local-submissions-pass',
+        "fetch('/api/local-submissions'",
+        'submitPostLocalDraft',
+        'setSubmitStatus(\'Ready for review\')',
+        'setDraftStatus(\'Saved to review queue\')',
+        'looplocal:post-local-draft',
+    ]:
+        assert marker in post, f'missing API-backed Post Local submit marker {marker}'
+    for marker in [
+        'api-backed-local-submissions-pass',
+        'loadLocalSubmissionsFromApi',
+        "fetch('/api/local-submissions'",
+        'syncLocalSubmissionMutation',
+        'pendingSubmissions',
+        'approvedLocalItems',
+        'publishedLocalEvents',
+        'apiBackedReviewQueue',
+        'setOperatorExportStatus(\'Review queue synced\')',
+    ]:
+        assert marker in shell, f'missing API-backed review queue marker {marker}'
+    for marker in [
+        'API Smoke Bakery',
+        'API Smoke Market Night',
+        'Publish locally',
+        'Submitted for API-backed review',
+        'API Smoke Market Night',
+    ]:
+        assert marker in smoke, f'missing mobile smoke API-backed flow marker {marker}'
+    assert 'test:mobile:full' in pkg, 'mobile full runner must remain available for API-backed flow verification'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1037,5 +1099,6 @@ if __name__ == '__main__':
     test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps()
     test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks()
     test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up()
+    test_loop_local_api_backed_post_local_submissions_persist_through_review_queue()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

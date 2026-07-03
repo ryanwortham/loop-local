@@ -38,7 +38,7 @@ async function main() {
   const page = await context.newPage();
   page.setDefaultTimeout(timeout);
 
-  await page.goto(`${baseURL}/`, { waitUntil: 'networkidle' });
+  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
   await page.locator('.mobile-interaction-qa-pass').waitFor({ timeout });
   await page.locator('.mobile-qa-target').first().waitFor({ timeout });
 
@@ -60,7 +60,11 @@ async function main() {
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'bottom Profile tab', { force: true });
   await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
 
-  await page.goto(`${baseURL}/post-local`, { waitUntil: 'networkidle' });
+  await page.request.post(`${baseURL}/api/local-submissions`, {
+    data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] },
+  });
+
+  await page.goto(`${baseURL}/post-local`, { waitUntil: 'domcontentloaded' });
   await page.locator('.post-mobile-reference-shell.mobile-interaction-qa-pass').waitFor({ timeout });
   await page.getByLabel('Post Local mobile tabs').waitFor({ timeout });
   await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Profile details'), 'Post Local profile dock target');
@@ -69,6 +73,31 @@ async function main() {
   await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'Submit for Approval button');
   await page.getByRole('alert').waitFor({ timeout });
+
+  // api-backed-local-submissions-pass: submit a valid item and prove it survives through Review Queue publish.
+  // Submitted for API-backed review: API Smoke Bakery / API Smoke Market Night.
+  await page.locator('input[name="entityName"]').fill('API Smoke Bakery');
+  await page.locator('input[name="logo"]').setInputFiles('public/looplocal-logo.png');
+  await page.locator('input[name="contactName"]').fill('Riley Smoke');
+  await page.locator('input[name="email"]').fill('riley@example.com');
+  await page.locator('select[name="entityType"]').selectOption('Business');
+  await page.locator('input[name="eventTitle"]').fill('API Smoke Market Night');
+  await page.locator('input[name="eventDate"]').fill('2026-08-15');
+  await page.locator('input[name="locationName"]').fill('Loop Local Test Hall');
+  await page.locator('input[name="eventCity"]').fill('St. Louis');
+  await page.locator('select[name="eventCategory"]').selectOption('Community');
+  await page.locator('textarea[name="eventDescription"]').fill('Submitted for API-backed review from the mobile smoke test.');
+  await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'valid Submit for Approval button');
+  await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
+
+  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
+  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after API submit', { force: true });
+  await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
+  await page.getByText('API Smoke Market Night').waitFor({ timeout });
+  await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
+  await page.getByText('Locally approved').first().waitFor({ timeout });
+  await page.getByPlaceholder('Search events, artists, venues…').fill('API Smoke Market Night');
+  await page.getByText('API Smoke Market Night').first().waitFor({ timeout });
 
   await context.close();
   await browser.close();

@@ -192,7 +192,19 @@ export function PostLocalWizard() {
     return nextErrors;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submitPostLocalDraft() {
+    // api-backed-local-submissions-pass: POST persists the review queue beyond this browser.
+    // legacy migration marker: looplocal:post-local-submissions moved from source-of-truth to API-backed review queue.
+    const response = await fetch('/api/local-submissions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...draft, submittedAt: new Date().toISOString(), status: 'pending_review' }),
+    });
+    if (!response.ok) throw new Error('Failed to submit Post Local draft');
+    return response.json();
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const nextErrors = validateDraft();
     setValidationErrors(nextErrors);
@@ -200,12 +212,14 @@ export function PostLocalWizard() {
       setSubmitStatus('Required before review');
       return;
     }
-    const submission = { ...draft, submittedAt: new Date().toISOString(), status: 'pending_review' };
-    const existing = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
-    const submissions = Array.isArray(existing) ? existing : [];
-    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify([submission, ...submissions]));
-    setSubmitStatus('Ready for review');
-    setDraftStatus('Draft saved locally');
+    try {
+      await submitPostLocalDraft();
+      setSubmitStatus('Ready for review');
+      setDraftStatus('Saved to review queue');
+    } catch {
+      setSubmitStatus('Submit failed — try again');
+      setDraftStatus('Draft saved locally');
+    }
   }
 
   return (

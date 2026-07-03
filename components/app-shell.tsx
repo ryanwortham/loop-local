@@ -17,6 +17,7 @@ const reviewQueueFilters: Array<{ id: ReviewQueueFilter; label: string }> = [
 ];
 
 type LocalSubmission = {
+  id?: string;
   entityName?: string;
   eventTitle?: string;
   eventDate?: string;
@@ -363,44 +364,106 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setSortBy('soonest');
   }
 
-  function loadPendingSubmissions() {
+  function applyApiBackedReviewQueue(data: { pendingSubmissions?: LocalSubmission[]; publishedLocalEvents?: LiveFeedItem[] }) {
+    // api-backed-local-submissions-pass: browser state mirrors /api/local-submissions.
+    const apiBackedReviewQueue = Array.isArray(data.pendingSubmissions) ? data.pendingSubmissions : [];
+    const publishedLocalEvents = Array.isArray(data.publishedLocalEvents) ? data.publishedLocalEvents : [];
+    setPendingSubmissions(apiBackedReviewQueue);
+    setApprovedLocalItems(publishedLocalEvents);
+    return { apiBackedReviewQueue, publishedLocalEvents };
+  }
+
+  async function loadLocalSubmissionsFromApi() {
     try {
-      const stored = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
-      setPendingSubmissions(Array.isArray(stored) ? stored.filter((item): item is LocalSubmission => item && typeof item === 'object') : []);
+      const response = await fetch('/api/local-submissions', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Review queue unavailable');
+      const data = await response.json();
+      applyApiBackedReviewQueue(data);
+      setOperatorExportStatus('Review queue synced');
     } catch {
-      setPendingSubmissions([]);
+      try {
+        const stored = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
+        setPendingSubmissions(Array.isArray(stored) ? stored.filter((item): item is LocalSubmission => item && typeof item === 'object') : []);
+      } catch {
+        setPendingSubmissions([]);
+      }
     }
   }
 
-  function clearPendingSubmissions() {
+  function loadPendingSubmissions() {
+    void loadLocalSubmissionsFromApi();
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/local-submissions', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => {
+        if (!cancelled && data) applyApiBackedReviewQueue(data);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, []);
+
+  async function syncLocalSubmissionMutation(input: RequestInfo | URL, init?: RequestInit) {
+    const response = await fetch(input, init);
+    if (!response.ok) throw new Error('Review queue mutation failed');
+    const data = await response.json();
+    applyApiBackedReviewQueue(data);
+    return data;
+  }
+
+  async function clearPendingSubmissions() {
     localStorage.setItem('looplocal:post-local-submissions', '[]');
-    setPendingSubmissions([]);
+    await syncLocalSubmissionMutation('/api/local-submissions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'replace', pendingSubmissions: [], publishedLocalEvents: approvedLocalItems }),
+    });
+    setOperatorExportStatus('Review queue cleared');
   }
 
-  function removeLocalSubmission(indexToRemove: number) {
-    const next = pendingSubmissions.filter((_, index) => index !== indexToRemove);
-    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(next));
-    setPendingSubmissions(next);
+  async function removeLocalSubmission(indexToRemove: number) {
+    const submission = pendingSubmissions[indexToRemove];
+    if (!submission?.id) return;
+    await syncLocalSubmissionMutation(`/api/local-submissions?id=${encodeURIComponent(submission.id)}`, { method: 'DELETE' });
+    setOperatorExportStatus('Removed from review queue');
   }
 
-  function updateLocalSubmissionStatus(indexToUpdate: number, status: SubmissionStatus) {
-    const next = pendingSubmissions.map((submission, index) => index === indexToUpdate ? { ...submission, status, statusUpdatedAt: new Date().toISOString() } : submission);
-    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(next));
-    setPendingSubmissions(next);
+  async function updateLocalSubmissionStatus(indexToUpdate: number, status: SubmissionStatus) {
+    const submission = pendingSubmissions[indexToUpdate];
+    if (!submission?.id) return;
+    await syncLocalSubmissionMutation('/api/local-submissions', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: submission.id, status, statusUpdatedAt: new Date().toISOString() }),
+    });
     setOperatorExportStatus(`Marked ${status.replace('_', ' ')}`);
   }
 
-  function updateLocalSubmissionReviewerNote(indexToUpdate: number, reviewerNote: string) {
-    const next = pendingSubmissions.map((submission, index) => index === indexToUpdate ? { ...submission, reviewerNote, reviewerNoteUpdatedAt: new Date().toISOString() } : submission);
-    localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(next));
-    setPendingSubmissions(next);
+  async function updateLocalSubmissionReviewerNote(indexToUpdate: number, reviewerNote: string) {
+    const submission = pendingSubmissions[indexToUpdate];
+    if (!submission?.id) return;
+    setPendingSubmissions((current) => current.map((item, index) => index === indexToUpdate ? { ...item, reviewerNote, reviewerNoteUpdatedAt: new Date().toISOString() } : item));
+    await syncLocalSubmissionMutation('/api/local-submissions', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: submission.id, reviewerNote, reviewerNoteUpdatedAt: new Date().toISOString() }),
+    });
   }
 
-  function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
+  async function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
     // local-publish-workflow-pass legacy action label: Approve to discovery; review-status-lifecycle-pass UI label: Publish locally
-    const approved = localSubmissionToFeedItem({ ...submission, status: 'published_local', approvedAt: new Date().toISOString(), statusUpdatedAt: new Date().toISOString() }, indexToApprove);
-    setApprovedLocalItems((current) => current.some((item) => item.id === approved.id) ? current : [approved, ...current]);
-    removeLocalSubmission(indexToApprove);
+    if (!submission.id) {
+      const approved = localSubmissionToFeedItem({ ...submission, status: 'published_local', approvedAt: new Date().toISOString(), statusUpdatedAt: new Date().toISOString() }, indexToApprove);
+      setApprovedLocalItems((current) => current.some((item) => item.id === approved.id) ? current : [approved, ...current]);
+      return;
+    }
+    await syncLocalSubmissionMutation('/api/local-submissions', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: submission.id, action: 'publish' }),
+    });
     setShareStatus('Locally approved');
   }
 
@@ -445,14 +508,17 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     };
   }
 
-  function importOperatorHandoff() {
+  async function importOperatorHandoff() {
     try {
       const parsed = parseOperatorHandoffPayload(operatorImportText);
       // operator-handoff-import-pass payload shape: pendingSubmissions: parsed.pendingSubmissions, approvedLocalEvents: parsed.approvedLocalEvents
       localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(parsed.pendingSubmissions));
       localStorage.setItem('looplocal:approved-local-events', JSON.stringify(parsed.approvedLocalEvents));
-      setPendingSubmissions(parsed.pendingSubmissions);
-      setApprovedLocalItems(parsed.approvedLocalEvents);
+      await syncLocalSubmissionMutation('/api/local-submissions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'replace', pendingSubmissions: parsed.pendingSubmissions, publishedLocalEvents: parsed.approvedLocalEvents }),
+      });
       setOperatorExportStatus(`Imported ${parsed.pendingSubmissions.length} pending · ${parsed.approvedLocalEvents.length} approved`);
       setOperatorImportText('');
     } catch {

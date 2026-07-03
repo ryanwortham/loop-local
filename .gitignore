@@ -15,6 +15,9 @@ supabase/.branches/
 supabase/.temp/
 supabase/.env
 
+# Runtime data
+runtime-data/
+
 # Logs
 *.log
 npm-debug.log*
