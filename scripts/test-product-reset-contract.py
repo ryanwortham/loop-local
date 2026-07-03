@@ -1120,6 +1120,50 @@ def test_loop_local_local_submissions_api_has_direct_crud_smoke_tests():
     ]:
         assert marker in runner, f'missing local submissions API full runner marker {marker}'
 
+
+def test_loop_local_post_local_media_survives_submit_review_publish():
+    store = read('lib/local-submissions-store.ts')
+    post = read('components/post-local-wizard.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'post-local-media-persistence-pass',
+        'logoDataUrl?: string',
+        'eventImageDataUrl?: string',
+        'logoFileName?: string',
+        'eventImageFileName?: string',
+        'image_url: submission.eventImageDataUrl || submission.logoDataUrl',
+        "imageState: submission.eventImageDataUrl || submission.logoDataUrl ? 'photo' : 'fallback'",
+    ]:
+        assert marker in store, f'missing media persistence store marker {marker}'
+    for marker in [
+        'post-local-media-persistence-pass',
+        'readPostLocalFileAsDataUrl',
+        'logoDataUrl',
+        'eventImageDataUrl',
+        'logoFileName',
+        'eventImageFileName',
+        "querySelector('input[name=\"logo\"]')",
+        "querySelector('input[name=\"event_image\"]')",
+    ]:
+        assert marker in post, f'missing Post Local media submit marker {marker}'
+    for marker in [
+        'post-local-media-persistence-pass',
+        'API Direct Smoke Media',
+        'eventImageDataUrl',
+        'logoDataUrl',
+        'published.image_url?.startsWith(\'data:image/svg+xml;base64,\')',
+        "published.imageState === 'photo'",
+    ]:
+        assert marker in api_smoke, f'missing API media smoke marker {marker}'
+    for marker in [
+        'post-local-media-persistence-pass',
+        "input[name=\"event_image\"]",
+        "hasPhotoPublishedDetail",
+        "data-image-state=\"photo\"",
+    ]:
+        assert marker in mobile_smoke, f'missing mobile media smoke marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1171,5 +1215,6 @@ if __name__ == '__main__':
     test_loop_local_api_backed_post_local_submissions_persist_through_review_queue()
     test_loop_local_published_local_events_have_real_detail_pages()
     test_loop_local_local_submissions_api_has_direct_crud_smoke_tests()
+    test_loop_local_post_local_media_survives_submit_review_publish()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

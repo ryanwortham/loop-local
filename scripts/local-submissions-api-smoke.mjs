@@ -37,6 +37,9 @@ async function request(path = '', init = {}) {
 }
 
 async function main() {
+  const mediaSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#2563eb"/><text x="6" y="21" font-size="12" fill="white">LL</text></svg>';
+  const mediaDataUrl = `data:image/svg+xml;base64,${Buffer.from(mediaSvg).toString('base64')}`;
+  // post-local-media-persistence-pass: API Direct Smoke Media verifies eventImageDataUrl/logoDataUrl survives publish.
   let response = await request('', {
     method: 'POST',
     body: JSON.stringify({ action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] }),
@@ -64,6 +67,10 @@ async function main() {
       eventState: 'MO',
       eventCategory: 'Community',
       eventDescription: 'Direct API smoke test submission.',
+      logoDataUrl: mediaDataUrl,
+      logoFileName: 'api-direct-smoke-logo.svg',
+      eventImageDataUrl: mediaDataUrl,
+      eventImageFileName: 'api-direct-smoke-event.svg',
     }),
   });
   assertStatus(response, 201, 'create submission');
@@ -90,6 +97,9 @@ async function main() {
   data = await json(response);
   assert(data.submission.status === 'published_local', 'published submission should be marked published_local');
   assert(data.published?.title === 'API Direct Smoke Night', 'published feed item should use event title');
+  // Contract markers: published.image_url?.startsWith('data:image/svg+xml;base64,') and published.imageState === 'photo'
+  assert(data.published.image_url?.startsWith('data:image/svg+xml;base64,'), 'published image_url should preserve event media data URL');
+  assert(data.published.imageState === 'photo', 'published imageState should be photo');
   assert(Array.isArray(data.publishedLocalEvents) && data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night'), 'publishedLocalEvents should include published event');
   assert(!data.pendingSubmissions.some((item) => item.id === id), 'published submission should leave pending queue');
 

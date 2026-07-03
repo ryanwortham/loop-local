@@ -157,6 +157,18 @@ function TextAreaField({ label, name, value, onChange, error }: { label: string;
   );
 }
 
+function readPostLocalFileAsDataUrl(input: HTMLInputElement | null): Promise<{ dataUrl?: string; fileName?: string }> {
+  // post-local-media-persistence-pass: preserve uploaded logo/event image through API-backed review.
+  const file = input?.files?.[0];
+  if (!file) return Promise.resolve({});
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ dataUrl: String(reader.result || ''), fileName: file.name });
+    reader.onerror = () => reject(new Error('Unable to read Post Local media file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function PostLocalWizard() {
   const [draft, setDraft] = useState<PostLocalDraft>(readInitialDraft);
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
@@ -192,13 +204,23 @@ export function PostLocalWizard() {
     return nextErrors;
   }
 
-  async function submitPostLocalDraft() {
+  async function submitPostLocalDraft(form: HTMLFormElement) {
     // api-backed-local-submissions-pass: POST persists the review queue beyond this browser.
     // legacy migration marker: looplocal:post-local-submissions moved from source-of-truth to API-backed review queue.
+    const logoMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="logo"]'));
+    const eventImageMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="event_image"]'));
     const response = await fetch('/api/local-submissions', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ ...draft, submittedAt: new Date().toISOString(), status: 'pending_review' }),
+      body: JSON.stringify({
+        ...draft,
+        logoDataUrl: logoMedia.dataUrl,
+        logoFileName: logoMedia.fileName,
+        eventImageDataUrl: eventImageMedia.dataUrl,
+        eventImageFileName: eventImageMedia.fileName,
+        submittedAt: new Date().toISOString(),
+        status: 'pending_review',
+      }),
     });
     if (!response.ok) throw new Error('Failed to submit Post Local draft');
     return response.json();
@@ -213,7 +235,7 @@ export function PostLocalWizard() {
       return;
     }
     try {
-      await submitPostLocalDraft();
+      await submitPostLocalDraft(event.currentTarget);
       setSubmitStatus('Ready for review');
       setDraftStatus('Saved to review queue');
     } catch {

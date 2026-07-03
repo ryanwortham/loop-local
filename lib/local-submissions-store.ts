@@ -35,6 +35,11 @@ export type LocalSubmissionRecord = {
   contactEmail?: string;
   eventCategory?: string;
   eventDescription?: string;
+  // post-local-media-persistence-pass: keep first-pass uploaded media as data URLs until object storage is wired.
+  logoDataUrl?: string;
+  eventImageDataUrl?: string;
+  logoFileName?: string;
+  eventImageFileName?: string;
   status: LocalSubmissionStatus;
   submittedAt: string;
   approvedAt?: string;
@@ -126,8 +131,9 @@ export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFee
     ticketUrl: submission.ticketUrl || submission.website,
     website: submission.website,
     address: submission.eventAddress || submission.address,
-    imageState: 'fallback',
-    visualKey: 'community',
+    image_url: submission.eventImageDataUrl || submission.logoDataUrl,
+    imageState: submission.eventImageDataUrl || submission.logoDataUrl ? 'photo' : 'fallback',
+    visualKey: submission.eventImageDataUrl || submission.logoDataUrl ? 'local-submission-media' : 'community',
     fallbackLabel: 'Locally approved',
   };
 }

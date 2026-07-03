@@ -78,6 +78,7 @@ async function main() {
   // Submitted for API-backed review: API Smoke Bakery / API Smoke Market Night.
   await page.locator('input[name="entityName"]').fill('API Smoke Bakery');
   await page.locator('input[name="logo"]').setInputFiles('public/looplocal-logo.png');
+  await page.locator('input[name="event_image"]').setInputFiles('public/looplocal-logo.png');
   await page.locator('input[name="contactName"]').fill('Riley Smoke');
   await page.locator('input[name="email"]').fill('riley@example.com');
   await page.locator('select[name="entityType"]').selectOption('Business');
@@ -110,6 +111,8 @@ async function main() {
   if (!page.url().includes('/events/')) fail('Published local detail click did not navigate to /events/');
   await page.getByRole('heading', { name: 'API Smoke Market Night' }).waitFor({ timeout });
   await page.getByText('Plan your visit').waitFor({ timeout });
+  const hasPhotoPublishedDetail = await page.locator('[data-image-state="photo"]').first().isVisible({ timeout }).catch(() => false);
+  if (!hasPhotoPublishedDetail) fail('post-local-media-persistence-pass: expected published local detail to render data-image-state="photo"');
 
   await context.close();
   await browser.close();
