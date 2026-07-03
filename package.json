@@ -13,7 +13,9 @@
     "test:product": "python3 scripts/test-product-reset-contract.py",
     "test:all": "npm run test:contract && npm run test:product && npm run lint && npm run typecheck",
     "test:mobile:smoke": "node scripts/mobile-interaction-smoke.mjs",
-    "test:mobile:full": "node scripts/run-mobile-smoke-with-server.mjs"
+    "test:mobile:full": "node scripts/run-mobile-smoke-with-server.mjs",
+    "test:api:local": "node scripts/local-submissions-api-smoke.mjs",
+    "test:api:local:full": "node scripts/run-local-submissions-api-smoke-with-server.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

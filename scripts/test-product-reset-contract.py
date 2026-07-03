@@ -1084,6 +1084,42 @@ def test_loop_local_published_local_events_have_real_detail_pages():
     ]:
         assert marker in smoke, f'missing mobile smoke local detail page marker {marker}'
 
+
+def test_loop_local_local_submissions_api_has_direct_crud_smoke_tests():
+    pkg = read('package.json')
+    smoke = read('scripts/local-submissions-api-smoke.mjs') if (ROOT / 'scripts/local-submissions-api-smoke.mjs').exists() else ''
+    runner = read('scripts/run-local-submissions-api-smoke-with-server.mjs') if (ROOT / 'scripts/run-local-submissions-api-smoke-with-server.mjs').exists() else ''
+    for marker in [
+        '"test:api:local"',
+        '"test:api:local:full"',
+        'local-submissions-api-smoke.mjs',
+        'run-local-submissions-api-smoke-with-server.mjs',
+    ]:
+        assert marker in pkg, f'missing direct local submissions API test package marker {marker}'
+    for marker in [
+        'local-submissions-api-smoke-pass',
+        '/api/local-submissions',
+        'API Direct Smoke Night',
+        'assertStatus(response, 201',
+        'pending_review',
+        'needs_changes',
+        'reviewerNote',
+        'action: \'publish\'',
+        'publishedLocalEvents',
+        'DELETE',
+        'loop_local_local_submissions_api_smoke_ok',
+    ]:
+        assert marker in smoke, f'missing direct local submissions API smoke marker {marker}'
+    for marker in [
+        'local-submissions-api-full-runner-pass',
+        'npm run build',
+        'npm run start -- -p',
+        'LOOP_LOCAL_API_SMOKE_URL',
+        'npm run test:api:local',
+        'loop_local_local_submissions_api_full_runner_ok',
+    ]:
+        assert marker in runner, f'missing local submissions API full runner marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1134,5 +1170,6 @@ if __name__ == '__main__':
     test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up()
     test_loop_local_api_backed_post_local_submissions_persist_through_review_queue()
     test_loop_local_published_local_events_have_real_detail_pages()
+    test_loop_local_local_submissions_api_has_direct_crud_smoke_tests()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
