@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test:contract": "python3 scripts/test-app-scaffold-contract.py",
     "test:product": "python3 scripts/test-product-reset-contract.py",
-    "test:all": "npm run test:contract && npm run test:product && npm run lint && npm run typecheck"
+    "test:all": "npm run test:contract && npm run test:product && npm run lint && npm run typecheck",
+    "test:mobile:smoke": "node scripts/mobile-interaction-smoke.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",
@@ -20,6 +21,7 @@
     "react-dom": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

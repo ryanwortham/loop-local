@@ -939,6 +939,32 @@ def test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps():
     ]:
         assert preserved in shell + post + css, f'mobile interaction QA removed preserved behavior {preserved}'
 
+
+def test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks():
+    pkg = read('package.json')
+    smoke = read('scripts/mobile-interaction-smoke.mjs') if (ROOT / 'scripts/mobile-interaction-smoke.mjs').exists() else ''
+    for marker in [
+        '"test:mobile:smoke"',
+        'mobile-interaction-smoke.mjs',
+        '@playwright/test',
+    ]:
+        assert marker in pkg, f'missing mobile browser smoke package marker {marker}'
+    for marker in [
+        'mobile-browser-smoke-pass',
+        'chromium.launch',
+        'iPhone 14 Pro',
+        'assertClickable',
+        'document.elementFromPoint',
+        'Open Review Queue',
+        'Open Saved Events',
+        'Post Local mobile tabs',
+        'submit-for-approval',
+        'mobile-qa-target',
+        'mobile-menu-panel',
+        'console.log(\'loop_local_mobile_interaction_smoke_ok\')',
+    ]:
+        assert marker in smoke, f'missing mobile browser smoke harness marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -985,5 +1011,6 @@ if __name__ == '__main__':
     test_loop_local_mobile_first_homepage_polish_feels_intentional_after_containment()
     test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable()
     test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps()
+    test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

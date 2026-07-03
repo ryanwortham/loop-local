@@ -2608,3 +2608,16 @@ body {
     touch-action: manipulation;
   }
 }
+
+
+/* mobile-browser-smoke-pass: browser-proven mobile inputs must expose real 44px hit boxes, not only large wrappers. */
+@media (max-width: 920px) {
+  .mobile-interaction-qa-pass .search-field input,
+  .mobile-interaction-qa-pass .review-queue-search-field input,
+  .mobile-interaction-qa-pass .operator-import-area textarea,
+  .mobile-interaction-qa-pass .reviewer-note-field textarea {
+    min-height: 44px;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+}

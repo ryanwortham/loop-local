@@ -472,7 +472,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     }
     if (tab === 'Profile') {
       loadPendingSubmissions();
-      setShowSubmissionPanel((value) => !value);
+      setShowSubmissionPanel(true);
       return;
     }
     setViewMode(tabToViewMode(tab));
