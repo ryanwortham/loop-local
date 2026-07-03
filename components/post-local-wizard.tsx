@@ -173,6 +173,7 @@ export function PostLocalWizard() {
   const [draft, setDraft] = useState<PostLocalDraft>(readInitialDraft);
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
   const [submitStatus, setSubmitStatus] = useState('Required before review');
+  const [submittedSubmissionId, setSubmittedSubmissionId] = useState('');
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
 
   useEffect(() => {
@@ -184,6 +185,7 @@ export function PostLocalWizard() {
     draft.eventDate || 'Date',
     draft.locationName || draft.eventCity || draft.city || 'Location',
   ].join(' · '), [draft.category, draft.city, draft.eventCategory, draft.eventCity, draft.eventDate, draft.locationName]);
+  const submittedStatusHref = submittedSubmissionId ? `/post-local/status/${encodeURIComponent(submittedSubmissionId)}` : '';
 
   function updateDraft(name: keyof PostLocalDraft, value: string) {
     setDraft((current) => ({ ...current, [name]: value }));
@@ -235,7 +237,9 @@ export function PostLocalWizard() {
       return;
     }
     try {
-      await submitPostLocalDraft(event.currentTarget);
+      const data = await submitPostLocalDraft(event.currentTarget);
+      // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
+      setSubmittedSubmissionId(data?.submission?.id || '');
       setSubmitStatus('Ready for review');
       setDraftStatus('Saved to review queue');
     } catch {
@@ -414,7 +418,13 @@ export function PostLocalWizard() {
           <p className="ll-kicker">Step 4: Submit for Approval</p>
           <h2>Submit for approval</h2>
           <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
-          {submitStatus === 'Ready for review' ? <div className="post-submit-success">Ready for review — your submission was saved locally for admin handoff.</div> : null}
+          {submitStatus === 'Ready for review' ? (
+            <div className="post-submit-success submitter-status-page-pass">
+              <strong>Ready for review — your submission was saved locally for admin handoff.</strong>
+              {submittedSubmissionId ? <span>Submission ID: <code>{submittedSubmissionId}</code></span> : null}
+              {submittedStatusHref ? <Link href={submittedStatusHref}>Check submission status</Link> : null}
+            </div>
+          ) : null}
           <div className="ll-submit-actions">
             <Link href="/">Back to discovery</Link>
             <button type="submit">Submit for Approval</button>

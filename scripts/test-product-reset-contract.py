@@ -1164,6 +1164,42 @@ def test_loop_local_post_local_media_survives_submit_review_publish():
     ]:
         assert marker in mobile_smoke, f'missing mobile media smoke marker {marker}'
 
+
+def test_loop_local_submitter_status_page_tracks_review_and_publish_state():
+    post = read('components/post-local-wizard.tsx')
+    status_page = read('app/post-local/status/[id]/page.tsx') if (ROOT / 'app/post-local/status/[id]/page.tsx').exists() else ''
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    for marker in [
+        'submitter-status-page-pass',
+        'submittedSubmissionId',
+        'submittedStatusHref',
+        'Check submission status',
+        'Submission ID',
+        'submission.id',
+    ]:
+        assert marker in post, f'missing Post Local submitter status marker {marker}'
+    for marker in [
+        'submitter-status-page-pass',
+        "export const dynamic = 'force-dynamic'",
+        'readLocalSubmissionsStore',
+        'pendingSubmissions',
+        'publishedLocalEvents',
+        'needs_changes',
+        'published_local',
+        'reviewerNote',
+        'Back to Post Local',
+        'View published event',
+    ]:
+        assert marker in status_page, f'missing submitter status page marker {marker}'
+    for marker in [
+        'submitter-status-page-pass',
+        '/post-local/status/',
+        'API Direct Smoke Night status page',
+        'Needs changes',
+        'View published event',
+    ]:
+        assert marker in api_smoke, f'missing API smoke submitter status marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1216,5 +1252,6 @@ if __name__ == '__main__':
     test_loop_local_published_local_events_have_real_detail_pages()
     test_loop_local_local_submissions_api_has_direct_crud_smoke_tests()
     test_loop_local_post_local_media_survives_submit_review_publish()
+    test_loop_local_submitter_status_page_tracks_review_and_publish_state()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

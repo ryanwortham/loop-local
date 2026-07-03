@@ -90,6 +90,12 @@ async function main() {
   await page.locator('textarea[name="eventDescription"]').fill('Submitted for API-backed review from the mobile smoke test.');
   await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'valid Submit for Approval button');
   await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
+  await page.getByText('Submission ID').waitFor({ timeout });
+  await Promise.all([
+    page.waitForURL(/\/post-local\/status\//, { timeout }),
+    page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
+  ]);
+  await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
 
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after API submit', { force: true });

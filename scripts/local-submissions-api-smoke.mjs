@@ -36,6 +36,12 @@ async function request(path = '', init = {}) {
   });
 }
 
+async function fetchText(url) {
+  const response = await fetch(url, { headers: { accept: 'text/html' } });
+  assertStatus(response, 200, url);
+  return response.text();
+}
+
 async function main() {
   const mediaSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#2563eb"/><text x="6" y="21" font-size="12" fill="white">LL</text></svg>';
   const mediaDataUrl = `data:image/svg+xml;base64,${Buffer.from(mediaSvg).toString('base64')}`;
@@ -89,6 +95,12 @@ async function main() {
   assert(data.submission.status === 'needs_changes', 'patched status should be needs_changes');
   assert(data.submission.reviewerNote?.includes('reviewerNote'), 'patched reviewer note should persist');
 
+  // submitter-status-page-pass: API Direct Smoke Night status page shows reviewer feedback before publish.
+  let statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
+  assert(statusHtml.includes('API Direct Smoke Night'), 'status page should show event title');
+  assert(statusHtml.includes('Needs changes'), 'status page should show Needs changes');
+  assert(statusHtml.includes('reviewerNote'), 'status page should show reviewer note');
+
   response = await request('', {
     method: 'PATCH',
     body: JSON.stringify({ id, action: 'publish' }),
@@ -102,6 +114,10 @@ async function main() {
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
   assert(Array.isArray(data.publishedLocalEvents) && data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night'), 'publishedLocalEvents should include published event');
   assert(!data.pendingSubmissions.some((item) => item.id === id), 'published submission should leave pending queue');
+
+  statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
+  assert(statusHtml.includes('Published locally'), 'published status page should show Published locally');
+  assert(statusHtml.includes('View published event'), 'published status page should show View published event');
 
   response = await request('', {
     method: 'POST',
