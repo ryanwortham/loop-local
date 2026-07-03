@@ -1051,6 +1051,39 @@ def test_loop_local_api_backed_post_local_submissions_persist_through_review_que
         assert marker in smoke, f'missing mobile smoke API-backed flow marker {marker}'
     assert 'test:mobile:full' in pkg, 'mobile full runner must remain available for API-backed flow verification'
 
+
+def test_loop_local_published_local_events_have_real_detail_pages():
+    feed = read('lib/live-feed.ts')
+    server_feed = read('lib/live-feed-server.ts') if (ROOT / 'lib/live-feed-server.ts').exists() else ''
+    route = read('app/events/[slug]/page.tsx')
+    smoke = read('scripts/mobile-interaction-smoke.mjs')
+    store = read('lib/local-submissions-store.ts')
+    for marker in [
+        'local-published-detail-pages-pass',
+        'loadPublishedLocalEvents',
+        'readLocalSubmissionsStore',
+        'publishedLocalEvents',
+        'local_api_backed',
+        'getEventBySlug',
+        'eventSlug(item) === slug',
+    ]:
+        assert marker in feed + server_feed + store, f'missing locally published detail feed marker {marker}'
+    for marker in [
+        'local-published-detail-pages-pass',
+        "export const dynamic = 'force-dynamic'",
+        'getEventBySlug(slug)',
+        'generateStaticParams',
+        'notFound()',
+    ]:
+        assert marker in route, f'missing locally published detail route marker {marker}'
+    for marker in [
+        'local-published-detail-pages-pass',
+        'API Smoke Market Night detail page',
+        'page.url().includes(\'/events/\')',
+        'Plan your visit',
+    ]:
+        assert marker in smoke, f'missing mobile smoke local detail page marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1100,5 +1133,6 @@ if __name__ == '__main__':
     test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks()
     test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up()
     test_loop_local_api_backed_post_local_submissions_persist_through_review_queue()
+    test_loop_local_published_local_events_have_real_detail_pages()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

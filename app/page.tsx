@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/app-shell';
-import { getLiveFeed } from '@/lib/live-feed';
+import { getLiveFeed } from '@/lib/live-feed-server';
 
 export default async function Page() {
   const feed = await getLiveFeed(24);

@@ -2,11 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { SavedShareActions } from '@/components/event-detail-client-actions';
-import { eventDetailPath, eventExternalUrl, eventImageState, eventSlug, eventVisualKey, fallbackVisualLabel, getEventBySlug, getLiveFeed, type LiveFeedItem } from '@/lib/live-feed';
+import { eventDetailPath, eventExternalUrl, eventImageState, eventSlug, eventVisualKey, fallbackVisualLabel, type LiveFeedItem } from '@/lib/live-feed';
+import { getEventBySlug, getLiveFeed } from '@/lib/live-feed-server';
 
 type EventDetailPageProps = {
   params: Promise<{ slug: string }>;
 };
+
+// local-published-detail-pages-pass: locally published API-backed events are resolved on demand.
+export const dynamic = 'force-dynamic';
 
 function eventImage(item: LiveFeedItem): string {
   return item.image_url || '/looplocal-event-placeholder.jpg';

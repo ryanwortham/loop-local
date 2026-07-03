@@ -96,8 +96,20 @@ async function main() {
   await page.getByText('API Smoke Market Night').waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
   await page.getByText('Locally approved').first().waitFor({ timeout });
+  await assertClickable(page, page.locator('.pending-submissions-panel').getByRole('button', { name: 'Close' }), 'Close Review Queue after publish');
+  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Discover' }), 'Discover tab before local detail click', { force: true });
   await page.getByPlaceholder('Search events, artists, venues…').fill('API Smoke Market Night');
   await page.getByText('API Smoke Market Night').first().waitFor({ timeout });
+  // local-published-detail-pages-pass: API Smoke Market Night detail page should open from discovery.
+  const localDetailLink = page.locator('a[href*="api-smoke-market-night"]').first();
+  await localDetailLink.waitFor({ state: 'visible', timeout });
+  await Promise.all([
+    page.waitForURL(/\/events\//, { timeout }),
+    localDetailLink.click({ timeout }),
+  ]);
+  if (!page.url().includes('/events/')) fail('Published local detail click did not navigate to /events/');
+  await page.getByRole('heading', { name: 'API Smoke Market Night' }).waitFor({ timeout });
+  await page.getByText('Plan your visit').waitFor({ timeout });
 
   await context.close();
   await browser.close();
