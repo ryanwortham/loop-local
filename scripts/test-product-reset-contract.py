@@ -855,6 +855,49 @@ def test_loop_local_mobile_first_homepage_polish_feels_intentional_after_contain
     ]:
         assert preserved in css + shell + read('lib/live-feed.ts'), f'mobile-first polish removed preserved behavior {preserved}'
 
+
+def test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable():
+    shell = read('components/app-shell.tsx')
+    css = read('app/globals.css')
+    for marker in [
+        'mobile-tap-reliability-pass',
+        'showMobileMenu',
+        'setShowMobileMenu',
+        'toggleMobileMenu',
+        'mobile-menu-panel',
+        'aria-expanded={showMobileMenu}',
+        'onClick={toggleMobileMenu}',
+        "onClick={() => setShowSavedPanel(true)}",
+        'setShowMobileMenu(false)',
+        'Open Post Local',
+        'Review queue',
+    ]:
+        assert marker in shell, f'missing mobile tap reliability shell marker {marker}'
+    for marker in [
+        'mobile-tap-reliability-pass',
+        '.mobile-tap-reliability-pass button',
+        '.mobile-tap-reliability-pass a',
+        '.mobile-tap-reliability-pass input',
+        '.mobile-tap-reliability-pass select',
+        '.mobile-tap-reliability-pass textarea',
+        'pointer-events: auto',
+        '.mobile-tap-reliability-pass .mobile-menu-panel',
+        'z-index: 38',
+        '.mobile-tap-reliability-pass .mobile-app-tabbar.polished-bottom-nav',
+        'z-index: 44',
+        '.mobile-tap-reliability-pass .view-mode-dock.polished-view-dock',
+        'position: static',
+    ]:
+        assert marker in css, f'missing mobile tap reliability css marker {marker}'
+    for preserved in [
+        'mobile-first-homepage-polish-pass',
+        'mobile-webview-layout-containment-pass',
+        'handleTabSelect',
+        'setShowSubmissionPanel(true)',
+        'setViewMode(tabToViewMode(tab))',
+    ]:
+        assert preserved in shell + css, f'mobile tap reliability removed preserved behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -899,5 +942,6 @@ if __name__ == '__main__':
     test_loop_local_review_queue_search_scopes_submissions_without_mutating_queue()
     test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap()
     test_loop_local_mobile_first_homepage_polish_feels_intentional_after_containment()
+    test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -250,6 +250,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   });
   const [showSavedPanel, setShowSavedPanel] = useState(false);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeReviewFilter, setActiveReviewFilter] = useState<ReviewQueueFilter>('all');
   const [reviewQueueSearch, setReviewQueueSearch] = useState('');
   const [pendingSubmissions, setPendingSubmissions] = useState<LocalSubmission[]>(() => {
@@ -459,7 +460,12 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     }
   }
 
+  function toggleMobileMenu() {
+    setShowMobileMenu((current) => !current);
+  }
+
   function handleTabSelect(tab: string) {
+    setShowMobileMenu(false);
     if (tab === 'Saved') {
       setShowSavedPanel((value) => !value);
       return;
@@ -474,7 +480,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -497,10 +503,18 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
       <section className="discovery-phone" aria-label="Loop Local discovery feed">
         <nav className="phone-topbar" aria-label="Primary navigation">
-          <button type="button" aria-label="Menu">☰</button>
+          <button type="button" aria-label="Menu" aria-expanded={showMobileMenu} onClick={toggleMobileMenu}>☰</button>
           <Link className="phone-logo" href="/"><span className="brand-mark mini"><span className="brand-logo-image" aria-label="Loop Local" /></span> loop local</Link>
-          <button type="button" aria-label="Notifications">♡</button>
+          <button type="button" aria-label="Saved events" onClick={() => setShowSavedPanel(true)}>♡</button>
         </nav>
+        {showMobileMenu ? (
+          <section className="mobile-menu-panel" aria-label="Mobile menu">
+            <button type="button" onClick={() => { setShowMobileMenu(false); document.getElementById('events')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Explore nearby</button>
+            <Link href="/post-local" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
+            <button type="button" onClick={() => { setShowSubmissionPanel(true); setShowMobileMenu(false); }}>Review queue</button>
+            <button type="button" onClick={() => { setShowSavedPanel(true); setShowMobileMenu(false); }}>Saved events</button>
+          </section>
+        ) : null}
 
         <section className="search-stack" aria-label="Search and filters">
           <label className="search-field">
