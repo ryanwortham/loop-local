@@ -47,6 +47,7 @@ export type LocalSubmissionRecord = {
   statusUpdatedAt?: string;
   reviewerNote?: string;
   reviewerNoteUpdatedAt?: string;
+  revisionSubmittedAt?: string;
 };
 
 export type LocalSubmissionsStore = {
@@ -202,4 +203,25 @@ export async function publishLocalSubmission(id: string) {
     publishedLocalEvents: [published, ...store.publishedLocalEvents.filter((item) => item.id !== published.id)],
   };
   return { store: await writeLocalSubmissionsStore(nextStore), submission: publishedSubmission, published };
+}
+
+export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSubmissionRecord>) {
+  // submitter-revision-flow-pass: needs_changes submissions can be revised and returned to pending_review.
+  const store = await readLocalSubmissionsStore();
+  const submittedAt = nowIso();
+  const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+  const nextPending = store.pendingSubmissions.map((item) => item.id === id ? {
+    ...item,
+    ...cleanPatch,
+    id,
+    status: 'pending_review' as const,
+    reviewerNote: undefined,
+    reviewerNoteUpdatedAt: undefined,
+    statusUpdatedAt: submittedAt,
+    revisionSubmittedAt: submittedAt,
+  } : item);
+  const updated = nextPending.find((item) => item.id === id);
+  if (!updated) return { store, submission: null };
+  const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
+  return { store: await writeLocalSubmissionsStore(nextStore), submission: updated };
 }

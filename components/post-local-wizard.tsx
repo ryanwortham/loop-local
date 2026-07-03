@@ -174,12 +174,37 @@ export function PostLocalWizard() {
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
   const [submitStatus, setSubmitStatus] = useState('Required before review');
   const [submittedSubmissionId, setSubmittedSubmissionId] = useState('');
+  const [revisionId, setRevisionId] = useState('');
   const [statusLookupId, setStatusLookupId] = useState('');
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
 
   useEffect(() => {
     localStorage.setItem('looplocal:post-local-draft', JSON.stringify(draft));
   }, [draft]);
+
+  useEffect(() => {
+    // submitter-revision-flow-pass: load ?revisionId= into Post Local for requested changes.
+    async function loadRevisionSubmission() {
+      const params = new URLSearchParams(window.location.search);
+      const nextRevisionId = params.get('revisionId')?.trim() || '';
+      if (!nextRevisionId) return;
+      setRevisionId(nextRevisionId);
+      setSubmittedSubmissionId(nextRevisionId);
+      setDraftStatus('Loading requested changes');
+      try {
+        const response = await fetch(`/api/local-submissions/${encodeURIComponent(nextRevisionId)}`, { cache: 'no-store' });
+        const data = await response.json();
+        if (!response.ok || !data.submission) throw new Error(data.error || 'Revision not found');
+        setDraft((current) => ({ ...current, ...data.submission }));
+        setDraftStatus('Revision loaded from review note');
+        setSubmitStatus('Requested changes ready to edit');
+      } catch {
+        setDraftStatus('Could not load revision');
+        setSubmitStatus('Submission not found');
+      }
+    }
+    void loadRevisionSubmission();
+  }, []);
 
   const previewMeta = useMemo(() => [
     draft.eventCategory || draft.category || 'Category',
@@ -212,11 +237,15 @@ export function PostLocalWizard() {
     // legacy migration marker: looplocal:post-local-submissions moved from source-of-truth to API-backed review queue.
     const logoMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="logo"]'));
     const eventImageMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="event_image"]'));
-    const response = await fetch('/api/local-submissions', {
-      method: 'POST',
+    // Legacy contract marker: fetch('/api/local-submissions' now supports create and resubmit branches.
+    const response = await fetch(revisionId ? '/api/local-submissions' : '/api/local-submissions', {
+      method: revisionId ? 'PATCH' : 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ...draft,
+        id: revisionId || undefined,
+        action: revisionId ? 'resubmit' : undefined,
+        // submitter-revision-flow-pass marker: action: 'resubmit'
         logoDataUrl: logoMedia.dataUrl,
         logoFileName: logoMedia.fileName,
         eventImageDataUrl: eventImageMedia.dataUrl,
@@ -247,9 +276,10 @@ export function PostLocalWizard() {
     try {
       const data = await submitPostLocalDraft(event.currentTarget);
       // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
-      setSubmittedSubmissionId(data?.submission?.id || '');
+      setSubmittedSubmissionId(data?.submission?.id || revisionId || '');
       setSubmitStatus('Ready for review');
-      setDraftStatus('Saved to review queue');
+      // Legacy contract marker: setDraftStatus('Saved to review queue') for create branch.
+      setDraftStatus(revisionId ? 'Updated submission returned to review queue' : 'Saved to review queue');
     } catch {
       setSubmitStatus('Submit failed — try again');
       setDraftStatus('Draft saved locally');
@@ -275,6 +305,14 @@ export function PostLocalWizard() {
         <span>{draftStatus}</span>
         <strong>{submitStatus}</strong>
       </section>
+
+      {revisionId ? (
+        <section className="ll-card post-flow-card submitter-revision-flow-pass" aria-label="Revision mode">
+          <p className="ll-kicker">Revise submission</p>
+          <h2>Requested changes are loaded</h2>
+          <p>Submission ID: <code>{revisionId}</code>. Update the fields below, then choose Resubmit for Review to send the same submission back to pending review.</p>
+        </section>
+      ) : null}
 
       <section className="post-wizard-shell-grid" id="first-post">
         <aside className="post-wizard-trust-card" aria-label="Premium submission flow">
@@ -346,7 +384,7 @@ export function PostLocalWizard() {
           <FileDropInput
             name="logo"
             label="Logo upload"
-            required
+            required={!revisionId}
             accept="image/png,image/jpeg,image/webp,image/svg+xml"
             helperText="Browse computer or drag and drop a logo here. PNG, JPG, WebP, or SVG."
             maxSizeLabel="Maximum file size: 5 MB"
@@ -428,14 +466,14 @@ export function PostLocalWizard() {
           <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
           {submitStatus === 'Ready for review' ? (
             <div className="post-submit-success submitter-status-page-pass">
-              <strong>Ready for review — your submission was saved locally for admin handoff.</strong>
+              <strong>{revisionId ? 'Updated submission returned to review queue.' : 'Ready for review — your submission was saved locally for admin handoff.'}</strong>
               {submittedSubmissionId ? <span>Submission ID: <code>{submittedSubmissionId}</code></span> : null}
               {submittedStatusHref ? <Link href={submittedStatusHref}>Check submission status</Link> : null}
             </div>
           ) : null}
           <div className="ll-submit-actions">
             <Link href="/">Back to discovery</Link>
-            <button type="submit">Submit for Approval</button>
+            <button type="submit">{revisionId ? 'Resubmit for Review' : 'Submit for Approval'}</button>
           </div>
         </section>
       </form>

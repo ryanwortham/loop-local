@@ -118,23 +118,44 @@ async function main() {
 
   response = await request('', {
     method: 'PATCH',
+    body: JSON.stringify({
+      id,
+      action: 'resubmit',
+      eventTitle: 'API Direct Smoke Night Revised',
+      eventDescription: 'Revised after reviewer note.',
+    }),
+  });
+  assertStatus(response, 200, 'resubmit revised submission');
+  data = await json(response);
+  assert(data.submission.status === 'pending_review', 'resubmitted submission should return to pending_review');
+  assert(data.submission.eventTitle === 'API Direct Smoke Night Revised', 'resubmitted title should persist');
+  assert(!data.submission.reviewerNote, 'reviewerNote should clear after resubmit');
+
+  response = await request(`/${encodeURIComponent(id)}`);
+  assertStatus(response, 200, 'single status after resubmit');
+  data = await json(response);
+  assert(data.status === 'pending_review', 'single status should return pending_review after resubmit');
+  assert(data.submission?.eventTitle === 'API Direct Smoke Night Revised', 'single status should include revised title');
+
+  response = await request('', {
+    method: 'PATCH',
     body: JSON.stringify({ id, action: 'publish' }),
   });
   assertStatus(response, 200, 'publish submission');
   data = await json(response);
   assert(data.submission.status === 'published_local', 'published submission should be marked published_local');
-  assert(data.published?.title === 'API Direct Smoke Night', 'published feed item should use event title');
+  assert(data.published?.title === 'API Direct Smoke Night Revised', 'published feed item should use event title');
   // Contract markers: published.image_url?.startsWith('data:image/svg+xml;base64,') and published.imageState === 'photo'
   assert(data.published.image_url?.startsWith('data:image/svg+xml;base64,'), 'published image_url should preserve event media data URL');
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
-  assert(Array.isArray(data.publishedLocalEvents) && data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night'), 'publishedLocalEvents should include published event');
+  assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night Revised'), 'publishedLocalEvents should include published event');
   assert(!data.pendingSubmissions.some((item) => item.id === id), 'published submission should leave pending queue');
 
   response = await request(`/${encodeURIComponent(id)}`);
   assertStatus(response, 200, 'single status published_local');
   data = await json(response);
   assert(data.status === 'published_local', 'single status should return published_local');
-  assert(data.published?.title === 'API Direct Smoke Night', 'single status should include published event');
+  assert(data.published?.title === 'API Direct Smoke Night Revised', 'single status should include published event');
   assert(data.submission === null, 'single status published response should not expose a pending submission');
 
   response = await request('/missing-submission-id');
@@ -164,7 +185,7 @@ async function main() {
   assertStatus(response, 200, 'GET store');
   data = await json(response);
   assert(data.ok === true, 'GET should be ok');
-  assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night'), 'GET should keep published event');
+  assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night Revised'), 'publishedLocalEvents should include published event');
 
   response = await request('', {
     method: 'POST',

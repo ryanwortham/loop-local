@@ -116,18 +116,33 @@ async function main() {
     page.getByRole('button', { name: 'View status' }).click({ timeout }),
   ]);
   await page.getByText('Needs changes', { exact: true }).first().waitFor({ timeout });
+  // submitter-revision-flow-pass: submitter can revise a needs_changes submission and resubmit the same ID.
+  await Promise.all([
+    page.waitForURL(/\/post-local\?revisionId=/, { timeout }),
+    page.getByRole('link', { name: 'Revise submission' }).click({ timeout }),
+  ]);
+  await page.getByText('Requested changes are loaded').waitFor({ timeout });
+  await page.getByRole('button', { name: 'Resubmit for Review' }).waitFor({ timeout });
+  await page.locator('input[name="eventTitle"]').fill('API Smoke Market Night Revised');
+  await assertClickable(page, page.getByRole('button', { name: 'Resubmit for Review' }), 'Resubmit for Review');
+  await page.getByText('Updated submission returned to review queue', { exact: true }).waitFor({ timeout });
+  await Promise.all([
+    page.waitForURL(/\/post-local\/status\//, { timeout }),
+    page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
+  ]);
+  await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
 
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after API submit', { force: true });
   await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
-  await page.getByText('API Smoke Market Night').waitFor({ timeout });
+  await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
   await page.getByText('Locally approved').first().waitFor({ timeout });
   await assertClickable(page, page.locator('.pending-submissions-panel').getByRole('button', { name: 'Close' }), 'Close Review Queue after publish');
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Discover' }), 'Discover tab before local detail click', { force: true });
-  await page.getByPlaceholder('Search events, artists, venues…').fill('API Smoke Market Night');
-  await page.getByText('API Smoke Market Night').first().waitFor({ timeout });
-  // local-published-detail-pages-pass: API Smoke Market Night detail page should open from discovery.
+  await page.getByPlaceholder('Search events, artists, venues…').fill('API Smoke Market Night Revised');
+  await page.getByText('API Smoke Market Night Revised').first().waitFor({ timeout });
+  // local-published-detail-pages-pass: API Smoke Market Night detail page legacy marker; API Smoke Market Night Revised detail page should open from discovery.
   const localDetailLink = page.locator('a[href*="api-smoke-market-night"]').first();
   await localDetailLink.waitFor({ state: 'visible', timeout });
   await Promise.all([
@@ -135,7 +150,7 @@ async function main() {
     localDetailLink.click({ timeout }),
   ]);
   if (!page.url().includes('/events/')) fail('Published local detail click did not navigate to /events/');
-  await page.getByRole('heading', { name: 'API Smoke Market Night' }).waitFor({ timeout });
+  await page.getByRole('heading', { name: 'API Smoke Market Night Revised' }).waitFor({ timeout });
   await page.getByText('Plan your visit').waitFor({ timeout });
   const hasPhotoPublishedDetail = await page.locator('[data-image-state="photo"]').first().isVisible({ timeout }).catch(() => false);
   if (!hasPhotoPublishedDetail) fail('post-local-media-persistence-pass: expected published local detail to render data-image-state="photo"');

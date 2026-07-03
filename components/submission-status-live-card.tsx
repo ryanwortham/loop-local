@@ -94,6 +94,7 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
       {reviewerNote ? <blockquote><strong>Reviewer note</strong><br />{reviewerNote}</blockquote> : null}
       <div className="ll-submit-actions">
         <Link href="/post-local">Back to Post Local</Link>
+        {status === 'needs_changes' ? <Link className="primary-action submitter-revision-flow-pass" href={`/post-local?revisionId=${encodeURIComponent(submissionId)}`}>Revise submission</Link> : null}
         {published && publishedHref ? <Link className="primary-action" href={publishedHref}>View published event</Link> : null}
       </div>
     </section>

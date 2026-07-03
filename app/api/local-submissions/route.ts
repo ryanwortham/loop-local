@@ -4,6 +4,7 @@ import {
   deleteLocalSubmission,
   publishLocalSubmission,
   readLocalSubmissionsStore,
+  resubmitLocalSubmission,
   updateLocalSubmission,
   writeLocalSubmissionsStore,
   type LocalSubmissionRecord,
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic';
 
 type MutationBody = Partial<LocalSubmissionRecord> & {
   id?: string;
-  action?: 'update' | 'delete' | 'publish' | 'replace';
+  action?: 'update' | 'delete' | 'publish' | 'replace' | 'resubmit';
   pendingSubmissions?: LocalSubmissionRecord[];
   publishedLocalEvents?: LiveFeedItem[];
 };
@@ -68,6 +69,14 @@ export async function PATCH(request: NextRequest) {
     const result = await publishLocalSubmission(body.id);
     if (!result.submission) return error('submission not found', 404);
     return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, published: result.published, ...result.store });
+  }
+  if (body.action === 'resubmit') {
+    // submitter-revision-flow-pass: submitter revisions preserve the same id and return to pending review.
+    const { id, action: _action, ...patch } = body;
+    void _action;
+    const result = await resubmitLocalSubmission(id, patch);
+    if (!result.submission) return error('submission not found', 404);
+    return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });
   }
   const { id, ...patch } = body;
   const result = await updateLocalSubmission(id, patch);

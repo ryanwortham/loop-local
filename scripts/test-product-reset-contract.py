@@ -1309,6 +1309,60 @@ def test_loop_local_submitter_status_page_auto_refreshes_from_api():
     ]:
         assert marker in mobile_smoke, f'missing mobile status live refresh marker {marker}'
 
+
+def test_loop_local_submitters_can_revise_needs_changes_submissions():
+    wizard = read('components/post-local-wizard.tsx')
+    status_card = read('components/submission-status-live-card.tsx')
+    store = read('lib/local-submissions-store.ts')
+    route = read('app/api/local-submissions/route.ts')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'submitter-revision-flow-pass',
+        'Revise submission',
+        'revisionId',
+        'loadRevisionSubmission',
+        'Resubmit for Review',
+        "action: 'resubmit'",
+        'Updated submission returned to review queue',
+    ]:
+        assert marker in wizard, f'missing Post Local revision marker {marker}'
+    for marker in [
+        'submitter-revision-flow-pass',
+        'Revise submission',
+        '?revisionId=',
+        'needs_changes',
+    ]:
+        assert marker in status_card, f'missing status card revision marker {marker}'
+    for marker in [
+        'submitter-revision-flow-pass',
+        'resubmitLocalSubmission',
+        "status: 'pending_review'",
+        'reviewerNote: undefined',
+        'revisionSubmittedAt',
+    ]:
+        assert marker in store, f'missing store resubmit marker {marker}'
+    for marker in [
+        "action?: 'update' | 'delete' | 'publish' | 'replace' | 'resubmit'",
+        "body.action === 'resubmit'",
+        'resubmitLocalSubmission',
+    ]:
+        assert marker in route, f'missing API resubmit marker {marker}'
+    for marker in [
+        "action: 'resubmit'",
+        'API Direct Smoke Night Revised',
+        'pending_review',
+        'reviewerNote should clear after resubmit',
+    ]:
+        assert marker in api_smoke, f'missing API smoke resubmit marker {marker}'
+    for marker in [
+        'submitter-revision-flow-pass',
+        'Revise submission',
+        'API Smoke Market Night Revised',
+        'Updated submission returned to review queue',
+    ]:
+        assert marker in mobile_smoke, f'missing mobile smoke resubmit marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1365,5 +1419,6 @@ if __name__ == '__main__':
     test_loop_local_post_local_status_lookup_by_submission_id()
     test_loop_local_single_submission_status_api_boundary()
     test_loop_local_submitter_status_page_auto_refreshes_from_api()
+    test_loop_local_submitters_can_revise_needs_changes_submissions()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
