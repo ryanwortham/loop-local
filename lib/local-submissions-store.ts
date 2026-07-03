@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { type LiveFeedItem } from '@/lib/live-feed';
+import { eventSlug, type LiveFeedItem } from '@/lib/live-feed';
 
 // api-backed-local-submissions-pass: file-backed review queue until Supabase persistence is wired.
 
@@ -53,6 +53,13 @@ export type LocalSubmissionsStore = {
   version: 1;
   pendingSubmissions: LocalSubmissionRecord[];
   publishedLocalEvents: LiveFeedItem[];
+};
+
+export type LocalSubmissionStatusResult = {
+  submissionId: string;
+  status?: LocalSubmissionStatus;
+  submission?: LocalSubmissionRecord;
+  published?: LiveFeedItem;
 };
 
 const runtimeDataPath = path.join(process.cwd(), 'runtime-data/local-submissions.json');
@@ -110,6 +117,23 @@ export async function writeLocalSubmissionsStore(store: LocalSubmissionsStore): 
   await mkdir(path.dirname(runtimeDataPath), { recursive: true });
   await writeFile(runtimeDataPath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
   return normalized;
+}
+
+export function publishedMatchesSubmissionId(item: LiveFeedItem, submissionId: string): boolean {
+  // single-submission-status-api-pass: published status lookup must match raw id, approved id, or detail slug tail.
+  return item.id === submissionId || item.id === `local-approved-${submissionId}` || eventSlug(item).endsWith(submissionId);
+}
+
+export async function findLocalSubmissionStatus(submissionId: string): Promise<LocalSubmissionStatusResult> {
+  const store = await readLocalSubmissionsStore();
+  const submission = store.pendingSubmissions.find((item) => item.id === submissionId);
+  const published = store.publishedLocalEvents.find((item) => publishedMatchesSubmissionId(item, submissionId));
+  return {
+    submissionId,
+    status: published ? 'published_local' : submission?.status,
+    submission,
+    published,
+  };
 }
 
 export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFeedItem {

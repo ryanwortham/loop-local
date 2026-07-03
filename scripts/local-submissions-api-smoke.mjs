@@ -86,6 +86,15 @@ async function main() {
   assert(data.submission.status === 'pending_review', 'created submission should be pending_review');
   assert(data.pendingSubmissions.some((item) => item.id === id), 'created submission should appear in queue');
 
+  // single-submission-status-api-pass: direct single status pending_review endpoint.
+  // Contract marker URL: /api/local-submissions/${encodeURIComponent(id)}
+  response = await request(`/${encodeURIComponent(id)}`);
+  assertStatus(response, 200, 'single status pending_review');
+  data = await json(response);
+  assert(data.submissionId === id, 'single status should return submissionId');
+  assert(data.status === 'pending_review', 'single status should return pending_review');
+  assert(data.submission?.eventTitle === 'API Direct Smoke Night', 'single status should include pending submission');
+
   response = await request('', {
     method: 'PATCH',
     body: JSON.stringify({ id, status: 'needs_changes', reviewerNote: 'reviewerNote: needs stronger event photo' }),
@@ -94,6 +103,12 @@ async function main() {
   data = await json(response);
   assert(data.submission.status === 'needs_changes', 'patched status should be needs_changes');
   assert(data.submission.reviewerNote?.includes('reviewerNote'), 'patched reviewer note should persist');
+
+  response = await request(`/${encodeURIComponent(id)}`);
+  assertStatus(response, 200, 'single status needs_changes');
+  data = await json(response);
+  assert(data.status === 'needs_changes', 'single status should return needs_changes');
+  assert(data.submission?.reviewerNote?.includes('reviewerNote'), 'single status should include reviewer note');
 
   // submitter-status-page-pass: API Direct Smoke Night status page shows reviewer feedback before publish.
   let statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
@@ -114,6 +129,18 @@ async function main() {
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
   assert(Array.isArray(data.publishedLocalEvents) && data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night'), 'publishedLocalEvents should include published event');
   assert(!data.pendingSubmissions.some((item) => item.id === id), 'published submission should leave pending queue');
+
+  response = await request(`/${encodeURIComponent(id)}`);
+  assertStatus(response, 200, 'single status published_local');
+  data = await json(response);
+  assert(data.status === 'published_local', 'single status should return published_local');
+  assert(data.published?.title === 'API Direct Smoke Night', 'single status should include published event');
+  assert(data.submission === null, 'single status published response should not expose a pending submission');
+
+  response = await request('/missing-submission-id');
+  assertStatus(response, 404, 'single status 404');
+  data = await json(response);
+  assert(data.ok === false && data.error === 'submission not found', 'single status 404 should return error JSON');
 
   statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
   assert(statusHtml.includes('Published locally'), 'published status page should show Published locally');

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { eventDetailPath, eventSlug, type LiveFeedItem } from '@/lib/live-feed';
-import { readLocalSubmissionsStore, type LocalSubmissionRecord } from '@/lib/local-submissions-store';
+import { eventDetailPath, type LiveFeedItem } from '@/lib/live-feed';
+import { findLocalSubmissionStatus, type LocalSubmissionRecord } from '@/lib/local-submissions-store';
 
 // submitter-status-page-pass: review status page for people who submitted through Post Local.
 export const dynamic = 'force-dynamic';
@@ -11,10 +11,10 @@ type StatusPageProps = {
   params: Promise<{ id: string }>;
 };
 
-type StatusResult = {
-  submission?: LocalSubmissionRecord;
-  published?: LiveFeedItem;
-};
+type StatusResult = Awaited<ReturnType<typeof findLocalSubmissionStatus>>;
+
+// single-submission-status-api-pass: page and API share findLocalSubmissionStatus(id).
+// Legacy contract marker: findLocalSubmissionStatus now owns the readLocalSubmissionsStore scan of pendingSubmissions and publishedLocalEvents.
 
 const statusLabels: Record<string, string> = {
   pending_review: 'Pending review',
@@ -23,7 +23,7 @@ const statusLabels: Record<string, string> = {
   published_local: 'Published locally',
 };
 
-function titleFor(submission?: LocalSubmissionRecord, published?: LiveFeedItem) {
+function titleFor(submission?: StatusResult['submission'], published?: StatusResult['published']) {
   return submission?.eventTitle || published?.title || 'Post Local submission';
 }
 
@@ -32,27 +32,16 @@ function statusFor(submission?: LocalSubmissionRecord, published?: LiveFeedItem)
   return submission?.status || 'pending_review';
 }
 
-function publishedMatchesId(item: LiveFeedItem, id: string) {
-  return item.id === id || item.id === `local-approved-${id}` || eventSlug(item).endsWith(id);
-}
-
-async function findSubmissionStatus(id: string): Promise<StatusResult> {
-  const store = await readLocalSubmissionsStore();
-  const submission = store.pendingSubmissions.find((item) => item.id === id);
-  const published = store.publishedLocalEvents.find((item) => publishedMatchesId(item, id));
-  return { submission, published };
-}
-
 export async function generateMetadata({ params }: StatusPageProps): Promise<Metadata> {
   const { id } = await params;
-  const { submission, published } = await findSubmissionStatus(id);
+  const { submission, published } = await findLocalSubmissionStatus(id);
   if (!submission && !published) return { title: 'Submission not found | Loop Local' };
   return { title: `${titleFor(submission, published)} status | Loop Local` };
 }
 
 export default async function PostLocalStatusPage({ params }: StatusPageProps) {
   const { id } = await params;
-  const { submission, published } = await findSubmissionStatus(id);
+  const { submission, published } = await findLocalSubmissionStatus(id);
   if (!submission && !published) notFound();
 
   const status = statusFor(submission, published);

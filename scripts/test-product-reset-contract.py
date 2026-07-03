@@ -1235,6 +1235,46 @@ def test_loop_local_post_local_status_lookup_by_submission_id():
     ]:
         assert marker in mobile_smoke, f'missing status lookup mobile smoke marker {marker}'
 
+
+def test_loop_local_single_submission_status_api_boundary():
+    store = read('lib/local-submissions-store.ts')
+    route = read('app/api/local-submissions/[id]/route.ts') if (ROOT / 'app/api/local-submissions/[id]/route.ts').exists() else ''
+    status_page = read('app/post-local/status/[id]/page.tsx') if (ROOT / 'app/post-local/status/[id]/page.tsx').exists() else ''
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    for marker in [
+        'single-submission-status-api-pass',
+        'findLocalSubmissionStatus',
+        'publishedMatchesSubmissionId',
+        'status: \'published_local\'',
+        'publishedLocalEvents',
+    ]:
+        assert marker in store, f'missing single submission status store marker {marker}'
+    for marker in [
+        'single-submission-status-api-pass',
+        'export async function GET',
+        'findLocalSubmissionStatus',
+        'submissionId',
+        'status',
+        'published',
+        'submission not found',
+    ]:
+        assert marker in route, f'missing single submission status API route marker {marker}'
+    for marker in [
+        'single-submission-status-api-pass',
+        'findLocalSubmissionStatus(id)',
+        'StatusResult',
+    ]:
+        assert marker in status_page, f'missing status page shared lookup marker {marker}'
+    for marker in [
+        'single-submission-status-api-pass',
+        '/api/local-submissions/${encodeURIComponent(id)}',
+        'single status pending_review',
+        'single status needs_changes',
+        'single status published_local',
+        'single status 404',
+    ]:
+        assert marker in api_smoke, f'missing single submission status API smoke marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1289,5 +1329,6 @@ if __name__ == '__main__':
     test_loop_local_post_local_media_survives_submit_review_publish()
     test_loop_local_submitter_status_page_tracks_review_and_publish_state()
     test_loop_local_post_local_status_lookup_by_submission_id()
+    test_loop_local_single_submission_status_api_boundary()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
