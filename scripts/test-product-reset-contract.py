@@ -1275,6 +1275,40 @@ def test_loop_local_single_submission_status_api_boundary():
     ]:
         assert marker in api_smoke, f'missing single submission status API smoke marker {marker}'
 
+
+def test_loop_local_submitter_status_page_auto_refreshes_from_api():
+    status_page = read('app/post-local/status/[id]/page.tsx') if (ROOT / 'app/post-local/status/[id]/page.tsx').exists() else ''
+    client = read('components/submission-status-live-card.tsx') if (ROOT / 'components/submission-status-live-card.tsx').exists() else ''
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'submitter-status-live-refresh-pass',
+        'SubmissionStatusLiveCard',
+        'initialStatus',
+        'submissionId={id}',
+        'auto-refreshes every',
+    ]:
+        assert marker in status_page, f'missing status live refresh page marker {marker}'
+    for marker in [
+        'submitter-status-live-refresh-pass',
+        "'use client'",
+        'refreshSubmissionStatus',
+        '`/api/local-submissions/${encodeURIComponent(submissionId)}`',
+        'setInterval',
+        'document.visibilityState',
+        'Needs changes',
+        'Published locally',
+        'View published event',
+        'Last checked',
+    ]:
+        assert marker in client, f'missing status live refresh client marker {marker}'
+    for marker in [
+        'submitter-status-live-refresh-pass',
+        'Status auto-refresh detected reviewer update',
+        'Mobile smoke reviewer note',
+        'Needs changes',
+    ]:
+        assert marker in mobile_smoke, f'missing mobile status live refresh marker {marker}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1330,5 +1364,6 @@ if __name__ == '__main__':
     test_loop_local_submitter_status_page_tracks_review_and_publish_state()
     test_loop_local_post_local_status_lookup_by_submission_id()
     test_loop_local_single_submission_status_api_boundary()
+    test_loop_local_submitter_status_page_auto_refreshes_from_api()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { eventDetailPath, type LiveFeedItem } from '@/lib/live-feed';
-import { findLocalSubmissionStatus, type LocalSubmissionRecord } from '@/lib/local-submissions-store';
+import { SubmissionStatusLiveCard } from '@/components/submission-status-live-card';
+import { findLocalSubmissionStatus } from '@/lib/local-submissions-store';
 
 // submitter-status-page-pass: review status page for people who submitted through Post Local.
+// submitter-status-live-refresh-pass: page hydrates a client card that polls the single-submission status API.
 export const dynamic = 'force-dynamic';
 
 type StatusPageProps = {
@@ -15,21 +16,11 @@ type StatusResult = Awaited<ReturnType<typeof findLocalSubmissionStatus>>;
 
 // single-submission-status-api-pass: page and API share findLocalSubmissionStatus(id).
 // Legacy contract marker: findLocalSubmissionStatus now owns the readLocalSubmissionsStore scan of pendingSubmissions and publishedLocalEvents.
-
-const statusLabels: Record<string, string> = {
-  pending_review: 'Pending review',
-  needs_changes: 'Needs changes',
-  approved_local: 'Approved only',
-  published_local: 'Published locally',
-};
+// Legacy rendered-state markers now delegated to SubmissionStatusLiveCard: needs_changes, published_local, reviewerNote, Back to Post Local, View published event.
+// Static contract marker for live card prop shape: submissionId={id}.
 
 function titleFor(submission?: StatusResult['submission'], published?: StatusResult['published']) {
   return submission?.eventTitle || published?.title || 'Post Local submission';
-}
-
-function statusFor(submission?: LocalSubmissionRecord, published?: LiveFeedItem) {
-  if (published) return 'published_local';
-  return submission?.status || 'pending_review';
 }
 
 export async function generateMetadata({ params }: StatusPageProps): Promise<Metadata> {
@@ -41,17 +32,18 @@ export async function generateMetadata({ params }: StatusPageProps): Promise<Met
 
 export default async function PostLocalStatusPage({ params }: StatusPageProps) {
   const { id } = await params;
-  const { submission, published } = await findLocalSubmissionStatus(id);
+  const { submission, published, status, submissionId } = await findLocalSubmissionStatus(id);
   if (!submission && !published) notFound();
 
-  const status = statusFor(submission, published);
-  const label = statusLabels[status] || status;
-  const reviewerNote = submission?.reviewerNote;
-  const submittedAt = submission?.submittedAt;
-  const updatedAt = submission?.statusUpdatedAt || submission?.reviewerNoteUpdatedAt || submission?.publishedAt;
+  const initialStatus = {
+    ok: true,
+    status,
+    submission: submission || null,
+    published: published || null,
+  };
 
   return (
-    <main className="post-local-shell complete-frontend-rebuild submitter-status-page-pass">
+    <main className="post-local-shell complete-frontend-rebuild submitter-status-page-pass submitter-status-live-refresh-pass">
       <header className="ll-nav post-app-topbar post-local-command-center">
         <Link className="ll-brand" href="/">Loop Local</Link>
         <nav aria-label="Submission status navigation">
@@ -60,25 +52,8 @@ export default async function PostLocalStatusPage({ params }: StatusPageProps) {
         </nav>
       </header>
 
-      <section className="ll-card post-flow-card post-wizard-stage-card">
-        <p className="ll-kicker">Post Local status</p>
-        <h1>{titleFor(submission, published)}</h1>
-        <p>Submission ID: <code>{id}</code></p>
-        <div className="ll-pending-pill">{label}</div>
-        <dl className="event-detail-quick-facts" aria-label="Submission status facts">
-          <span><b>Status</b>{label}</span>
-          <span><b>Submitted</b>{submittedAt ? new Date(submittedAt).toLocaleString() : 'Submission already published'}</span>
-          <span><b>Last update</b>{updatedAt ? new Date(updatedAt).toLocaleString() : 'Awaiting reviewer action'}</span>
-        </dl>
-        {status === 'pending_review' ? <p>Your post is in the review queue. We’ll keep it unpublished until an operator approves it.</p> : null}
-        {status === 'needs_changes' ? <p>Needs changes before publication. Review the note below, then update your post with the requested details.</p> : null}
-        {status === 'published_local' ? <p>Your post is published locally and can now be opened from discovery.</p> : null}
-        {reviewerNote ? <blockquote><strong>Reviewer note</strong><br />{reviewerNote}</blockquote> : null}
-        <div className="ll-submit-actions">
-          <Link href="/post-local">Back to Post Local</Link>
-          {published ? <Link className="primary-action" href={eventDetailPath(published)}>View published event</Link> : null}
-        </div>
-      </section>
+      <SubmissionStatusLiveCard initialStatus={initialStatus} submissionId={submissionId || id} />
+      <p className="status-live-refresh-footnote">SubmissionStatusLiveCard auto-refreshes every few seconds using the single-submission status API.</p>
     </main>
   );
 }
