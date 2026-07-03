@@ -2190,3 +2190,33 @@ button { -webkit-tap-highlight-color: transparent; }
   border-color: rgba(37,99,235,.45);
   box-shadow: 0 0 0 4px rgba(37,99,235,.08);
 }
+
+
+/* review-queue-filter-pass: local review queue status filters for operator triage. */
+.review-queue-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.review-queue-filter-row button {
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: #FFFFFF;
+  color: var(--ll-rebuild-slate);
+  font-size: .72rem;
+  font-weight: 900;
+}
+.review-queue-filter-row button.active {
+  background: var(--ll-rebuild-blue);
+  border-color: var(--ll-rebuild-blue);
+  color: #FFFFFF;
+  box-shadow: 0 10px 18px rgba(37,99,235,.18);
+}
+.review-queue-filter-row small {
+  margin-left: auto;
+  color: var(--ll-rebuild-muted);
+  font-size: .72rem;
+  font-weight: 800;
+}

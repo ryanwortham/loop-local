@@ -7,6 +7,14 @@ import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fal
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
 type SubmissionStatus = 'pending_review' | 'needs_changes' | 'approved_local' | 'published_local';
+type ReviewQueueFilter = 'all' | 'pending_review' | 'needs_changes' | 'approved_local';
+
+const reviewQueueFilters: Array<{ id: ReviewQueueFilter; label: string }> = [
+  { id: 'all', label: 'All reviews' },
+  { id: 'pending_review', label: 'Pending' },
+  { id: 'needs_changes', label: 'Needs changes' },
+  { id: 'approved_local', label: 'Approved only' },
+];
 
 type LocalSubmission = {
   entityName?: string;
@@ -226,6 +234,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   });
   const [showSavedPanel, setShowSavedPanel] = useState(false);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
+  const [activeReviewFilter, setActiveReviewFilter] = useState<ReviewQueueFilter>('all');
   const [pendingSubmissions, setPendingSubmissions] = useState<LocalSubmission[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -296,6 +305,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     approvedCount: pendingSubmissions.filter((item) => item.status === 'approved_local').length,
     publishedCount: approvedLocalItems.length,
   }), [approvedLocalItems.length, pendingSubmissions]);
+  const filteredPendingSubmissions = useMemo(() => pendingSubmissions.filter((submission) => activeReviewFilter === 'all' || (!submission.status && activeReviewFilter === 'pending_review') || submission.status === activeReviewFilter), [activeReviewFilter, pendingSubmissions]);
 
   function isSavedEvent(item: LiveFeedItem): boolean {
     return savedEventIds.includes(item.id);
@@ -440,7 +450,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -569,6 +579,11 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
               <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
             </header>
             <div className="review-status-summary" aria-label="Review status summary"><span>{reviewStatusCounts.pendingCount} pending</span><span>{reviewStatusCounts.needsChangesCount} needs changes</span><span>{reviewStatusCounts.approvedCount} approved only</span><span>{reviewStatusCounts.publishedCount} published locally</span></div>
+            <div className="review-queue-filter-row" aria-label="Review queue filters">
+              {/* review-queue-filter-pass marker: showing ${filteredPendingSubmissions.length} */}
+              {reviewQueueFilters.map((filter) => <button className={activeReviewFilter === filter.id ? 'active' : ''} key={filter.id} type="button" onClick={() => setActiveReviewFilter(filter.id)}>{filter.label}</button>)}
+              <small>showing {filteredPendingSubmissions.length} of {pendingSubmissions.length}</small>
+            </div>
             <section className="operator-handoff-card operator-handoff-export-pass operator-handoff-import-pass" aria-label="Operator handoff">
               <div><strong>Operator handoff</strong><p>{pendingSubmissions.length} pending · {approvedLocalItems.length} locally approved</p></div>
               <div className="operator-handoff-actions"><button type="button" onClick={copyOperatorHandoff}>Copy queue JSON</button><button type="button" onClick={downloadOperatorHandoff}>Download JSON</button></div>
@@ -576,18 +591,19 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
               <div className="operator-handoff-actions"><button type="button" onClick={importOperatorHandoff}>Import queue JSON</button></div>
               {operatorExportStatus ? <small className="operator-export-status" role="status">{operatorExportStatus}</small> : null}
             </section>
-            {pendingSubmissions.length ? (
+            {filteredPendingSubmissions.length ? (
               <div className="pending-submission-grid">
-                {pendingSubmissions.slice(0, 6).map((submission, index) => (
-                  <article className="pending-submission-card" key={`${submission.submittedAt || submission.eventTitle || 'submission'}-${index}`}>
+                {filteredPendingSubmissions.slice(0, 6).map((submission) => {
+                  const index = pendingSubmissions.indexOf(submission);
+                  return <article className="pending-submission-card" key={`${submission.submittedAt || submission.eventTitle || 'submission'}-${index}`}>
                     <span>{submission.status || 'pending_review'}</span>
                     <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
                     <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                     <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
                     <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={submission.reviewerNote || ''} onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)} placeholder="Internal note for changes, approval context, or publish handoff" rows={2} /></label>
                     <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'needs_changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
-                  </article>
-                ))}
+                  </article>;
+                })}
               </div>
             ) : <p className="pending-submission-empty">No pending local submissions yet. Submit a valid Post Local draft to seed the queue.</p>}
           </section>
