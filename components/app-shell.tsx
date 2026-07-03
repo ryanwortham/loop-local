@@ -474,7 +474,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
