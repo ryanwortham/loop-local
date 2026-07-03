@@ -790,6 +790,39 @@ def test_loop_local_review_queue_search_scopes_submissions_without_mutating_queu
     ]:
         assert preserved in shell, f'review queue search removed preserved workflow {preserved}'
 
+
+def test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap():
+    css = read('app/globals.css')
+    layout = read('app/layout.tsx')
+    for marker in [
+        'mobile-webview-layout-containment-pass',
+        'width: \'device-width\'',
+        'initialScale: 1',
+        '@media (max-width: 920px)',
+        '.complete-frontend-rebuild.mobile-webview-layout-containment-pass',
+        'grid-template-columns: minmax(0, 1fr)',
+        '.mobile-webview-layout-containment-pass .local-hero-panel { display: none; }',
+        '.mobile-webview-layout-containment-pass .event-detail-preview { display: none; }',
+        '.mobile-webview-layout-containment-pass .discovery-phone',
+        'width: min(100%, 430px)',
+        'max-width: 100vw',
+        'overflow-x: hidden',
+        'overscroll-behavior-x: none',
+        '.mobile-webview-layout-containment-pass .featured-rail.polished-card-density',
+        'grid-auto-columns: minmax(188px, 74vw)',
+        '.mobile-webview-layout-containment-pass .mobile-app-tabbar.polished-bottom-nav',
+        'left: max(8px, env(safe-area-inset-left))',
+    ]:
+        assert marker in css + layout, f'missing mobile webview containment marker {marker}'
+    for preserved in [
+        'review-queue-search-pass',
+        'saved-share-interaction-pass',
+        'navigation-interaction-polish',
+        'eventDetailPath(item)',
+        'getLiveFeed',
+    ]:
+        assert preserved in css + read('components/app-shell.tsx') + read('lib/live-feed.ts'), f'mobile containment removed preserved behavior {preserved}'
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -832,5 +865,6 @@ if __name__ == '__main__':
     test_loop_local_reviewer_notes_attach_to_local_submissions_and_handoff()
     test_loop_local_review_queue_status_filters_scope_visible_submissions()
     test_loop_local_review_queue_search_scopes_submissions_without_mutating_queue()
+    test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
