@@ -452,6 +452,22 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     });
   }
 
+  function submitterStatusHref(submission: LocalSubmission) {
+    // operator-submitter-link-pass: every API-backed review card exposes /post-local/status/ for handoff.
+    return submission.id ? `/post-local/status/${encodeURIComponent(submission.id)}` : '/post-local';
+  }
+
+  async function copySubmitterStatusLink(submission: LocalSubmission) {
+    const path = submitterStatusHref(submission);
+    const url = typeof window === 'undefined' ? path : new URL(path, window.location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(url);
+      setOperatorExportStatus('Submitter link copied');
+    } catch {
+      setOperatorExportStatus(`Copy unavailable — send ${path}`);
+    }
+  }
+
   async function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
     // local-publish-workflow-pass legacy action label: Approve to discovery; review-status-lifecycle-pass UI label: Publish locally
     if (!submission.id) {
@@ -706,6 +722,10 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                     <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                     <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
                     <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={submission.reviewerNote || ''} onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)} placeholder="Internal note for changes, approval context, or publish handoff" rows={2} /></label>
+                    <div className="operator-submitter-link-pass pending-submitter-link-row">
+                      <Link href={submitterStatusHref(submission)}>Open status page</Link>
+                      <button type="button" onClick={() => copySubmitterStatusLink(submission)}>Copy submitter link</button>
+                    </div>
                     <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'needs_changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
                   </article>;
                 })}

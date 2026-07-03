@@ -1975,14 +1975,21 @@ button { -webkit-tap-highlight-color: transparent; }
   background: linear-gradient(180deg, #FFFFFF, #F8FAFC);
   box-shadow: var(--ll-polish-compact-shadow);
 }
-.pending-submission-actions {
+.pending-submission-actions,
+.pending-submitter-link-row {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
 }
+.pending-submitter-link-row {
+  justify-content: flex-start;
+  padding-top: 4px;
+}
 .pending-submission-actions a,
-.pending-submission-actions button {
+.pending-submission-actions button,
+.pending-submitter-link-row a,
+.pending-submitter-link-row button {
   border: 0;
   border-radius: 999px;
   padding: 9px 12px;

@@ -136,6 +136,21 @@ async function main() {
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after API submit', { force: true });
   await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
   await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
+  // operator-submitter-link-pass: operators can copy/open the submitter status handoff URL from the review queue.
+  await assertClickable(page, page.getByRole('button', { name: 'Copy submitter link' }).first(), 'Copy submitter link');
+  await page.getByText(/Submitter link copied|Copy unavailable/).waitFor({ timeout });
+  const operatorStatusLink = page.getByRole('link', { name: 'Open status page' }).first();
+  const statusHref = await operatorStatusLink.getAttribute('href');
+  if (!statusHref || !statusHref.includes('/post-local/status/')) fail('operator-submitter-link-pass: missing /post-local/status/ href');
+  await Promise.all([
+    page.waitForURL(/\/post-local\/status\//, { timeout }),
+    operatorStatusLink.click({ timeout }),
+  ]);
+  await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
+  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
+  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab before publish after status handoff', { force: true });
+  await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
+  await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
   await page.getByText('Locally approved').first().waitFor({ timeout });
   await assertClickable(page, page.locator('.pending-submissions-panel').getByRole('button', { name: 'Close' }), 'Close Review Queue after publish');

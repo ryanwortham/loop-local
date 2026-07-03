@@ -1310,6 +1310,28 @@ def test_loop_local_submitter_status_page_auto_refreshes_from_api():
         assert marker in mobile_smoke, f'missing mobile status live refresh marker {marker}'
 
 
+
+def test_loop_local_review_queue_exposes_submitter_status_handoff_links():
+    shell = read('components/app-shell.tsx')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'operator-submitter-link-pass',
+        'submitterStatusHref',
+        'copySubmitterStatusLink',
+        'Open status page',
+        'Copy submitter link',
+        'Submitter link copied',
+        '/post-local/status/',
+    ]:
+        assert marker in shell, f'missing review queue submitter link marker {marker}'
+    for marker in [
+        'operator-submitter-link-pass',
+        'Open status page',
+        'Copy submitter link',
+        '/post-local/status/',
+    ]:
+        assert marker in mobile_smoke, f'missing mobile submitter link marker {marker}'
+
 def test_loop_local_submitters_can_revise_needs_changes_submissions():
     wizard = read('components/post-local-wizard.tsx')
     status_card = read('components/submission-status-live-card.tsx')
@@ -1419,6 +1441,7 @@ if __name__ == '__main__':
     test_loop_local_post_local_status_lookup_by_submission_id()
     test_loop_local_single_submission_status_api_boundary()
     test_loop_local_submitter_status_page_auto_refreshes_from_api()
+    test_loop_local_review_queue_exposes_submitter_status_handoff_links()
     test_loop_local_submitters_can_revise_needs_changes_submissions()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
