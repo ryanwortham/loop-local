@@ -99,6 +99,22 @@ function itemSearchText(item: LiveFeedItem): string {
     .toLowerCase();
 }
 
+function reviewSubmissionSearchText(submission: LocalSubmission): string {
+  return [
+    submission.eventTitle,
+    submission.entityName,
+    submission.eventCategory,
+    submission.eventCity,
+    submission.eventState,
+    submission.eventZip,
+    submission.locationName,
+    submission.postType,
+    submission.status,
+    submission.reviewerNote,
+    submission.eventDescription,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
 function isWeekend(item: LiveFeedItem): boolean {
   const value = item.startsAt || item.date;
   if (!value) return false;
@@ -235,6 +251,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   const [showSavedPanel, setShowSavedPanel] = useState(false);
   const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
   const [activeReviewFilter, setActiveReviewFilter] = useState<ReviewQueueFilter>('all');
+  const [reviewQueueSearch, setReviewQueueSearch] = useState('');
   const [pendingSubmissions, setPendingSubmissions] = useState<LocalSubmission[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -305,7 +322,14 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     approvedCount: pendingSubmissions.filter((item) => item.status === 'approved_local').length,
     publishedCount: approvedLocalItems.length,
   }), [approvedLocalItems.length, pendingSubmissions]);
-  const filteredPendingSubmissions = useMemo(() => pendingSubmissions.filter((submission) => activeReviewFilter === 'all' || (!submission.status && activeReviewFilter === 'pending_review') || submission.status === activeReviewFilter), [activeReviewFilter, pendingSubmissions]);
+  const filteredPendingSubmissions = useMemo(() => {
+    const reviewSearchQuery = reviewQueueSearch.trim().toLowerCase();
+    return pendingSubmissions.filter((submission) => {
+      const matchesStatus = activeReviewFilter === 'all' || (!submission.status && activeReviewFilter === 'pending_review') || submission.status === activeReviewFilter;
+      const matchesSearch = !reviewSearchQuery || reviewSubmissionSearchText(submission).includes(reviewSearchQuery);
+      return matchesStatus && matchesSearch;
+    });
+  }, [activeReviewFilter, pendingSubmissions, reviewQueueSearch]);
 
   function isSavedEvent(item: LiveFeedItem): boolean {
     return savedEventIds.includes(item.id);
@@ -450,7 +474,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -579,6 +603,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
               <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
             </header>
             <div className="review-status-summary" aria-label="Review status summary"><span>{reviewStatusCounts.pendingCount} pending</span><span>{reviewStatusCounts.needsChangesCount} needs changes</span><span>{reviewStatusCounts.approvedCount} approved only</span><span>{reviewStatusCounts.publishedCount} published locally</span></div>
+            <label className="review-queue-search-field"><span>Search review queue</span><input type="search" value={reviewQueueSearch} onChange={(event) => setReviewQueueSearch(event.target.value)} placeholder="Title, entity, status, note…" /></label>
             <div className="review-queue-filter-row" aria-label="Review queue filters">
               {/* review-queue-filter-pass marker: showing ${filteredPendingSubmissions.length} */}
               {reviewQueueFilters.map((filter) => <button className={activeReviewFilter === filter.id ? 'active' : ''} key={filter.id} type="button" onClick={() => setActiveReviewFilter(filter.id)}>{filter.label}</button>)}

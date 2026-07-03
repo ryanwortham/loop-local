@@ -2220,3 +2220,30 @@ button { -webkit-tap-highlight-color: transparent; }
   font-size: .72rem;
   font-weight: 800;
 }
+
+
+/* review-queue-search-pass: local text search across title, entity, status, location, category, and reviewer notes. */
+.review-queue-search-field {
+  display: grid;
+  gap: 7px;
+}
+.review-queue-search-field span {
+  color: var(--ll-rebuild-slate);
+  font-size: .72rem;
+  font-weight: 900;
+}
+.review-queue-search-field input {
+  width: 100%;
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 16px;
+  padding: 11px 12px;
+  background: #FFFFFF;
+  color: var(--ll-rebuild-slate);
+  font: inherit;
+  font-size: .84rem;
+  outline: none;
+}
+.review-queue-search-field input:focus {
+  border-color: rgba(37,99,235,.45);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.08);
+}
