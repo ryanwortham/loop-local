@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // local-submissions-api-smoke-pass: direct CRUD/publish smoke for /api/local-submissions.
+// published-status-history-pass: published local status API/page must preserve localSubmissionStatusHistory after publish.
 
 const baseURL = process.env.LOOP_LOCAL_API_SMOKE_URL || 'http://127.0.0.1:3002';
 const endpoint = `${baseURL}/api/local-submissions`;
@@ -149,6 +150,8 @@ async function main() {
   assert(data.submission.status === 'published_local', 'published submission should be marked published_local');
   assert(data.submission.statusHistory?.some((entry) => entry.action === 'published_local'), 'published_local history entry should persist');
   assert(data.published?.title === 'API Direct Smoke Night Revised', 'published feed item should use event title');
+  assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published response should preserve review history');
+  assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local'), 'published response should include published_local history');
   // Contract markers: published.image_url?.startsWith('data:image/svg+xml;base64,') and published.imageState === 'photo'
   assert(data.published.image_url?.startsWith('data:image/svg+xml;base64,'), 'published image_url should preserve event media data URL');
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
@@ -160,6 +163,7 @@ async function main() {
   data = await json(response);
   assert(data.status === 'published_local', 'single status should return published_local');
   assert(data.published?.title === 'API Direct Smoke Night Revised', 'single status should include published event');
+  assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published single status should preserve review history');
   assert(data.submission === null, 'single status published response should not expose a pending submission');
 
   response = await request('/missing-submission-id');
@@ -169,6 +173,7 @@ async function main() {
 
   statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
   assert(statusHtml.includes('Published locally'), 'published status page should show Published locally');
+  assert(statusHtml.includes('Resubmitted for review'), 'published status page should preserve timeline');
   assert(statusHtml.includes('View published event'), 'published status page should show View published event');
 
   response = await request('', {

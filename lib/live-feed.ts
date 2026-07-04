@@ -3,6 +3,7 @@ export const referenceFeedBaseUrl = 'https://replaced-gaming-selected-spectacula
 // live-data-quality-pass: normalize live feed text/categories and attach category-aware image fallback metadata.
 
 export type LiveFeedItem = {
+  // published-status-history-pass: published local events may carry their originating Post Local review timeline.
   id: string;
   title: string;
   slug?: string;
@@ -40,6 +41,8 @@ export type LiveFeedItem = {
   limitedAvailability?: boolean;
   rescheduled?: boolean;
   isPartnerEvent?: boolean;
+  // published-status-history-pass marker: localSubmissionStatusHistory?: LocalSubmissionHistoryEntry[]
+  localSubmissionStatusHistory?: Array<{ action: string; label?: string; at?: string; note?: string }>;
 };
 
 export type LiveFeedResponse = {

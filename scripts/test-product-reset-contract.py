@@ -1312,6 +1312,45 @@ def test_loop_local_submitter_status_page_auto_refreshes_from_api():
 
 
 
+
+def test_loop_local_published_status_preserves_review_history():
+    live_feed = read('lib/live-feed.ts')
+    store = read('lib/local-submissions-store.ts')
+    status_card = read('components/submission-status-live-card.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'published-status-history-pass',
+        'localSubmissionStatusHistory?: LocalSubmissionHistoryEntry[]',
+    ]:
+        assert marker in live_feed, f'missing live feed published history marker {marker}'
+    for marker in [
+        'published-status-history-pass',
+        'localSubmissionStatusHistory: publishedSubmission.statusHistory',
+        'publishedLocalEvents',
+    ]:
+        assert marker in store, f'missing store published history marker {marker}'
+    for marker in [
+        'published-status-history-pass',
+        'published?.localSubmissionStatusHistory',
+        'Published locally',
+        'Review timeline',
+    ]:
+        assert marker in status_card, f'missing status card published history marker {marker}'
+    for marker in [
+        'published-status-history-pass',
+        'data.published?.localSubmissionStatusHistory',
+        'published response should preserve review history',
+        'published status page should preserve timeline',
+    ]:
+        assert marker in api_smoke, f'missing API smoke published history marker {marker}'
+    for marker in [
+        'published-status-history-pass',
+        'Published locally',
+        'published status retains Resubmitted for review',
+    ]:
+        assert marker in mobile_smoke, f'missing mobile published history marker {marker}'
+
 def test_loop_local_submissions_have_review_history_timeline():
     store = read('lib/local-submissions-store.ts')
     status_card = read('components/submission-status-live-card.tsx')
@@ -1490,6 +1529,7 @@ if __name__ == '__main__':
     test_loop_local_post_local_status_lookup_by_submission_id()
     test_loop_local_single_submission_status_api_boundary()
     test_loop_local_submitter_status_page_auto_refreshes_from_api()
+    test_loop_local_published_status_preserves_review_history()
     test_loop_local_submissions_have_review_history_timeline()
     test_loop_local_review_queue_exposes_submitter_status_handoff_links()
     test_loop_local_submitters_can_revise_needs_changes_submissions()

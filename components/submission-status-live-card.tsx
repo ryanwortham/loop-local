@@ -61,7 +61,8 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
   const submission = statusData.submission || null;
   const published = statusData.published || null;
   const reviewerNote = submission?.reviewerNote;
-  const statusHistory = submission?.statusHistory || [];
+  const statusHistory = submission?.statusHistory || published?.localSubmissionStatusHistory || [];
+  // published-status-history-pass: published?.localSubmissionStatusHistory keeps Review timeline after publish.
   const submittedAt = submission?.submittedAt;
   const updatedAt = submission?.statusUpdatedAt || submission?.reviewerNoteUpdatedAt || submission?.publishedAt;
 

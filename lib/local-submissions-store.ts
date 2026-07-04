@@ -195,6 +195,8 @@ export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFee
     imageState: submission.eventImageDataUrl || submission.logoDataUrl ? 'photo' : 'fallback',
     visualKey: submission.eventImageDataUrl || submission.logoDataUrl ? 'local-submission-media' : 'community',
     fallbackLabel: 'Locally approved',
+    localSubmissionStatusHistory: submission.statusHistory,
+    // published-status-history-pass: localSubmissionStatusHistory: publishedSubmission.statusHistory
   };
 }
 

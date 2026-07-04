@@ -158,6 +158,12 @@ async function main() {
   await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
   await page.getByText('Locally approved').first().waitFor({ timeout });
+  // published-status-history-pass: published status retains Resubmitted for review after pending queue removal.
+  await page.goto(`${baseURL}/post-local/status/${encodeURIComponent(lookupSubmissionId)}`, { waitUntil: 'domcontentloaded' });
+  await page.getByText('Published locally', { exact: true }).first().waitFor({ timeout });
+  await page.getByText('Resubmitted for review').first().waitFor({ timeout });
+  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
+  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after published status history check', { force: true });
   await assertClickable(page, page.locator('.pending-submissions-panel').getByRole('button', { name: 'Close' }), 'Close Review Queue after publish');
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Discover' }), 'Discover tab before local detail click', { force: true });
   await page.getByPlaceholder('Search events, artists, venues…').fill('API Smoke Market Night Revised');
