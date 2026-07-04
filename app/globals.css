@@ -2176,6 +2176,41 @@ button { -webkit-tap-highlight-color: transparent; }
   display: grid;
   gap: 6px;
 }
+.review-history-timeline,
+.review-history-mini {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(37,99,235,.14);
+  border-radius: 18px;
+  padding: 12px;
+  background: linear-gradient(180deg, #F8FAFF, #FFFFFF);
+}
+.review-history-timeline h2,
+.review-history-mini strong {
+  margin: 0;
+  color: var(--ll-rebuild-slate);
+  font-size: .86rem;
+}
+.review-history-timeline ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+.review-history-timeline li,
+.review-history-mini span {
+  color: var(--ll-rebuild-muted);
+  font-size: .76rem;
+  font-weight: 750;
+}
+.review-history-timeline li strong {
+  display: block;
+  color: var(--ll-rebuild-slate);
+}
+.review-history-timeline li span,
+.review-history-timeline li small {
+  display: block;
+}
 .reviewer-note-field span {
   color: var(--ll-rebuild-slate);
   font-size: .72rem;

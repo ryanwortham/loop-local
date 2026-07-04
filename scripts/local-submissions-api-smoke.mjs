@@ -84,6 +84,7 @@ async function main() {
   const id = data.submission?.id;
   assert(id, 'created submission should have id');
   assert(data.submission.status === 'pending_review', 'created submission should be pending_review');
+  assert(data.submission.statusHistory?.some((entry) => entry.action === 'submitted'), 'submitted history entry should persist');
   assert(data.pendingSubmissions.some((item) => item.id === id), 'created submission should appear in queue');
 
   // single-submission-status-api-pass: direct single status pending_review endpoint.
@@ -102,6 +103,7 @@ async function main() {
   assertStatus(response, 200, 'update submission');
   data = await json(response);
   assert(data.submission.status === 'needs_changes', 'patched status should be needs_changes');
+  assert(data.submission.statusHistory?.some((entry) => entry.action === 'needs_changes'), 'needs_changes history entry should persist');
   assert(data.submission.reviewerNote?.includes('reviewerNote'), 'patched reviewer note should persist');
 
   response = await request(`/${encodeURIComponent(id)}`);
@@ -128,6 +130,7 @@ async function main() {
   assertStatus(response, 200, 'resubmit revised submission');
   data = await json(response);
   assert(data.submission.status === 'pending_review', 'resubmitted submission should return to pending_review');
+  assert(data.submission.statusHistory?.some((entry) => entry.action === 'resubmitted'), 'resubmitted history entry should persist');
   assert(data.submission.eventTitle === 'API Direct Smoke Night Revised', 'resubmitted title should persist');
   assert(!data.submission.reviewerNote, 'reviewerNote should clear after resubmit');
 
@@ -144,6 +147,7 @@ async function main() {
   assertStatus(response, 200, 'publish submission');
   data = await json(response);
   assert(data.submission.status === 'published_local', 'published submission should be marked published_local');
+  assert(data.submission.statusHistory?.some((entry) => entry.action === 'published_local'), 'published_local history entry should persist');
   assert(data.published?.title === 'API Direct Smoke Night Revised', 'published feed item should use event title');
   // Contract markers: published.image_url?.startsWith('data:image/svg+xml;base64,') and published.imageState === 'photo'
   assert(data.published.image_url?.startsWith('data:image/svg+xml;base64,'), 'published image_url should preserve event media data URL');

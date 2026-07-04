@@ -6,6 +6,14 @@ import { eventSlug, type LiveFeedItem } from '@/lib/live-feed';
 
 export type LocalSubmissionStatus = 'pending_review' | 'needs_changes' | 'approved_local' | 'published_local';
 
+export type LocalSubmissionHistoryEntry = {
+  // review-history-timeline-pass: chronological review actions for submitters and operators.
+  action: 'submitted' | 'needs_changes' | 'approved_local' | 'resubmitted' | 'published_local' | 'updated';
+  label: string;
+  at: string;
+  note?: string;
+};
+
 export type LocalSubmissionRecord = {
   id: string;
   entityName?: string;
@@ -48,6 +56,7 @@ export type LocalSubmissionRecord = {
   reviewerNote?: string;
   reviewerNoteUpdatedAt?: string;
   revisionSubmittedAt?: string;
+  statusHistory?: LocalSubmissionHistoryEntry[];
 };
 
 export type LocalSubmissionsStore = {
@@ -84,14 +93,40 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function historyLabel(action: LocalSubmissionHistoryEntry['action']) {
+  return {
+    submitted: 'Submitted for review',
+    needs_changes: 'Changes requested',
+    approved_local: 'Approved only',
+    resubmitted: 'Resubmitted for review',
+    published_local: 'Published locally',
+    updated: 'Updated by operator',
+  }[action];
+}
+
+function appendSubmissionHistory(
+  submission: LocalSubmissionRecord,
+  action: LocalSubmissionHistoryEntry['action'],
+  note?: string,
+  at = nowIso(),
+): LocalSubmissionRecord {
+  // review-history-timeline-pass: appendSubmissionHistory keeps immutable statusHistory audit entries.
+  const entry: LocalSubmissionHistoryEntry = { action, label: historyLabel(action), at, ...(note ? { note } : {}) };
+  return { ...submission, statusHistory: [...(submission.statusHistory || []), entry] };
+}
+
 function normalizeSubmission(input: Partial<LocalSubmissionRecord>): LocalSubmissionRecord {
   const submittedAt = input.submittedAt || nowIso();
-  return {
+  const base = {
     ...input,
     id: input.id || `${safeIdPrefix(input.eventTitle || input.entityName)}-${Date.parse(submittedAt) || Date.now()}`,
     status: input.status || 'pending_review',
     submittedAt,
+    statusHistory: Array.isArray(input.statusHistory) && input.statusHistory.length
+      ? input.statusHistory
+      : [{ action: 'submitted' as const, label: 'Submitted for review', at: submittedAt }],
   };
+  return base;
 }
 
 function normalizeStore(value: unknown): LocalSubmissionsStore {
@@ -175,7 +210,17 @@ export async function createLocalSubmission(input: Partial<LocalSubmissionRecord
 
 export async function updateLocalSubmission(id: string, patch: Partial<LocalSubmissionRecord>) {
   const store = await readLocalSubmissionsStore();
-  const nextPending = store.pendingSubmissions.map((item) => item.id === id ? { ...item, ...patch, statusUpdatedAt: nowIso() } : item);
+  const nextPending = store.pendingSubmissions.map((item) => {
+    if (item.id !== id) return item;
+    const updated = { ...item, ...patch, statusUpdatedAt: nowIso() };
+    if (patch.status && patch.status !== item.status) {
+      const action = patch.status === 'needs_changes' ? 'needs_changes' : patch.status === 'approved_local' ? 'approved_local' : 'updated';
+      // review-history-timeline-pass markers: action: 'needs_changes' action: 'approved_local'
+      return appendSubmissionHistory(updated, action, patch.reviewerNote || item.reviewerNote);
+    }
+    if (patch.reviewerNote && patch.reviewerNote !== item.reviewerNote) return appendSubmissionHistory(updated, 'updated', patch.reviewerNote);
+    return updated;
+  });
   const updated = nextPending.find((item) => item.id === id);
   if (!updated) return { store, submission: null };
   const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
@@ -195,7 +240,8 @@ export async function publishLocalSubmission(id: string) {
   const store = await readLocalSubmissionsStore();
   const submission = store.pendingSubmissions.find((item) => item.id === id);
   if (!submission) return { store, submission: null, published: null };
-  const publishedSubmission = { ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() };
+  const publishedSubmission = appendSubmissionHistory({ ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() }, 'published_local');
+  // review-history-timeline-pass marker: action: 'published_local'
   const published = submissionToFeedItem(publishedSubmission);
   const nextStore: LocalSubmissionsStore = {
     ...store,
@@ -210,7 +256,7 @@ export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSu
   const store = await readLocalSubmissionsStore();
   const submittedAt = nowIso();
   const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
-  const nextPending = store.pendingSubmissions.map((item) => item.id === id ? {
+  const nextPending = store.pendingSubmissions.map((item) => item.id === id ? appendSubmissionHistory({
     ...item,
     ...cleanPatch,
     id,
@@ -219,7 +265,8 @@ export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSu
     reviewerNoteUpdatedAt: undefined,
     statusUpdatedAt: submittedAt,
     revisionSubmittedAt: submittedAt,
-  } : item);
+  }, 'resubmitted', undefined, submittedAt) : item);
+  // review-history-timeline-pass marker: action: 'resubmitted'
   const updated = nextPending.find((item) => item.id === id);
   if (!updated) return { store, submission: null };
   const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };

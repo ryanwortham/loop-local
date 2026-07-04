@@ -40,6 +40,17 @@ function dateLine(value?: string) {
   return value ? new Date(value).toLocaleString() : '';
 }
 
+function historyLabelFor(action?: string) {
+  return {
+    submitted: 'Submitted for review',
+    needs_changes: 'Changes requested',
+    approved_local: 'Approved only',
+    resubmitted: 'Resubmitted for review',
+    published_local: 'Published locally',
+    updated: 'Updated by operator',
+  }[action || ''] || 'Updated';
+}
+
 export function SubmissionStatusLiveCard({ submissionId, initialStatus }: SubmissionStatusLiveCardProps) {
   const [statusData, setStatusData] = useState<StatusApiPayload>(initialStatus);
   const [lastChecked, setLastChecked] = useState<string>('Just now');
@@ -50,6 +61,7 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
   const submission = statusData.submission || null;
   const published = statusData.published || null;
   const reviewerNote = submission?.reviewerNote;
+  const statusHistory = submission?.statusHistory || [];
   const submittedAt = submission?.submittedAt;
   const updatedAt = submission?.statusUpdatedAt || submission?.reviewerNoteUpdatedAt || submission?.publishedAt;
 
@@ -92,6 +104,18 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
       {status === 'needs_changes' ? <p>Needs changes before publication. Review the note below, then update your post with the requested details.</p> : null}
       {status === 'published_local' ? <p>Your post is published locally and can now be opened from discovery.</p> : null}
       {reviewerNote ? <blockquote><strong>Reviewer note</strong><br />{reviewerNote}</blockquote> : null}
+      <section className="review-history-timeline-pass review-history-timeline" aria-label="Review timeline">
+        <h2>Review timeline</h2>
+        <ol>
+          {(statusHistory.length ? statusHistory : [{ action: 'submitted', label: 'Submitted for review', at: submittedAt || updatedAt || '', note: undefined }]).map((entry, index) => (
+            <li key={`${entry.action}-${entry.at || index}`}>
+              <strong>{entry.label || historyLabelFor(entry.action)}</strong>
+              <span>{entry.at ? dateLine(entry.at) : 'Time pending'}</span>
+              {entry.note ? <small>{entry.note}</small> : null}
+            </li>
+          ))}
+        </ol>
+      </section>
       <div className="ll-submit-actions">
         <Link href="/post-local">Back to Post Local</Link>
         {status === 'needs_changes' ? <Link className="primary-action submitter-revision-flow-pass" href={`/post-local?revisionId=${encodeURIComponent(submissionId)}`}>Revise submission</Link> : null}

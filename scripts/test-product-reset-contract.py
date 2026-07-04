@@ -1311,6 +1311,55 @@ def test_loop_local_submitter_status_page_auto_refreshes_from_api():
 
 
 
+
+def test_loop_local_submissions_have_review_history_timeline():
+    store = read('lib/local-submissions-store.ts')
+    status_card = read('components/submission-status-live-card.tsx')
+    shell = read('components/app-shell.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'review-history-timeline-pass',
+        'type LocalSubmissionHistoryEntry',
+        'statusHistory?: LocalSubmissionHistoryEntry[]',
+        'appendSubmissionHistory',
+        "action: 'submitted'",
+        "action: 'needs_changes'",
+        "action: 'resubmitted'",
+        "action: 'published_local'",
+    ]:
+        assert marker in store, f'missing store review history marker {marker}'
+    for marker in [
+        'review-history-timeline-pass',
+        'Review timeline',
+        'statusHistory',
+        'Submitted for review',
+        'Changes requested',
+        'Resubmitted for review',
+    ]:
+        assert marker in status_card, f'missing status page timeline marker {marker}'
+    for marker in [
+        'review-history-timeline-pass',
+        'Review timeline',
+        'statusHistory?.slice',
+    ]:
+        assert marker in shell, f'missing review queue timeline marker {marker}'
+    for marker in [
+        'statusHistory',
+        'submitted history entry',
+        'needs_changes history entry',
+        'resubmitted history entry',
+        'published_local history entry',
+    ]:
+        assert marker in api_smoke, f'missing API smoke history marker {marker}'
+    for marker in [
+        'review-history-timeline-pass',
+        'Review timeline',
+        'Changes requested',
+        'Resubmitted for review',
+    ]:
+        assert marker in mobile_smoke, f'missing mobile history marker {marker}'
+
 def test_loop_local_review_queue_exposes_submitter_status_handoff_links():
     shell = read('components/app-shell.tsx')
     mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
@@ -1441,6 +1490,7 @@ if __name__ == '__main__':
     test_loop_local_post_local_status_lookup_by_submission_id()
     test_loop_local_single_submission_status_api_boundary()
     test_loop_local_submitter_status_page_auto_refreshes_from_api()
+    test_loop_local_submissions_have_review_history_timeline()
     test_loop_local_review_queue_exposes_submitter_status_handoff_links()
     test_loop_local_submitters_can_revise_needs_changes_submissions()
     test_old_incremental_design_artifacts_removed()

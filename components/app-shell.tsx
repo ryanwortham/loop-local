@@ -16,6 +16,13 @@ const reviewQueueFilters: Array<{ id: ReviewQueueFilter; label: string }> = [
   { id: 'approved_local', label: 'Approved only' },
 ];
 
+type LocalSubmissionHistoryEntry = {
+  action: string;
+  label?: string;
+  at?: string;
+  note?: string;
+};
+
 type LocalSubmission = {
   id?: string;
   entityName?: string;
@@ -35,6 +42,7 @@ type LocalSubmission = {
   statusUpdatedAt?: string;
   reviewerNote?: string;
   reviewerNoteUpdatedAt?: string;
+  statusHistory?: LocalSubmissionHistoryEntry[];
 };
 
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
@@ -721,6 +729,12 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                     <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
                     <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                     <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
+                    <section className="review-history-timeline-pass review-history-mini" aria-label="Review timeline">
+                      <strong>Review timeline</strong>
+                      {(submission.statusHistory?.slice(-3) || [{ action: 'submitted', label: 'Submitted for review', at: submission.submittedAt }]).map((entry, historyIndex) => (
+                        <span key={`${entry.action}-${entry.at || historyIndex}`}>{entry.label || entry.action}{entry.at ? ` · ${new Date(entry.at).toLocaleDateString()}` : ''}</span>
+                      ))}
+                    </section>
                     <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={submission.reviewerNote || ''} onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)} placeholder="Internal note for changes, approval context, or publish handoff" rows={2} /></label>
                     <div className="operator-submitter-link-pass pending-submitter-link-row">
                       <Link href={submitterStatusHref(submission)}>Open status page</Link>

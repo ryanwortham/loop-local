@@ -98,12 +98,16 @@ async function main() {
     page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
   ]);
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
+  // review-history-timeline-pass: mobile status page exposes Submitted/Changes requested/Resubmitted history.
+  await page.getByText('Review timeline').first().waitFor({ timeout });
+  await page.getByText('Submitted for review').first().waitFor({ timeout });
   // submitter-status-live-refresh-pass: Status auto-refresh detected reviewer update without a full page reload.
   await page.request.patch(`${baseURL}/api/local-submissions`, {
     data: { id: lookupSubmissionId, status: 'needs_changes', reviewerNote: 'Mobile smoke reviewer note' },
   });
   await page.getByText('Needs changes', { exact: true }).first().waitFor({ timeout: 12000 });
-  await page.getByText('Mobile smoke reviewer note').waitFor({ timeout: 12000 });
+  await page.getByText('Changes requested').first().waitFor({ timeout: 12000 });
+  await page.getByText('Mobile smoke reviewer note').first().waitFor({ timeout: 12000 });
 
   // submitter-status-lookup-pass: returning submitters can enter a Submission ID lookup from Post Local.
   await page.goto(`${baseURL}/post-local`, { waitUntil: 'domcontentloaded' });
@@ -131,6 +135,7 @@ async function main() {
     page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
   ]);
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
+  await page.getByText('Resubmitted for review').first().waitFor({ timeout });
 
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after API submit', { force: true });
