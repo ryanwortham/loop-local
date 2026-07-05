@@ -97,6 +97,15 @@ async function main() {
   assert(data.status === 'pending_review', 'single status should return pending_review');
   assert(data.submission?.eventTitle === 'API Direct Smoke Night', 'single status should include pending submission');
 
+  // needs-changes-note-gate-pass: needs_changes without reviewerNote should be rejected.
+  response = await request('', {
+    method: 'PATCH',
+    body: JSON.stringify({ id, status: 'needs_changes' }),
+  });
+  assertStatus(response, 400, 'needs_changes without reviewerNote');
+  data = await json(response);
+  assert(data.error === 'reviewerNote is required to request changes', 'needs_changes should require reviewerNote');
+
   response = await request('', {
     method: 'PATCH',
     body: JSON.stringify({ id, status: 'needs_changes', reviewerNote: 'reviewerNote: needs stronger event photo' }),

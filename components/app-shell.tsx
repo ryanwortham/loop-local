@@ -438,6 +438,23 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     setOperatorExportStatus('Removed from review queue');
   }
 
+  async function requestNeedsChanges(indexToUpdate: number) {
+    // needs-changes-note-gate-pass: do not send vague change requests without reviewer feedback.
+    const submission = pendingSubmissions[indexToUpdate];
+    const note = submission?.reviewerNote?.trim();
+    if (!submission?.id) return;
+    if (!note) {
+      setOperatorExportStatus('Add a reviewer note before requesting changes');
+      return;
+    }
+    await syncLocalSubmissionMutation('/api/local-submissions', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: submission.id, status: 'needs_changes', reviewerNote: note, statusUpdatedAt: new Date().toISOString() }),
+    });
+    setOperatorExportStatus('Requested changes with reviewer note');
+  }
+
   async function updateLocalSubmissionStatus(indexToUpdate: number, status: SubmissionStatus) {
     const submission = pendingSubmissions[indexToUpdate];
     if (!submission?.id) return;
@@ -740,7 +757,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                       <Link href={submitterStatusHref(submission)}>Open status page</Link>
                       <button type="button" onClick={() => copySubmitterStatusLink(submission)}>Copy submitter link</button>
                     </div>
-                    <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'needs_changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
+                    <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => requestNeedsChanges(index)}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
                   </article>;
                 })}
               </div>

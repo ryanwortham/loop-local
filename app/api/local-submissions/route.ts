@@ -78,6 +78,14 @@ export async function PATCH(request: NextRequest) {
     if (!result.submission) return error('submission not found', 404);
     return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });
   }
+  if (body.status === 'needs_changes') {
+    // needs-changes-note-gate-pass: reviewer feedback must be actionable before submitters see Changes requested.
+    const store = await readLocalSubmissionsStore();
+    const existing = store.pendingSubmissions.find((item) => item.id === body.id);
+    const note = (body.reviewerNote || existing?.reviewerNote || '').trim();
+    if (!note) return error('reviewerNote is required to request changes');
+    body.reviewerNote = note;
+  }
   const { id, ...patch } = body;
   const result = await updateLocalSubmission(id, patch);
   if (!result.submission) return error('submission not found', 404);
