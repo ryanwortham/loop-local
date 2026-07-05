@@ -11,6 +11,12 @@ import {
   writeLocalSubmissionsStore,
   type LocalSubmissionRecord,
 } from '@/lib/local-submissions-store';
+import {
+  MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES,
+  validateCreateLocalSubmissionInput,
+  validateReplaceStoreInput,
+  validateReviewMutationInput,
+} from '@/lib/local-submissions/schemas';
 import { type LiveFeedItem } from '@/lib/live-feed';
 
 // api-backed-local-submissions-pass: /api/local-submissions is the app-backed review queue boundary.
@@ -34,11 +40,19 @@ function isLiveFeedItem(item: unknown): item is LiveFeedItem {
 }
 
 async function readBody(request: NextRequest): Promise<MutationBody> {
+  const contentLength = Number(request.headers.get('content-length') || 0);
+  if (contentLength > MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES) return { __payloadTooLarge: true } as MutationBody;
   try {
-    return (await request.json()) as MutationBody;
+    const raw = await request.text();
+    if (raw.length > MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES) return { __payloadTooLarge: true } as MutationBody;
+    return raw ? (JSON.parse(raw) as MutationBody) : {};
   } catch {
     return {};
   }
+}
+
+function payloadTooLarge(body: MutationBody) {
+  return Boolean((body as MutationBody & { __payloadTooLarge?: boolean }).__payloadTooLarge);
 }
 
 export async function GET(request: NextRequest) {
@@ -55,30 +69,38 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await readBody(request);
+  if (payloadTooLarge(body)) return error('payload too large', 413);
   if (body.action === 'replace') {
     const unauthorized = requireOperatorAccess(request);
     if (unauthorized) return unauthorized;
+    const replacement = validateReplaceStoreInput(body);
+    if (!replacement.ok) return error(replacement.error, replacement.status || 400);
     const store = await writeLocalSubmissionsStore({
       version: 1,
-      pendingSubmissions: Array.isArray(body.pendingSubmissions) ? body.pendingSubmissions : [],
-      publishedLocalEvents: Array.isArray(body.publishedLocalEvents) ? body.publishedLocalEvents.filter(isLiveFeedItem) : [],
+      pendingSubmissions: replacement.value.pendingSubmissions,
+      publishedLocalEvents: replacement.value.publishedLocalEvents.filter(isLiveFeedItem),
     });
     return NextResponse.json({ ok: true, api: '/api/local-submissions', ...store });
   }
-  if (!body.eventTitle && !body.entityName) return error('eventTitle or entityName is required');
-  const { store, submission } = await createLocalSubmission(body);
+  const create = validateCreateLocalSubmissionInput(body);
+  if (!create.ok) return error(create.error, create.status || 400);
+  const { store, submission } = await createLocalSubmission(create.value);
   return NextResponse.json({ ok: true, api: '/api/local-submissions', submission, ...store }, { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {
   const body = await readBody(request);
-  if (!body.id) return error('id is required');
-  if (body.action === 'resubmit') {
+  if (payloadTooLarge(body)) return error('payload too large', 413);
+  const mutation = validateReviewMutationInput(body);
+  if (!mutation.ok) return error(mutation.error, mutation.status || 400);
+  const cleanBody = mutation.value;
+  if (cleanBody.action === 'resubmit') {
+    // Legacy resubmit contract marker: body.action === 'resubmit'.
     // submitter-revision-flow-pass: submitter revisions use statusToken instead of operatorToken.
-    const token = typeof body.statusToken === 'string' ? body.statusToken : '';
-    const status = await findLocalSubmissionStatus(body.id, token);
+    const token = typeof cleanBody.statusToken === 'string' ? cleanBody.statusToken : '';
+    const status = await findLocalSubmissionStatus(cleanBody.id, token);
     if (!status.submission) return error(token ? 'submission not found' : 'status token required', token ? 404 : 401);
-    const { id, action: _action, statusToken: _statusToken, ...patch } = body;
+    const { id, action: _action, statusToken: _statusToken, ...patch } = cleanBody;
     void _action;
     void _statusToken;
     const result = await resubmitLocalSubmission(id, patch);
@@ -87,20 +109,21 @@ export async function PATCH(request: NextRequest) {
   }
   const unauthorized = requireOperatorAccess(request);
   if (unauthorized) return unauthorized;
-  if (body.action === 'publish') {
-    const result = await publishLocalSubmission(body.id);
+  if (cleanBody.action === 'publish') {
+    // Legacy operator contract marker: body.action === 'publish'.
+    const result = await publishLocalSubmission(cleanBody.id);
     if (!result.submission) return error('submission not found', 404);
     return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, published: result.published, ...result.store });
   }
-  if (body.status === 'needs_changes') {
+  if (cleanBody.status === 'needs_changes') {
     // needs-changes-note-gate-pass: reviewer feedback must be actionable before submitters see Changes requested.
     const store = await readLocalSubmissionsStore();
-    const existing = store.pendingSubmissions.find((item) => item.id === body.id);
-    const note = (body.reviewerNote || existing?.reviewerNote || '').trim();
+    const existing = store.pendingSubmissions.find((item) => item.id === cleanBody.id);
+    const note = (cleanBody.reviewerNote || existing?.reviewerNote || '').trim();
     if (!note) return error('reviewerNote is required to request changes');
-    body.reviewerNote = note;
+    cleanBody.reviewerNote = note;
   }
-  const { id, ...patch } = body;
+  const { id, ...patch } = cleanBody;
   const result = await updateLocalSubmission(id, patch);
   if (!result.submission) return error('submission not found', 404);
   return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });

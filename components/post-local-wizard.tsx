@@ -413,8 +413,8 @@ export function PostLocalWizard() {
             name="logo"
             label="Logo upload"
             required={false}
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
-            helperText="Browse computer or drag and drop a logo here. PNG, JPG, WebP, or SVG."
+            accept="image/png,image/jpeg,image/webp"
+            helperText="Browse computer or drag and drop a logo here. PNG, JPG, or WebP."
             maxSizeLabel="Maximum file size: 5 MB"
           />
           <div className="ll-grid">

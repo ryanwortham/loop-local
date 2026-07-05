@@ -49,9 +49,10 @@ async function fetchText(url) {
 }
 
 async function main() {
-  const mediaSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#2563eb"/><text x="6" y="21" font-size="12" fill="white">LL</text></svg>';
-  const mediaDataUrl = `data:image/svg+xml;base64,${Buffer.from(mediaSvg).toString('base64')}`;
+  const mediaDataUrl = 'data:image/png;base64,iVBORw0KGgo=';
+  const svgMediaDataUrl = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64')}`;
   // post-local-media-persistence-pass: API Direct Smoke Media verifies eventImageDataUrl/logoDataUrl survives publish.
+  // media-sanitization-boundary-pass: image/png;base64 is allowed, SVG media should be rejected, oversized payload should be rejected, invalid URL should be rejected.
   // operator-review-token-gate-pass: protected GET without token and protected PATCH without token are rejected.
   let response = await request('');
   assertStatus(response, 401, 'protected GET without token');
@@ -78,6 +79,19 @@ async function main() {
   response = await request('', { method: 'POST', body: JSON.stringify({}) });
   assertStatus(response, 400, 'missing create payload');
 
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Bad URL Smoke', eventTitle: 'Bad URL Event', website: 'javascript:alert(1)' }) });
+  assertStatus(response, 201, 'invalid URL should be rejected but nonfatal');
+  data = await json(response);
+  assert(!data.submission.website, 'invalid URL should be rejected');
+
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'SVG Smoke', eventTitle: 'SVG Smoke Event', logoDataUrl: svgMediaDataUrl }) });
+  assertStatus(response, 400, 'SVG media should be rejected');
+  data = await json(response);
+  assert(data.error === 'unsupported image type', 'SVG media should be rejected with unsupported image type');
+
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Oversized Smoke', eventTitle: 'Oversized Smoke Event', eventDescription: 'x'.repeat(3000000) }) });
+  assertStatus(response, 413, 'oversized payload should be rejected');
+
   response = await request('', {
     method: 'POST',
     body: JSON.stringify({
@@ -93,9 +107,9 @@ async function main() {
       eventCategory: 'Community',
       eventDescription: 'Direct API smoke test submission.',
       logoDataUrl: mediaDataUrl,
-      logoFileName: 'api-direct-smoke-logo.svg',
+      logoFileName: 'api-direct-smoke-logo.png',
       eventImageDataUrl: mediaDataUrl,
-      eventImageFileName: 'api-direct-smoke-event.svg',
+      eventImageFileName: 'api-direct-smoke-event.png',
     }),
   });
   assertStatus(response, 201, 'create submission');
@@ -186,8 +200,8 @@ async function main() {
   assert(data.published?.title === 'API Direct Smoke Night Revised', 'published feed item should use event title');
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published response should preserve review history');
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local'), 'published response should include published_local history');
-  // Contract markers: published.image_url?.startsWith('data:image/svg+xml;base64,') and published.imageState === 'photo'
-  assert(data.published.image_url?.startsWith('data:image/svg+xml;base64,'), 'published image_url should preserve event media data URL');
+  // Contract markers: published.image_url?.startsWith('data:image/png;base64,') and published.imageState === 'photo'
+  assert(data.published.image_url?.startsWith('data:image/png;base64,'), 'published image_url should preserve event media data URL');
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
   assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night Revised'), 'publishedLocalEvents should include published event');
   assert(!data.pendingSubmissions.some((item) => item.id === id), 'published submission should leave pending queue');

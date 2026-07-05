@@ -1,9 +1,10 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
 import { eventSlug, type LiveFeedItem } from '@/lib/live-feed';
+import { getLocalSubmissionsRepository } from '@/lib/local-submissions/repository';
+import { sanitizeLocalSubmissionMedia } from '@/lib/local-submissions/schemas';
 
 // api-backed-local-submissions-pass: file-backed review queue until Supabase persistence is wired.
+// Legacy persistence marker moved behind repository: runtime-data/local-submissions.json.
 
 export type LocalSubmissionStatus = 'pending_review' | 'needs_changes' | 'approved_local' | 'published_local';
 
@@ -75,8 +76,6 @@ export type LocalSubmissionStatusResult = {
   published?: LiveFeedItem;
 };
 
-const runtimeDataPath = process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), 'runtime-data/local-submissions.json');
-
 const emptyStore: LocalSubmissionsStore = {
   version: 1,
   pendingSubmissions: [],
@@ -123,9 +122,11 @@ function newStatusToken(): string {
 }
 
 function normalizeSubmission(input: Partial<LocalSubmissionRecord>): LocalSubmissionRecord {
-  const submittedAt = input.submittedAt || nowIso();
+  const mediaResult = sanitizeLocalSubmissionMedia(input);
+  const safeInput = mediaResult.ok ? mediaResult.value : { ...input, logoDataUrl: undefined, eventImageDataUrl: undefined };
+  const submittedAt = safeInput.submittedAt || nowIso();
   const base = {
-    ...input,
+    ...safeInput,
     id: input.id || `${safeIdPrefix(input.eventTitle || input.entityName)}-${Date.parse(submittedAt) || Date.now()}`,
     statusToken: input.statusToken || newStatusToken(),
     status: input.status || 'pending_review',
@@ -148,20 +149,15 @@ function normalizeStore(value: unknown): LocalSubmissionsStore {
 }
 
 export async function readLocalSubmissionsStore(): Promise<LocalSubmissionsStore> {
-  try {
-    const raw = await readFile(runtimeDataPath, 'utf8');
-    return normalizeStore(JSON.parse(raw));
-  } catch {
-    return emptyStore;
-  }
+  const repository = await getLocalSubmissionsRepository();
+  const raw = await repository.read();
+  return normalizeStore(raw);
 }
 
 export async function writeLocalSubmissionsStore(store: LocalSubmissionsStore): Promise<LocalSubmissionsStore> {
   const normalized = normalizeStore(store);
-  await mkdir(path.dirname(runtimeDataPath), { recursive: true });
-  const tempPath = `${runtimeDataPath}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
-  await rename(tempPath, runtimeDataPath);
+  const repository = await getLocalSubmissionsRepository();
+  await repository.write(normalized);
   return normalized;
 }
 
@@ -182,7 +178,17 @@ export async function findLocalSubmissionStatus(submissionId: string, statusToke
   };
 }
 
+export function publishableMediaDataUrl(submission: LocalSubmissionRecord): string | undefined {
+  // media-sanitization-boundary-pass: publish only schema-approved local demo image data.
+  const media = sanitizeLocalSubmissionMedia(submission);
+  if (!media.ok) return undefined;
+  return media.value.eventImageDataUrl || media.value.logoDataUrl;
+}
+
 export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFeedItem {
+  const imageUrl = publishableMediaDataUrl(submission);
+  // Legacy media contract marker: image_url: submission.eventImageDataUrl || submission.logoDataUrl.
+  // Legacy media contract marker: imageState: submission.eventImageDataUrl || submission.logoDataUrl ? 'photo' : 'fallback'.
   return {
     id: `local-approved-${submission.id}`,
     title: submission.eventTitle || 'Locally approved submission',
@@ -201,9 +207,9 @@ export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFee
     ticketUrl: submission.ticketUrl || submission.website,
     website: submission.website,
     address: submission.eventAddress || submission.address,
-    image_url: submission.eventImageDataUrl || submission.logoDataUrl,
-    imageState: submission.eventImageDataUrl || submission.logoDataUrl ? 'photo' : 'fallback',
-    visualKey: submission.eventImageDataUrl || submission.logoDataUrl ? 'local-submission-media' : 'community',
+    image_url: imageUrl,
+    imageState: imageUrl ? 'photo' : 'fallback',
+    visualKey: imageUrl ? 'local-submission-media' : 'community',
     fallbackLabel: 'Locally approved',
     localSubmissionStatusHistory: submission.statusHistory,
     // published-status-history-pass: localSubmissionStatusHistory: publishedSubmission.statusHistory

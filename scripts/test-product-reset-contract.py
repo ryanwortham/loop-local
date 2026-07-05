@@ -1152,7 +1152,7 @@ def test_loop_local_post_local_media_survives_submit_review_publish():
         'API Direct Smoke Media',
         'eventImageDataUrl',
         'logoDataUrl',
-        'published.image_url?.startsWith(\'data:image/svg+xml;base64,\')',
+        'published.image_url?.startsWith(\'data:image/png;base64,\')',
         "published.imageState === 'photo'",
     ]:
         assert marker in api_smoke, f'missing API media smoke marker {marker}'
@@ -1576,6 +1576,55 @@ def test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup():
         assert marker in api_smoke + mobile, f'missing smoke cleanup marker {marker}'
 
 
+def test_loop_local_persistence_media_validation_boundary_is_hardened():
+    route = read('app/api/local-submissions/route.ts')
+    store = read('lib/local-submissions-store.ts')
+    repo = read('lib/local-submissions/repository.ts') if (ROOT / 'lib/local-submissions/repository.ts').exists() else ''
+    file_repo = read('lib/local-submissions/file-repository.ts') if (ROOT / 'lib/local-submissions/file-repository.ts').exists() else ''
+    schemas = read('lib/local-submissions/schemas.ts') if (ROOT / 'lib/local-submissions/schemas.ts').exists() else ''
+    post = read('components/post-local-wizard.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    for marker in [
+        'local-submissions-repository-boundary-pass',
+        'LocalSubmissionsRepository',
+        'getLocalSubmissionsRepository',
+        'FileLocalSubmissionsRepository',
+    ]:
+        assert marker in repo + file_repo + store, f'missing repository boundary marker {marker}'
+    assert "process.cwd(), 'runtime-data', 'local-submissions.json'" in file_repo, 'file adapter should scope runtime path to runtime-data for Turbopack tracing'
+    assert 'runtimeDataPath' not in store, 'store domain layer should not own filesystem runtimeDataPath'
+    for marker in [
+        'local-submission-runtime-schema-pass',
+        'validateCreateLocalSubmissionInput',
+        'validateReviewMutationInput',
+        'validateReplaceStoreInput',
+        'MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES',
+        'allowedLocalSubmissionStatuses',
+        'safeOptionalUrl',
+    ]:
+        assert marker in schemas + route, f'missing runtime schema marker {marker}'
+    for marker in [
+        'media-sanitization-boundary-pass',
+        'sanitizeLocalSubmissionMedia',
+        'allowedDataImageMimeTypes',
+        "'image/png'",
+        "'image/jpeg'",
+        "'image/webp'",
+        "unsupported image type",
+        'publishableMediaDataUrl',
+    ]:
+        assert marker in schemas + store, f'missing media hardening marker {marker}'
+    assert 'image/svg+xml' not in post, 'Post Local uploader should not advertise SVG until sanitization pipeline exists'
+    for marker in [
+        'invalid URL should be rejected',
+        'oversized payload should be rejected',
+        'SVG media should be rejected',
+        'image/png;base64',
+        'loop_local_local_submissions_api_smoke_ok',
+    ]:
+        assert marker in api_smoke, f'missing API smoke validation marker {marker}'
+
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1639,5 +1688,6 @@ if __name__ == '__main__':
     test_loop_local_submitters_can_revise_needs_changes_submissions()
     test_loop_local_operator_review_system_is_separated_and_token_gated()
     test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup()
+    test_loop_local_persistence_media_validation_boundary_is_hardened()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')
