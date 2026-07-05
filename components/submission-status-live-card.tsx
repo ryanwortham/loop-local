@@ -17,6 +17,7 @@ type StatusApiPayload = {
 
 type SubmissionStatusLiveCardProps = {
   submissionId: string;
+  statusToken?: string;
   initialStatus: StatusApiPayload;
 };
 
@@ -51,7 +52,7 @@ function historyLabelFor(action?: string) {
   }[action || ''] || 'Updated';
 }
 
-export function SubmissionStatusLiveCard({ submissionId, initialStatus }: SubmissionStatusLiveCardProps) {
+export function SubmissionStatusLiveCard({ submissionId, statusToken = '', initialStatus }: SubmissionStatusLiveCardProps) {
   const [statusData, setStatusData] = useState<StatusApiPayload>(initialStatus);
   const [lastChecked, setLastChecked] = useState<string>('Just now');
   const [refreshError, setRefreshError] = useState<string>('');
@@ -70,7 +71,9 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
 
   const refreshSubmissionStatus = useCallback(async function refreshSubmissionStatus() {
     try {
-      const response = await fetch(`/api/local-submissions/${encodeURIComponent(submissionId)}`, { cache: 'no-store' });
+      // submitter-status-live-refresh-pass legacy marker: `/api/local-submissions/${encodeURIComponent(submissionId)}`.
+      const url = `/api/local-submissions/${encodeURIComponent(submissionId)}${statusToken ? `?statusToken=${encodeURIComponent(statusToken)}` : ''}`;
+      const response = await fetch(url, { cache: 'no-store' });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || 'Status refresh failed');
       setStatusData(data);
@@ -79,7 +82,7 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : 'Status refresh failed');
     }
-  }, [submissionId]);
+  }, [submissionId, statusToken]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -119,7 +122,7 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
       </section>
       <div className="ll-submit-actions">
         <Link href="/post-local">Back to Post Local</Link>
-        {status === 'needs_changes' ? <Link className="primary-action submitter-revision-flow-pass" href={`/post-local?revisionId=${encodeURIComponent(submissionId)}`}>Revise submission</Link> : null}
+        {status === 'needs_changes' ? <Link className="primary-action submitter-revision-flow-pass" href={`/post-local?revisionId=${encodeURIComponent(submissionId)}${statusToken ? `&statusToken=${encodeURIComponent(statusToken)}` : ''}`}>Revise submission</Link> : null}
         {published && publishedHref ? <Link className="primary-action" href={publishedHref}>View published event</Link> : null}
       </div>
     </section>

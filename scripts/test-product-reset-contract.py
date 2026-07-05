@@ -893,7 +893,7 @@ def test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable():
         'mobile-first-homepage-polish-pass',
         'mobile-webview-layout-containment-pass',
         'handleTabSelect',
-        'setShowSubmissionPanel(true)',
+        "href=\"/operator/reviews\"",
         'setViewMode(tabToViewMode(tab))',
     ]:
         assert preserved in shell + css, f'mobile tap reliability removed preserved behavior {preserved}'
@@ -912,7 +912,7 @@ def test_loop_local_mobile_interaction_qa_hardens_home_and_post_local_taps():
         'id="submit-for-approval"',
         'href="#submit-for-approval"',
         'aria-label="Post Local mobile tabs"',
-        'aria-label="Open Review Queue"',
+        'href="/operator/reviews"',
         'aria-label="Open Saved Events"',
     ]:
         assert marker in shell + post, f'missing mobile interaction QA shell/post marker {marker}'
@@ -955,7 +955,7 @@ def test_loop_local_mobile_browser_smoke_test_harness_exists_for_real_clicks():
         'iPhone 14 Pro',
         'assertClickable',
         'document.elementFromPoint',
-        'Open Review Queue',
+        'Operator reviews',
         'Open Saved Events',
         'Post Local mobile tabs',
         'submit-for-approval',
@@ -1495,6 +1495,87 @@ def test_loop_local_submitters_can_revise_needs_changes_submissions():
     ]:
         assert marker in mobile_smoke, f'missing mobile smoke resubmit marker {marker}'
 
+def test_loop_local_operator_review_system_is_separated_and_token_gated():
+    api = read('app/api/local-submissions/route.ts')
+    single = read('app/api/local-submissions/[id]/route.ts')
+    operator = read('app/operator/reviews/page.tsx') if (ROOT / 'app/operator/reviews/page.tsx').exists() else ''
+    shell = read('components/app-shell.tsx')
+    smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'operator-review-token-gate-pass',
+        'requireOperatorAccess',
+        'LOOP_LOCAL_OPERATOR_TOKEN',
+        'x-loop-local-operator-token',
+        "operator token required",
+        "body.action === 'replace'",
+        "body.action === 'publish'",
+    ]:
+        assert marker in api, f'missing operator token gate API marker {marker}'
+    for marker in [
+        'poster-status-token-pass',
+        'statusToken',
+        'findLocalSubmissionStatus(submissionId, statusToken)',
+        "status token required",
+    ]:
+        assert marker in single, f'missing poster status token marker {marker}'
+    for marker in [
+        'operator-review-route-pass',
+        'OperatorReviewPanel',
+        'Operator token',
+        '/operator/reviews',
+        'operatorToken',
+    ]:
+        assert marker in operator, f'missing operator review route marker {marker}'
+    assert 'Open Review Queue' not in shell, 'consumer mobile menu should not expose review queue'
+    assert "tab === 'Profile'" not in shell, 'consumer Profile tab should not open review queue'
+    for marker in [
+        'operator-review-token-gate-pass',
+        'protected GET without token',
+        'protected PATCH without token',
+        'LOOP_LOCAL_OPERATOR_TOKEN',
+        'operatorHeaders',
+    ]:
+        assert marker in smoke + mobile, f'missing smoke token gate marker {marker}'
+
+
+def test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup():
+    feed = read('lib/live-feed.ts')
+    layout = read('app/layout.tsx')
+    sw = read('components/service-worker-registration.tsx') if (ROOT / 'components/service-worker-registration.tsx').exists() else ''
+    post = read('components/post-local-wizard.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in [
+        'safe-external-url-pass',
+        'safeExternalUrl',
+        "protocol === 'http:' || protocol === 'https:' || protocol === 'mailto:' || protocol === 'tel:'",
+        "return '#'",
+    ]:
+        assert marker in feed, f'missing safe external URL marker {marker}'
+    assert 'maximumScale: 1' not in layout, 'mobile viewport should allow user zoom'
+    for marker in [
+        'service-worker-registration-pass',
+        'navigator.serviceWorker.register',
+        '/sw.js',
+    ]:
+        assert marker in layout + sw, f'missing service worker registration marker {marker}'
+    for marker in [
+        'post-local-validation-interception-pass',
+        'validateSelectedFiles',
+        'logo upload is required',
+        'File is larger than',
+        'required={false}',
+    ]:
+        assert marker in post, f'missing Post Local validation interception marker {marker}'
+    for marker in [
+        'smoke-runtime-cleanup-pass',
+        'LOOP_LOCAL_SUBMISSIONS_STORE_PATH',
+        'final reset',
+    ]:
+        assert marker in api_smoke + mobile, f'missing smoke cleanup marker {marker}'
+
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1556,5 +1637,7 @@ if __name__ == '__main__':
     test_loop_local_review_queue_exposes_submitter_status_handoff_links()
     test_loop_local_needs_changes_requires_actionable_reviewer_note()
     test_loop_local_submitters_can_revise_needs_changes_submissions()
+    test_loop_local_operator_review_system_is_separated_and_token_gated()
+    test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { ServiceWorkerRegistration } from '@/components/service-worker-registration';
 import './globals.css';
 
 const appName = 'Loop Local';
@@ -7,7 +8,6 @@ const appDescription = 'Find what is worth doing near you right now.';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
   themeColor: '#0071e3',
 };
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><ServiceWorkerRegistration />{children}</body>
     </html>
   );
 }

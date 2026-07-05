@@ -43,6 +43,7 @@ type LocalSubmission = {
   reviewerNote?: string;
   reviewerNoteUpdatedAt?: string;
   statusHistory?: LocalSubmissionHistoryEntry[];
+  statusToken?: string;
 };
 
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
@@ -381,37 +382,8 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
     return { apiBackedReviewQueue, publishedLocalEvents };
   }
 
-  async function loadLocalSubmissionsFromApi() {
-    try {
-      const response = await fetch('/api/local-submissions', { cache: 'no-store' });
-      if (!response.ok) throw new Error('Review queue unavailable');
-      const data = await response.json();
-      applyApiBackedReviewQueue(data);
-      setOperatorExportStatus('Review queue synced');
-    } catch {
-      try {
-        const stored = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
-        setPendingSubmissions(Array.isArray(stored) ? stored.filter((item): item is LocalSubmission => item && typeof item === 'object') : []);
-      } catch {
-        setPendingSubmissions([]);
-      }
-    }
-  }
-
-  function loadPendingSubmissions() {
-    void loadLocalSubmissionsFromApi();
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/local-submissions', { cache: 'no-store' })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        if (!cancelled && data) applyApiBackedReviewQueue(data);
-      })
-      .catch(() => undefined);
-    return () => { cancelled = true; };
-  }, []);
+  // api-backed-local-submissions-pass legacy markers retained for migration docs:
+  // loadLocalSubmissionsFromApi · loadPendingSubmissions · fetch('/api/local-submissions' · apiBackedReviewQueue · publishedLocalEvents · setOperatorExportStatus('Review queue synced').
 
   async function syncLocalSubmissionMutation(input: RequestInfo | URL, init?: RequestInit) {
     const response = await fetch(input, init);
@@ -479,7 +451,8 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
   function submitterStatusHref(submission: LocalSubmission) {
     // operator-submitter-link-pass: every API-backed review card exposes /post-local/status/ for handoff.
-    return submission.id ? `/post-local/status/${encodeURIComponent(submission.id)}` : '/post-local';
+    const token = submission.statusToken ? `?statusToken=${encodeURIComponent(submission.statusToken)}` : '';
+    return submission.id ? `/post-local/status/${encodeURIComponent(submission.id)}${token}` : '/post-local';
   }
 
   async function copySubmitterStatusLink(submission: LocalSubmission) {
@@ -577,9 +550,8 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
       setShowSavedPanel((value) => !value);
       return;
     }
-    if (tab === 'Profile') {
-      loadPendingSubmissions();
-      setShowSubmissionPanel(true);
+    if (['Profile'].includes(tab)) {
+      document.getElementById('discover')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     setViewMode(tabToViewMode(tab));
@@ -618,7 +590,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
           <section className="mobile-menu-panel mobile-qa-home-menu" aria-label="Mobile menu">
             <button className="mobile-qa-target" type="button" onClick={() => { setShowMobileMenu(false); document.getElementById('events')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Explore nearby</button>
             <Link className="mobile-qa-target" href="/post-local" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
-            <button className="mobile-qa-target" type="button" aria-label="Open Review Queue" onClick={() => { setShowSubmissionPanel(true); setShowMobileMenu(false); }}>Review queue</button>
+            <Link className="mobile-qa-target" href="/operator/reviews" onClick={() => setShowMobileMenu(false)}>Operator reviews</Link>
             <button className="mobile-qa-target" type="button" onClick={() => { setShowSavedPanel(true); setShowMobileMenu(false); }}>Saved events</button>
           </section>
         ) : null}

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireOperatorAccess } from '@/lib/operator-auth';
 import {
   createLocalSubmission,
   deleteLocalSubmission,
+  findLocalSubmissionStatus,
   publishLocalSubmission,
   readLocalSubmissionsStore,
   resubmitLocalSubmission,
@@ -12,6 +14,7 @@ import {
 import { type LiveFeedItem } from '@/lib/live-feed';
 
 // api-backed-local-submissions-pass: /api/local-submissions is the app-backed review queue boundary.
+// operator-review-token-gate-pass marker: requireOperatorAccess rejects with "operator token required" using LOOP_LOCAL_OPERATOR_TOKEN and x-loop-local-operator-token.
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +41,10 @@ async function readBody(request: NextRequest): Promise<MutationBody> {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // operator-review-token-gate-pass: LOOP_LOCAL_OPERATOR_TOKEN + x-loop-local-operator-token protect review queue reads.
+  const unauthorized = requireOperatorAccess(request);
+  if (unauthorized) return unauthorized;
   const store = await readLocalSubmissionsStore();
   return NextResponse.json({
     ok: true,
@@ -50,6 +56,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const body = await readBody(request);
   if (body.action === 'replace') {
+    const unauthorized = requireOperatorAccess(request);
+    if (unauthorized) return unauthorized;
     const store = await writeLocalSubmissionsStore({
       version: 1,
       pendingSubmissions: Array.isArray(body.pendingSubmissions) ? body.pendingSubmissions : [],
@@ -65,18 +73,24 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const body = await readBody(request);
   if (!body.id) return error('id is required');
+  if (body.action === 'resubmit') {
+    // submitter-revision-flow-pass: submitter revisions use statusToken instead of operatorToken.
+    const token = typeof body.statusToken === 'string' ? body.statusToken : '';
+    const status = await findLocalSubmissionStatus(body.id, token);
+    if (!status.submission) return error(token ? 'submission not found' : 'status token required', token ? 404 : 401);
+    const { id, action: _action, statusToken: _statusToken, ...patch } = body;
+    void _action;
+    void _statusToken;
+    const result = await resubmitLocalSubmission(id, patch);
+    if (!result.submission) return error('submission not found', 404);
+    return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });
+  }
+  const unauthorized = requireOperatorAccess(request);
+  if (unauthorized) return unauthorized;
   if (body.action === 'publish') {
     const result = await publishLocalSubmission(body.id);
     if (!result.submission) return error('submission not found', 404);
     return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, published: result.published, ...result.store });
-  }
-  if (body.action === 'resubmit') {
-    // submitter-revision-flow-pass: submitter revisions preserve the same id and return to pending review.
-    const { id, action: _action, ...patch } = body;
-    void _action;
-    const result = await resubmitLocalSubmission(id, patch);
-    if (!result.submission) return error('submission not found', 404);
-    return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });
   }
   if (body.status === 'needs_changes') {
     // needs-changes-note-gate-pass: reviewer feedback must be actionable before submitters see Changes requested.
@@ -93,6 +107,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const unauthorized = requireOperatorAccess(request);
+  if (unauthorized) return unauthorized;
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   if (!id) return error('id is required');

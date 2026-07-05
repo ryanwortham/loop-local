@@ -4,6 +4,8 @@ import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
 const port = process.env.LOOP_LOCAL_SMOKE_PORT || '3012';
+const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
+const smokeStorePath = process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH || `/tmp/loop-local-mobile-smoke-${process.pid}.json`;
 const baseURL = process.env.LOOP_LOCAL_SMOKE_URL || `http://127.0.0.1:${port}`;
 const startupTimeoutMs = Number(process.env.LOOP_LOCAL_SMOKE_STARTUP_TIMEOUT_MS || 30000);
 let serverProcess = null;
@@ -61,7 +63,7 @@ async function main() {
   console.log(`npm run start -- -p ${port}`);
   serverProcess = spawn('npm', ['run', 'start', '--', '-p', port], {
     stdio: 'inherit',
-    env: process.env,
+    env: { ...process.env, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
     shell: false,
   });
   serverProcess.on('error', (error) => {
@@ -72,7 +74,7 @@ async function main() {
     await waitForServer(baseURL);
     console.log('npm run test:mobile:smoke');
     await runCommand('npm', ['run', 'test:mobile:smoke'], {
-      env: { LOOP_LOCAL_SMOKE_URL: baseURL },
+      env: { LOOP_LOCAL_SMOKE_URL: baseURL, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
     });
     console.log('loop_local_mobile_smoke_full_runner_ok');
   } finally {

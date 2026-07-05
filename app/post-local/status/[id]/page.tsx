@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 type StatusPageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ statusToken?: string }>;
 };
 
 type StatusResult = Awaited<ReturnType<typeof findLocalSubmissionStatus>>;
@@ -23,16 +24,18 @@ function titleFor(submission?: StatusResult['submission'], published?: StatusRes
   return submission?.eventTitle || published?.title || 'Post Local submission';
 }
 
-export async function generateMetadata({ params }: StatusPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: StatusPageProps): Promise<Metadata> {
   const { id } = await params;
-  const { submission, published } = await findLocalSubmissionStatus(id);
+  const { statusToken } = await searchParams;
+  const { submission, published } = await findLocalSubmissionStatus(id, statusToken);
   if (!submission && !published) return { title: 'Submission not found | Loop Local' };
   return { title: `${titleFor(submission, published)} status | Loop Local` };
 }
 
-export default async function PostLocalStatusPage({ params }: StatusPageProps) {
+export default async function PostLocalStatusPage({ params, searchParams }: StatusPageProps) {
   const { id } = await params;
-  const { submission, published, status, submissionId } = await findLocalSubmissionStatus(id);
+  const { statusToken } = await searchParams;
+  const { submission, published, status, submissionId } = await findLocalSubmissionStatus(id, statusToken);
   if (!submission && !published) notFound();
 
   const initialStatus = {
@@ -52,7 +55,7 @@ export default async function PostLocalStatusPage({ params }: StatusPageProps) {
         </nav>
       </header>
 
-      <SubmissionStatusLiveCard initialStatus={initialStatus} submissionId={submissionId || id} />
+      <SubmissionStatusLiveCard initialStatus={initialStatus} submissionId={submissionId || id} statusToken={statusToken || ''} />
       <p className="status-live-refresh-footnote">SubmissionStatusLiveCard auto-refreshes every few seconds using the single-submission status API.</p>
     </main>
   );

@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { eventSlug, type LiveFeedItem } from '@/lib/live-feed';
 
@@ -57,6 +58,8 @@ export type LocalSubmissionRecord = {
   reviewerNoteUpdatedAt?: string;
   revisionSubmittedAt?: string;
   statusHistory?: LocalSubmissionHistoryEntry[];
+  // poster-status-token-pass: signed-ish status links protect submitter PII from guessable IDs.
+  statusToken?: string;
 };
 
 export type LocalSubmissionsStore = {
@@ -72,7 +75,7 @@ export type LocalSubmissionStatusResult = {
   published?: LiveFeedItem;
 };
 
-const runtimeDataPath = path.join(process.cwd(), 'runtime-data/local-submissions.json');
+const runtimeDataPath = process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH || path.join(/*turbopackIgnore: true*/ process.cwd(), 'runtime-data/local-submissions.json');
 
 const emptyStore: LocalSubmissionsStore = {
   version: 1,
@@ -115,11 +118,16 @@ function appendSubmissionHistory(
   return { ...submission, statusHistory: [...(submission.statusHistory || []), entry] };
 }
 
+function newStatusToken(): string {
+  return randomUUID().replace(/-/g, '');
+}
+
 function normalizeSubmission(input: Partial<LocalSubmissionRecord>): LocalSubmissionRecord {
   const submittedAt = input.submittedAt || nowIso();
   const base = {
     ...input,
     id: input.id || `${safeIdPrefix(input.eventTitle || input.entityName)}-${Date.parse(submittedAt) || Date.now()}`,
+    statusToken: input.statusToken || newStatusToken(),
     status: input.status || 'pending_review',
     submittedAt,
     statusHistory: Array.isArray(input.statusHistory) && input.statusHistory.length
@@ -151,7 +159,9 @@ export async function readLocalSubmissionsStore(): Promise<LocalSubmissionsStore
 export async function writeLocalSubmissionsStore(store: LocalSubmissionsStore): Promise<LocalSubmissionsStore> {
   const normalized = normalizeStore(store);
   await mkdir(path.dirname(runtimeDataPath), { recursive: true });
-  await writeFile(runtimeDataPath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
+  const tempPath = `${runtimeDataPath}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(normalized, null, 2)}\n`, 'utf8');
+  await rename(tempPath, runtimeDataPath);
   return normalized;
 }
 
@@ -160,9 +170,9 @@ export function publishedMatchesSubmissionId(item: LiveFeedItem, submissionId: s
   return item.id === submissionId || item.id === `local-approved-${submissionId}` || eventSlug(item).endsWith(submissionId);
 }
 
-export async function findLocalSubmissionStatus(submissionId: string): Promise<LocalSubmissionStatusResult> {
+export async function findLocalSubmissionStatus(submissionId: string, statusToken?: string): Promise<LocalSubmissionStatusResult> {
   const store = await readLocalSubmissionsStore();
-  const submission = store.pendingSubmissions.find((item) => item.id === submissionId);
+  const submission = store.pendingSubmissions.find((item) => item.id === submissionId && (!item.statusToken || item.statusToken === statusToken));
   const published = store.publishedLocalEvents.find((item) => publishedMatchesSubmissionId(item, submissionId));
   return {
     submissionId,

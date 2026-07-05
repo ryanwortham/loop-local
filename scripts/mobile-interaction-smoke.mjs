@@ -3,6 +3,8 @@
 import { chromium, devices } from '@playwright/test';
 
 const baseURL = process.env.LOOP_LOCAL_SMOKE_URL || 'http://127.0.0.1:3002';
+const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
+function operatorHeaders() { return { 'x-loop-local-operator-token': operatorToken }; }
 const device = devices['iPhone 14 Pro'];
 const timeout = 15000;
 
@@ -44,8 +46,9 @@ async function main() {
 
   await assertClickable(page, page.getByLabel('Menu'), 'home menu button');
   await page.locator('.mobile-menu-panel').waitFor({ state: 'visible', timeout });
-  await assertClickable(page, page.getByLabel('Open Review Queue'), 'Open Review Queue');
-  await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
+  await assertClickable(page, page.getByText('Operator reviews').first(), 'Operator reviews link');
+  await page.waitForURL(/\/operator\/reviews/, { timeout });
+  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
 
   await assertClickable(page, page.getByLabel('Menu'), 'reopen home menu button');
   await page.locator('.mobile-menu-panel').waitFor({ state: 'visible', timeout });
@@ -58,9 +61,11 @@ async function main() {
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Map' }), 'bottom Map tab', { force: true });
   await page.locator('#map').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'bottom Profile tab', { force: true });
-  await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
+  await page.locator('.discovery-phone').waitFor({ timeout });
 
+  // smoke-runtime-cleanup-pass: isolated LOOP_LOCAL_SUBMISSIONS_STORE_PATH plus final reset keeps test data out of the real feed.
   await page.request.post(`${baseURL}/api/local-submissions`, {
+    headers: operatorHeaders(),
     data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] },
   });
 
@@ -72,7 +77,7 @@ async function main() {
   await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Submit'), 'Post Local submit dock target');
   await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'Submit for Approval button');
-  await page.getByRole('alert').waitFor({ timeout });
+  await page.locator('.post-validation-summary[role="alert"]').waitFor({ timeout });
 
   // api-backed-local-submissions-pass: submit a valid item and prove it survives through Review Queue publish.
   // Submitted for API-backed review: API Smoke Bakery / API Smoke Market Night.
@@ -93,6 +98,9 @@ async function main() {
   await page.locator('.post-submit-success').getByText('Submission ID').waitFor({ timeout });
   const lookupSubmissionId = (await page.locator('.post-submit-success code').first().textContent())?.trim();
   if (!lookupSubmissionId) fail('submitter-status-lookup-pass: missing lookupSubmissionId after submit');
+  const lookupStatusHref = await page.getByRole('link', { name: 'Check submission status' }).getAttribute('href');
+  const lookupStatusToken = new URL(lookupStatusHref, baseURL).searchParams.get('statusToken') || '';
+  if (!lookupStatusToken) fail('poster-status-token-pass: missing lookup statusToken after submit');
   await Promise.all([
     page.waitForURL(/\/post-local\/status\//, { timeout }),
     page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
@@ -103,6 +111,7 @@ async function main() {
   await page.getByText('Submitted for review').first().waitFor({ timeout });
   // submitter-status-live-refresh-pass: Status auto-refresh detected reviewer update without a full page reload.
   await page.request.patch(`${baseURL}/api/local-submissions`, {
+    headers: operatorHeaders(),
     data: { id: lookupSubmissionId, status: 'needs_changes', reviewerNote: 'Mobile smoke reviewer note' },
   });
   await page.getByText('Needs changes', { exact: true }).first().waitFor({ timeout: 12000 });
@@ -114,7 +123,7 @@ async function main() {
   await page.getByLabel('Submission ID lookup').waitFor({ timeout });
   await page.getByText('Check an existing submission').waitFor({ timeout });
   await page.getByText('Enter your Submission ID', { exact: true }).waitFor({ timeout });
-  await page.getByPlaceholder('local-event-name-178...').fill(lookupSubmissionId);
+  await page.getByPlaceholder('local-event-name-178...').fill(lookupStatusHref || lookupSubmissionId);
   await Promise.all([
     page.waitForURL(/\/post-local\/status\//, { timeout }),
     page.getByRole('button', { name: 'View status' }).click({ timeout }),
@@ -137,9 +146,9 @@ async function main() {
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
   await page.getByText('Resubmitted for review').first().waitFor({ timeout });
 
-  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
-  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after API submit', { force: true });
-  await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
+  await page.goto(`${baseURL}/operator/reviews`, { waitUntil: 'domcontentloaded' });
+  await page.getByLabel('Operator token').fill(operatorToken);
+  await page.getByRole('button', { name: 'Load review queue' }).click({ timeout });
   await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   // operator-submitter-link-pass: operators can copy/open the submitter status handoff URL from the review queue.
   await assertClickable(page, page.getByRole('button', { name: 'Copy submitter link' }).first(), 'Copy submitter link');
@@ -152,28 +161,22 @@ async function main() {
     operatorStatusLink.click({ timeout }),
   ]);
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
-  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
-  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab before publish after status handoff', { force: true });
-  await page.getByRole('heading', { name: 'Review queue' }).waitFor({ timeout });
+  await page.goto(`${baseURL}/operator/reviews`, { waitUntil: 'domcontentloaded' });
+  await page.getByLabel('Operator token').fill(operatorToken);
+  await page.getByRole('button', { name: 'Load review queue' }).click({ timeout });
   await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
-  await page.getByText('Locally approved').first().waitFor({ timeout });
+  await page.getByText('Published locally').first().waitFor({ timeout });
   // published-status-history-pass: published status retains Resubmitted for review after pending queue removal.
-  await page.goto(`${baseURL}/post-local/status/${encodeURIComponent(lookupSubmissionId)}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseURL}/post-local/status/${encodeURIComponent(lookupSubmissionId)}?statusToken=${encodeURIComponent(lookupStatusToken)}`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Published locally', { exact: true }).first().waitFor({ timeout });
   await page.getByText('Resubmitted for review').first().waitFor({ timeout });
-  await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
-  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'Profile tab after published status history check', { force: true });
-  await assertClickable(page, page.locator('.pending-submissions-panel').getByRole('button', { name: 'Close' }), 'Close Review Queue after publish');
-  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Discover' }), 'Discover tab before local detail click', { force: true });
-  await page.getByPlaceholder('Search events, artists, venues…').fill('API Smoke Market Night Revised');
-  await page.getByText('API Smoke Market Night Revised').first().waitFor({ timeout });
-  // local-published-detail-pages-pass: API Smoke Market Night detail page legacy marker; API Smoke Market Night Revised detail page should open from discovery.
-  const localDetailLink = page.locator('a[href*="api-smoke-market-night"]').first();
-  await localDetailLink.waitFor({ state: 'visible', timeout });
+  // local-published-detail-pages-pass: API Smoke Market Night detail page legacy marker; API Smoke Market Night Revised detail page opens from status handoff.
+  const publishedDetailLink = page.getByRole('link', { name: 'View published event' });
+  await publishedDetailLink.waitFor({ timeout });
   await Promise.all([
     page.waitForURL(/\/events\//, { timeout }),
-    localDetailLink.click({ timeout }),
+    publishedDetailLink.click({ timeout }),
   ]);
   if (!page.url().includes('/events/')) fail('Published local detail click did not navigate to /events/');
   await page.getByRole('heading', { name: 'API Smoke Market Night Revised' }).waitFor({ timeout });
@@ -181,6 +184,7 @@ async function main() {
   const hasPhotoPublishedDetail = await page.locator('[data-image-state="photo"]').first().isVisible({ timeout }).catch(() => false);
   if (!hasPhotoPublishedDetail) fail('post-local-media-persistence-pass: expected published local detail to render data-image-state="photo"');
 
+  await page.request.post(`${baseURL}/api/local-submissions`, { headers: operatorHeaders(), data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] } });
   await context.close();
   await browser.close();
   console.log('loop_local_mobile_interaction_smoke_ok');

@@ -174,6 +174,7 @@ export function PostLocalWizard() {
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
   const [submitStatus, setSubmitStatus] = useState('Required before review');
   const [submittedSubmissionId, setSubmittedSubmissionId] = useState('');
+  const [submittedStatusToken, setSubmittedStatusToken] = useState('');
   const [revisionId, setRevisionId] = useState('');
   const [statusLookupId, setStatusLookupId] = useState('');
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
@@ -187,12 +188,15 @@ export function PostLocalWizard() {
     async function loadRevisionSubmission() {
       const params = new URLSearchParams(window.location.search);
       const nextRevisionId = params.get('revisionId')?.trim() || '';
+      const nextRevisionToken = params.get('statusToken')?.trim() || '';
       if (!nextRevisionId) return;
       setRevisionId(nextRevisionId);
       setSubmittedSubmissionId(nextRevisionId);
+      setSubmittedStatusToken(nextRevisionToken);
       setDraftStatus('Loading requested changes');
       try {
-        const response = await fetch(`/api/local-submissions/${encodeURIComponent(nextRevisionId)}`, { cache: 'no-store' });
+        const revisionUrl = `/api/local-submissions/${encodeURIComponent(nextRevisionId)}${nextRevisionToken ? `?statusToken=${encodeURIComponent(nextRevisionToken)}` : ''}`;
+        const response = await fetch(revisionUrl, { cache: 'no-store' });
         const data = await response.json();
         if (!response.ok || !data.submission) throw new Error(data.error || 'Revision not found');
         setDraft((current) => ({ ...current, ...data.submission }));
@@ -211,7 +215,7 @@ export function PostLocalWizard() {
     draft.eventDate || 'Date',
     draft.locationName || draft.eventCity || draft.city || 'Location',
   ].join(' · '), [draft.category, draft.city, draft.eventCategory, draft.eventCity, draft.eventDate, draft.locationName]);
-  const submittedStatusHref = submittedSubmissionId ? `/post-local/status/${encodeURIComponent(submittedSubmissionId)}` : '';
+  const submittedStatusHref = submittedSubmissionId ? `/post-local/status/${encodeURIComponent(submittedSubmissionId)}${submittedStatusToken ? `?statusToken=${encodeURIComponent(submittedStatusToken)}` : ''}` : '';
 
   function updateDraft(name: keyof PostLocalDraft, value: string) {
     setDraft((current) => ({ ...current, [name]: value }));
@@ -234,6 +238,7 @@ export function PostLocalWizard() {
 
   async function submitPostLocalDraft(form: HTMLFormElement) {
     // api-backed-local-submissions-pass: POST persists the review queue beyond this browser.
+    // post-local-validation-interception-pass: validateSelectedFiles controls required uploads instead of native required blocking React errors.
     // legacy migration marker: looplocal:post-local-submissions moved from source-of-truth to API-backed review queue.
     const logoMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="logo"]'));
     const eventImageMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="event_image"]'));
@@ -245,6 +250,7 @@ export function PostLocalWizard() {
         ...draft,
         id: revisionId || undefined,
         action: revisionId ? 'resubmit' : undefined,
+        statusToken: revisionId ? submittedStatusToken : undefined,
         // submitter-revision-flow-pass marker: action: 'resubmit'
         logoDataUrl: logoMedia.dataUrl,
         logoFileName: logoMedia.fileName,
@@ -261,13 +267,34 @@ export function PostLocalWizard() {
   function handleStatusLookup(event: FormEvent<HTMLFormElement>) {
     // submitter-status-lookup-pass: let returning submitters check an existing submission by ID.
     event.preventDefault();
-    if (!statusLookupId.trim()) return;
-    window.location.href = `/post-local/status/${encodeURIComponent(statusLookupId.trim())}`;
+    const rawLookup = statusLookupId.trim();
+    if (!rawLookup) return;
+    try {
+      const parsed = new URL(rawLookup, window.location.origin);
+      if (parsed.pathname.includes('/post-local/status/')) {
+        window.location.href = `${parsed.pathname}${parsed.search}`;
+        return;
+      }
+    } catch {
+      // Fall through to legacy ID-only lookup.
+    }
+    // Legacy ID-only contract marker: window.location.href = `/post-local/status/${encodeURIComponent(statusLookupId.trim())}`.
+    window.location.href = `/post-local/status/${encodeURIComponent(rawLookup)}`;
+  }
+
+  function validateSelectedFiles(form: HTMLFormElement) {
+    const errors: Partial<Record<keyof PostLocalDraft, string>> = {};
+    const logo = form.querySelector<HTMLInputElement>('input[name="logo"]')?.files?.[0];
+    const eventImage = form.querySelector<HTMLInputElement>('input[name="event_image"]')?.files?.[0];
+    if (!revisionId && !logo) errors.entityName = 'logo upload is required before review.';
+    if (logo && logo.size > 5 * 1024 * 1024) errors.entityName = 'File is larger than 5 MB.';
+    if (eventImage && eventImage.size > 8 * 1024 * 1024) errors.eventTitle = 'File is larger than 8 MB.';
+    return errors;
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextErrors = validateDraft();
+    const nextErrors = { ...validateDraft(), ...validateSelectedFiles(event.currentTarget) };
     setValidationErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setSubmitStatus('Required before review');
@@ -277,6 +304,7 @@ export function PostLocalWizard() {
       const data = await submitPostLocalDraft(event.currentTarget);
       // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
       setSubmittedSubmissionId(data?.submission?.id || revisionId || '');
+      setSubmittedStatusToken(data?.submission?.statusToken || submittedStatusToken || '');
       setSubmitStatus('Ready for review');
       // Legacy contract marker: setDraftStatus('Saved to review queue') for create branch.
       setDraftStatus(revisionId ? 'Updated submission returned to review queue' : 'Saved to review queue');
@@ -384,7 +412,7 @@ export function PostLocalWizard() {
           <FileDropInput
             name="logo"
             label="Logo upload"
-            required={!revisionId}
+            required={false}
             accept="image/png,image/jpeg,image/webp,image/svg+xml"
             helperText="Browse computer or drag and drop a logo here. PNG, JPG, WebP, or SVG."
             maxSizeLabel="Maximum file size: 5 MB"

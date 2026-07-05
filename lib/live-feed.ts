@@ -151,8 +151,21 @@ export function eventDetailPath(item: LiveFeedItem): string {
   return `/events/${eventSlug(item)}`;
 }
 
+export function safeExternalUrl(value?: string): string {
+  // safe-external-url-pass: only navigable public URL protocols may leave Loop Local.
+  if (!value) return '#';
+  try {
+    const parsed = new URL(value, 'https://looplocal.invalid');
+    const { protocol } = parsed;
+    if (protocol === 'http:' || protocol === 'https:' || protocol === 'mailto:' || protocol === 'tel:') return value;
+  } catch {
+    return '#';
+  }
+  return '#';
+}
+
 export function eventExternalUrl(item: LiveFeedItem): string {
-  return item.ticketUrl || item.ticket_url || item.event_url || item.venueUrl || item.website || '#';
+  return safeExternalUrl(item.ticketUrl || item.ticket_url || item.event_url || item.venueUrl || item.website);
 }
 
 export async function getEventBySlug(slug: string): Promise<LiveFeedItem | null> {
