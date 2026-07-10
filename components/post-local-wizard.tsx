@@ -47,12 +47,14 @@ const postTypes = [
   'Job Posting',
 ];
 
-const wizardSteps = [
-  ['01', 'Start with your profile', 'Who is posting?'],
-  ['02', 'Build the first post', 'What should locals see?'],
-  ['03', 'Preview your listing', 'Mobile-first review'],
-  ['04', 'Submit for approval', 'Human review before live'],
-];
+const wizardStepDefinitions = [
+  { id: 'profile', number: '01', title: 'Start with your profile', detail: 'Who is posting?' },
+  { id: 'event', number: '02', title: 'Build the first post', detail: 'What should locals see?' },
+  { id: 'preview', number: '03', title: 'Preview your listing', detail: 'Mobile-first review' },
+  { id: 'submit', number: '04', title: 'Submit for approval', detail: 'Human review before live' },
+] as const;
+// post-local-true-wizard-pass: render one primary step at a time instead of one long mobile form.
+type WizardStepId = (typeof wizardStepDefinitions)[number]['id'];
 
 type PostLocalDraft = {
   entityName: string;
@@ -178,6 +180,7 @@ export function PostLocalWizard() {
   const [revisionId, setRevisionId] = useState('');
   const [statusLookupId, setStatusLookupId] = useState('');
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
+  const [activeWizardStep, setActiveWizardStep] = useState<WizardStepId>('profile');
 
   useEffect(() => {
     localStorage.setItem('looplocal:post-local-draft', JSON.stringify(draft));
@@ -202,6 +205,7 @@ export function PostLocalWizard() {
         setDraft((current) => ({ ...current, ...data.submission }));
         setDraftStatus('Revision loaded from review note');
         setSubmitStatus('Requested changes ready to edit');
+        setActiveWizardStep('profile');
       } catch {
         setDraftStatus('Could not load revision');
         setSubmitStatus('Submission not found');
@@ -234,6 +238,26 @@ export function PostLocalWizard() {
     if (!draft.eventDate) nextErrors.eventDate = 'Event date is required.';
     if (!draft.eventCategory) nextErrors.eventCategory = 'Category is required.';
     return nextErrors;
+  }
+
+  function isWizardStepActive(step: WizardStepId) {
+    return activeWizardStep === step;
+  }
+
+  function firstErrorWizardStep(errors: Partial<Record<keyof PostLocalDraft, string>>): WizardStepId {
+    if (errors.entityName || errors.contactName || errors.email || errors.entityType) return 'profile';
+    if (errors.eventTitle || errors.eventDate || errors.eventCategory) return 'event';
+    return 'submit';
+  }
+
+  function goToNextWizardStep() {
+    const index = wizardStepDefinitions.findIndex((step) => step.id === activeWizardStep);
+    setActiveWizardStep(wizardStepDefinitions[Math.min(index + 1, wizardStepDefinitions.length - 1)].id);
+  }
+
+  function goToPreviousWizardStep() {
+    const index = wizardStepDefinitions.findIndex((step) => step.id === activeWizardStep);
+    setActiveWizardStep(wizardStepDefinitions[Math.max(index - 1, 0)].id);
   }
 
   async function submitPostLocalDraft(form: HTMLFormElement) {
@@ -298,6 +322,7 @@ export function PostLocalWizard() {
     setValidationErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setSubmitStatus('Required before review');
+      setActiveWizardStep(firstErrorWizardStep(nextErrors));
       return;
     }
     try {
@@ -315,7 +340,7 @@ export function PostLocalWizard() {
   }
 
   return (
-    <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard post-local-functional-draft-pass mobile-interaction-qa-pass">
+    <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard post-local-functional-draft-pass mobile-interaction-qa-pass post-local-true-wizard-pass">
       <header className="ll-nav post-app-topbar post-local-command-center">
         <Link className="ll-brand" href="/">
           <Image src="/looplocal-logo.png" alt="Loop Local" width={52} height={52} />
@@ -374,9 +399,9 @@ export function PostLocalWizard() {
         </aside>
       </section>
 
-      <ol className="ll-progress post-wizard-stepper" aria-label="progress indicator">
-        {wizardSteps.map(([number, title, detail]) => (
-          <li key={number}><strong>{number}</strong><span>{title}</span><small>{detail}</small></li>
+      <ol className="ll-progress post-wizard-stepper post-local-true-wizard-pass" aria-label="progress indicator">
+        {wizardStepDefinitions.map((step) => (
+          <li key={step.id} data-active={activeWizardStep === step.id}><button type="button" onClick={() => setActiveWizardStep(step.id)}><strong>{step.number}</strong><span>{step.title}</span><small>{step.detail}</small></button></li>
         ))}
       </ol>
 
@@ -405,7 +430,7 @@ export function PostLocalWizard() {
           <textarea readOnly name="event_description" value={draft.eventDescription} />
         </div>
 
-        <section className="ll-card post-flow-card post-wizard-stage-card" id="profile">
+        <section className="ll-card post-flow-card post-wizard-stage-card" id="profile" data-wizard-active={isWizardStepActive('profile')} hidden={!isWizardStepActive('profile')}>
           <p className="ll-kicker">Step 1: Profile</p>
           <h2>Start with your profile</h2>
           <p>Large mobile input fields, thumb-friendly spacing, and mobile-friendly logo upload.</p>
@@ -431,9 +456,10 @@ export function PostLocalWizard() {
             <SelectField label="Category" name="category" placeholder="Choose one" options={categories} value={draft.category} onChange={updateDraft} />
             <TextAreaField label="Short description" name="description" value={draft.description} onChange={updateDraft} />
           </div>
+          <div className="wizard-step-actions"><button type="button" onClick={goToNextWizardStep}>Next: event details</button></div>
         </section>
 
-        <section className="ll-card post-flow-card post-wizard-stage-card">
+        <section className="ll-card post-flow-card post-wizard-stage-card" id="event-details" data-wizard-active={isWizardStepActive('event')} hidden={!isWizardStepActive('event')}>
           <p className="ll-kicker">Step 2: First Event or Promotion</p>
           <h2>Build the first post</h2>
           <p>Posts stay draft/pending until approved. Save draft automatically is enabled for this app-ready form shell.</p>
@@ -474,9 +500,10 @@ export function PostLocalWizard() {
             <SelectField label="Category" name="eventCategory" placeholder="Choose category" options={categories} value={draft.eventCategory} onChange={updateDraft} error={validationErrors.eventCategory} />
             <TextAreaField label="Description" name="eventDescription" value={draft.eventDescription} onChange={updateDraft} />
           </div>
+          <div className="wizard-step-actions"><button type="button" onClick={goToPreviousWizardStep}>Back</button><button type="button" onClick={goToNextWizardStep}>Next: preview</button></div>
         </section>
 
-        <section className="ll-card ll-preview-card post-flow-card post-wizard-stage-card" id="preview-listing">
+        <section className="ll-card ll-preview-card post-flow-card post-wizard-stage-card" id="preview-listing" data-wizard-active={isWizardStepActive('preview')} hidden={!isWizardStepActive('preview')}>
           <p className="ll-kicker">Step 3: Preview</p>
           <h2>Preview your listing</h2>
           <p>Mobile preview card will show logo, image, title, date/time, address, category, call, website, directions, save, and share actions.</p>
@@ -486,9 +513,10 @@ export function PostLocalWizard() {
             <p>{previewMeta}</p>
             <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
           </div>
+          <div className="wizard-step-actions"><button type="button" onClick={goToPreviousWizardStep}>Back</button><button type="button" onClick={goToNextWizardStep}>Next: submit</button></div>
         </section>
 
-        <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card" id="submit-for-approval">
+        <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card" id="submit-for-approval" data-wizard-active={isWizardStepActive('submit')} hidden={!isWizardStepActive('submit')}>
           <p className="ll-kicker">Step 4: Submit for Approval</p>
           <h2>Submit for approval</h2>
           <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
@@ -500,6 +528,7 @@ export function PostLocalWizard() {
             </div>
           ) : null}
           <div className="ll-submit-actions">
+            <button type="button" onClick={goToPreviousWizardStep}>Back</button>
             <Link href="/">Back to discovery</Link>
             <button type="submit">{revisionId ? 'Resubmit for Review' : 'Submit for Approval'}</button>
           </div>
@@ -527,10 +556,10 @@ export function PostLocalWizard() {
 
       <nav className="post-wizard-mobile-dock ll-mobile-tabs mobile-app-tabbar mobile-qa-post-dock" aria-label="Post Local mobile tabs">
         <Link className="mobile-qa-target" href="/#discover">⌂ Discover</Link>
-        <a className="mobile-qa-target" href="#first-post">✦ Post</a>
-        <a className="mobile-qa-target" href="#preview-listing">⌖ Preview</a>
-        <a className="mobile-qa-target" href="#submit-for-approval">✓ Submit</a>
-        <a className="mobile-qa-target" href="#profile">◉ Profile details</a>
+        <a className="mobile-qa-target" href="#first-post" onClick={() => setActiveWizardStep('event')}>✦ Post</a>
+        <a className="mobile-qa-target" href="#preview-listing" onClick={() => setActiveWizardStep('preview')}>⌖ Preview</a>
+        <a className="mobile-qa-target" href="#submit-for-approval" onClick={() => setActiveWizardStep('submit')}>✓ Submit</a>
+        <a className="mobile-qa-target" href="#profile" onClick={() => setActiveWizardStep('profile')}>◉ Profile details</a>
       </nav>
     </main>
   );

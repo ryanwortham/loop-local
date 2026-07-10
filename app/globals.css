@@ -2702,3 +2702,59 @@ body {
   .submission-status-lookup-form { grid-template-columns: 1fr; }
   .submission-status-lookup-form button { width: 100%; }
 }
+
+/* mobile-shell-active-tab-pass + mobile-bottom-nav-clearance-pass: keep one active tab and keep CTAs above fixed mobile chrome. */
+@media (max-width: 920px) {
+  .mobile-shell-active-tab-pass,
+  .mobile-interaction-qa-pass .discovery-phone {
+    padding-bottom: max(150px, calc(env(safe-area-inset-bottom) + 118px));
+    scroll-padding-bottom: max(150px, calc(env(safe-area-inset-bottom) + 118px));
+  }
+  .mobile-interaction-qa-pass .event-rail,
+  .mobile-interaction-qa-pass .popular-list,
+  .mobile-interaction-qa-pass .calendar-view,
+  .mobile-interaction-qa-pass .map-discovery-shell,
+  .mobile-interaction-qa-pass .saved-events-panel,
+  .mobile-interaction-qa-pass .pending-submissions-panel {
+    margin-bottom: 28px;
+  }
+  .mobile-interaction-qa-pass .mobile-app-tabbar.polished-bottom-nav,
+  .post-mobile-reference-shell.mobile-interaction-qa-pass .post-wizard-mobile-dock {
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .post-local-true-wizard-pass .post-wizard-stage-card[hidden] {
+    display: none !important;
+  }
+  .post-local-true-wizard-pass .post-wizard-stage-card[data-wizard-active="true"] {
+    display: block;
+  }
+  .post-local-true-wizard-pass .post-wizard-stepper li button {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+  }
+  .post-local-true-wizard-pass .post-wizard-stepper li[data-active="true"] {
+    border-color: rgba(21,94,239,.35);
+    box-shadow: 0 12px 30px rgba(21,94,239,.12);
+  }
+  .post-local-true-wizard-pass .wizard-step-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .post-local-true-wizard-pass .wizard-step-actions button {
+    min-height: 48px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0 18px;
+    background: var(--ll-rebuild-blue);
+    color: #fff;
+    font-weight: 900;
+    cursor: pointer;
+  }
+}

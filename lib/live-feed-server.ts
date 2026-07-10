@@ -34,7 +34,14 @@ function dedupeFeedItems(items: LiveFeedItem[]): LiveFeedItem[] {
 
 export async function loadPublishedLocalEvents(): Promise<LiveFeedItem[]> {
   const store = await readLocalSubmissionsStore();
-  return (store.publishedLocalEvents || []).map(normalizePublishedLocalItem);
+  const allowSmokeRecords = Boolean(process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH);
+  return (store.publishedLocalEvents || []).filter((item) => allowSmokeRecords || !isSmokeTestLocalEvent(item)).map(normalizePublishedLocalItem);
+}
+
+function isSmokeTestLocalEvent(item: LiveFeedItem): boolean {
+  // runtime-smoke-data-guard-pass: default preview must not merge API Smoke / Mobile smoke records into discovery.
+  const text = [item.id, item.title, item.summary, item.business, item.location].filter(Boolean).join(' ').toLowerCase();
+  return text.includes('api smoke') || text.includes('mobile smoke');
 }
 
 export async function getLiveFeed(limit = 24): Promise<LiveFeedResponse> {

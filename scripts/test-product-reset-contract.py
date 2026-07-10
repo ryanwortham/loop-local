@@ -1625,6 +1625,60 @@ def test_loop_local_persistence_media_validation_boundary_is_hardened():
         assert marker in api_smoke, f'missing API smoke validation marker {marker}'
 
 
+def test_loop_local_mobile_shell_and_post_local_true_wizard_are_corrected():
+    shell = read('components/app-shell.tsx')
+    post = read('components/post-local-wizard.tsx')
+    css = read('app/globals.css')
+    mobile = read('scripts/mobile-interaction-smoke.mjs')
+    server = read('lib/live-feed-server.ts')
+    for marker in [
+        'mobile-shell-active-tab-pass',
+        'activeAppTab',
+        'setActiveAppTab',
+        "aria-pressed={activeAppTab === tab}",
+        "className={activeAppTab === tab ? 'active' : ''}",
+        'setShowSavedPanel(true); setActiveAppTab(\'Saved\')',
+        'setActiveAppTab(\'Profile\')',
+    ]:
+        assert marker in shell, f'missing mobile shell active tab marker {marker}'
+    for marker in [
+        'mobile-bottom-nav-clearance-pass',
+        'padding-bottom: max(150px, calc(env(safe-area-inset-bottom) + 118px))',
+        'scroll-padding-bottom: max(150px, calc(env(safe-area-inset-bottom) + 118px))',
+        'bottom: max(12px, env(safe-area-inset-bottom))',
+    ]:
+        assert marker in css, f'missing mobile bottom nav clearance marker {marker}'
+    for marker in [
+        'post-local-true-wizard-pass',
+        'activeWizardStep',
+        'setActiveWizardStep',
+        'wizardStepDefinitions',
+        'isWizardStepActive',
+        'goToNextWizardStep',
+        'goToPreviousWizardStep',
+        'data-wizard-active={isWizardStepActive(\'profile\')}',
+        'hidden={!isWizardStepActive(\'profile\')}',
+        'Next: event details',
+        'Back',
+    ]:
+        assert marker in post, f'missing Post Local true wizard marker {marker}'
+    for marker in [
+        'active-tab-single-state-pass',
+        'post-local-true-wizard-pass',
+        'default runtime store should not contain API Smoke records',
+        'bottom nav should not cover event card actions',
+        'only one app tab should be active',
+    ]:
+        assert marker in mobile, f'missing mobile smoke marker {marker}'
+    for marker in [
+        'runtime-smoke-data-guard-pass',
+        'isSmokeTestLocalEvent',
+        'API Smoke',
+        'Mobile smoke',
+    ]:
+        assert marker in server, f'missing runtime smoke guard marker {marker}'
+
+
 def test_old_incremental_design_artifacts_removed():
     combined = read('app/globals.css') + read('components/app-shell.tsx') + read('components/post-local-wizard.tsx')
     for forbidden in [
@@ -1689,5 +1743,6 @@ if __name__ == '__main__':
     test_loop_local_operator_review_system_is_separated_and_token_gated()
     test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup()
     test_loop_local_persistence_media_validation_boundary_is_hardened()
+    test_loop_local_mobile_shell_and_post_local_true_wizard_are_corrected()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

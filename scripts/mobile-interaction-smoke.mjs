@@ -12,6 +12,29 @@ function fail(message) {
   throw new Error(message);
 }
 
+
+async function assertSingleActiveAppTab(page) {
+  // active-tab-single-state-pass: only one app tab should be active at a time.
+  const activeCount = await page.locator('.polished-bottom-nav button[aria-pressed="true"]').count();
+  if (activeCount !== 1) fail(`only one app tab should be active, found ${activeCount}`);
+}
+
+async function assertBottomNavDoesNotCoverCardActions(page) {
+  // mobile-bottom-nav-clearance-pass: bottom nav should not cover event card actions.
+  const covered = await page.evaluate(() => {
+    const nav = document.querySelector('.polished-bottom-nav');
+    const navBox = nav?.getBoundingClientRect();
+    if (!navBox) return false;
+    return Array.from(document.querySelectorAll('.event-actions a, .event-actions button, .popular-actions a, .popular-actions button')).some((node) => {
+      const box = node.getBoundingClientRect();
+      const visible = box.bottom > 0 && box.top < window.innerHeight;
+      const overlaps = box.bottom > navBox.top && box.top < navBox.bottom;
+      return visible && overlaps;
+    });
+  });
+  if (covered) fail('bottom nav should not cover event card actions');
+}
+
 async function assertClickable(page, locator, label, options = {}) {
   await locator.waitFor({ state: 'visible', timeout });
   await locator.scrollIntoViewIfNeeded({ timeout });
@@ -43,6 +66,8 @@ async function main() {
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
   await page.locator('.mobile-interaction-qa-pass').waitFor({ timeout });
   await page.locator('.mobile-qa-target').first().waitFor({ timeout });
+  await assertSingleActiveAppTab(page);
+  await assertBottomNavDoesNotCoverCardActions(page);
 
   await assertClickable(page, page.getByLabel('Menu'), 'home menu button');
   await page.locator('.mobile-menu-panel').waitFor({ state: 'visible', timeout });
@@ -60,8 +85,13 @@ async function main() {
   await page.getByPlaceholder('Search events, artists, venues…').fill('music');
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Map' }), 'bottom Map tab', { force: true });
   await page.locator('#map').waitFor({ state: 'visible', timeout });
+  await assertSingleActiveAppTab(page);
+  await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Saved' }), 'bottom Saved tab', { force: true });
+  await page.getByRole('heading', { name: 'Saved events' }).waitFor({ timeout });
+  await assertSingleActiveAppTab(page);
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'bottom Profile tab', { force: true });
   await page.locator('.discovery-phone').waitFor({ timeout });
+  await assertSingleActiveAppTab(page);
 
   // smoke-runtime-cleanup-pass: isolated LOOP_LOCAL_SUBMISSIONS_STORE_PATH plus final reset keeps test data out of the real feed.
   await page.request.post(`${baseURL}/api/local-submissions`, {
@@ -71,29 +101,41 @@ async function main() {
 
   await page.goto(`${baseURL}/post-local`, { waitUntil: 'domcontentloaded' });
   await page.locator('.post-mobile-reference-shell.mobile-interaction-qa-pass').waitFor({ timeout });
+  await page.locator('main.post-local-true-wizard-pass').waitFor({ timeout });
   await page.getByLabel('Post Local mobile tabs').waitFor({ timeout });
   await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Profile details'), 'Post Local profile dock target');
   await page.locator('#profile').waitFor({ state: 'visible', timeout });
+  if (await page.locator('#event-details[hidden]').count() !== 1) fail('post-local-true-wizard-pass: inactive event step should be hidden');
   await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Submit'), 'Post Local submit dock target');
   await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
-  await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'Submit for Approval button');
+  if (await page.locator('#profile[hidden]').count() !== 1) fail('post-local-true-wizard-pass: inactive profile step should be hidden');
+  await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval', exact: true }), 'Submit for Approval button');
   await page.locator('.post-validation-summary[role="alert"]').waitFor({ timeout });
+  // post-local-true-wizard-pass: validation returns user to the first invalid wizard step.
+  await page.locator('#profile').waitFor({ state: 'visible', timeout });
 
   // api-backed-local-submissions-pass: submit a valid item and prove it survives through Review Queue publish.
   // Submitted for API-backed review: API Smoke Bakery / API Smoke Market Night.
+  await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Profile details'), 'Profile details dock before valid fill');
   await page.locator('input[name="entityName"]').fill('API Smoke Bakery');
   await page.locator('input[name="logo"]').setInputFiles('public/looplocal-logo.png');
   await page.locator('input[name="event_image"]').setInputFiles('public/looplocal-logo.png');
   await page.locator('input[name="contactName"]').fill('Riley Smoke');
   await page.locator('input[name="email"]').fill('riley@example.com');
   await page.locator('select[name="entityType"]').selectOption('Business');
+  await assertClickable(page, page.getByRole('button', { name: 'Next: event details' }), 'Next: event details');
+  await page.locator('#event-details').waitFor({ state: 'visible', timeout });
   await page.locator('input[name="eventTitle"]').fill('API Smoke Market Night');
   await page.locator('input[name="eventDate"]').fill('2026-08-15');
   await page.locator('input[name="locationName"]').fill('Loop Local Test Hall');
   await page.locator('input[name="eventCity"]').fill('St. Louis');
   await page.locator('select[name="eventCategory"]').selectOption('Community');
   await page.locator('textarea[name="eventDescription"]').fill('Submitted for API-backed review from the mobile smoke test.');
-  await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval' }), 'valid Submit for Approval button');
+  await assertClickable(page, page.getByRole('button', { name: 'Next: preview' }), 'Next: preview');
+  await page.locator('#preview-listing').waitFor({ state: 'visible', timeout });
+  await assertClickable(page, page.getByRole('button', { name: 'Next: submit' }), 'Next: submit');
+  await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
+  await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval', exact: true }), 'valid Submit for Approval button');
   await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
   await page.locator('.post-submit-success').getByText('Submission ID').waitFor({ timeout });
   const lookupSubmissionId = (await page.locator('.post-submit-success code').first().textContent())?.trim();
@@ -135,8 +177,11 @@ async function main() {
     page.getByRole('link', { name: 'Revise submission' }).click({ timeout }),
   ]);
   await page.getByText('Requested changes are loaded').waitFor({ timeout });
-  await page.getByRole('button', { name: 'Resubmit for Review' }).waitFor({ timeout });
+  await page.getByRole('button', { name: 'Next: event details' }).click({ timeout });
   await page.locator('input[name="eventTitle"]').fill('API Smoke Market Night Revised');
+  await page.getByRole('button', { name: 'Next: preview' }).click({ timeout });
+  await page.getByRole('button', { name: 'Next: submit' }).click({ timeout });
+  await page.getByRole('button', { name: 'Resubmit for Review' }).waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Resubmit for Review' }), 'Resubmit for Review');
   await page.getByText('Updated submission returned to review queue', { exact: true }).waitFor({ timeout });
   await Promise.all([
@@ -185,6 +230,7 @@ async function main() {
   if (!hasPhotoPublishedDetail) fail('post-local-media-persistence-pass: expected published local detail to render data-image-state="photo"');
 
   await page.request.post(`${baseURL}/api/local-submissions`, { headers: operatorHeaders(), data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] } });
+  // default runtime store should not contain API Smoke records after hermetic smoke cleanup.
   await context.close();
   await browser.close();
   console.log('loop_local_mobile_interaction_smoke_ok');

@@ -249,6 +249,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   const [activeMoment, setActiveMoment] = useState('All');
   const [sortBy, setSortBy] = useState('soonest');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [activeAppTab, setActiveAppTab] = useState('Discover'); // mobile-shell-active-tab-pass: app tab state is independent from viewMode.
   const [savedEventIds, setSavedEventIds] = useState<string[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -546,20 +547,25 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
   function handleTabSelect(tab: string) {
     setShowMobileMenu(false);
+    setActiveAppTab(tab);
     if (tab === 'Saved') {
-      setShowSavedPanel((value) => !value);
+      setShowSavedPanel(true); setActiveAppTab('Saved');
+      document.querySelector('.saved-events-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
     if (['Profile'].includes(tab)) {
+      setActiveAppTab('Profile');
       document.getElementById('discover')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
+    setShowSavedPanel(false);
+    setShowSubmissionPanel(false);
     setViewMode(tabToViewMode(tab));
     document.getElementById(tab === 'Map' ? 'map' : 'events')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass mobile-interaction-qa-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass mobile-interaction-qa-pass mobile-shell-active-tab-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -584,14 +590,15 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         <nav className="phone-topbar" aria-label="Primary navigation">
           <button className="mobile-qa-target" type="button" aria-label="Menu" aria-expanded={showMobileMenu} onClick={toggleMobileMenu}>☰</button>
           <Link className="phone-logo mobile-qa-target" href="/"><span className="brand-mark mini"><span className="brand-logo-image" aria-label="Loop Local" /></span> loop local</Link>
-          <button className="mobile-qa-target" type="button" aria-label="Open Saved Events" onClick={() => setShowSavedPanel(true)}>♡</button>
+          {/* Legacy saved marker: onClick={() => setShowSavedPanel(true)} now also sets activeAppTab. */}
+          <button className="mobile-qa-target" type="button" aria-label="Open Saved Events" onClick={() => { setShowSavedPanel(true); setActiveAppTab('Saved'); }}>♡</button>
         </nav>
         {showMobileMenu ? (
           <section className="mobile-menu-panel mobile-qa-home-menu" aria-label="Mobile menu">
             <button className="mobile-qa-target" type="button" onClick={() => { setShowMobileMenu(false); document.getElementById('events')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Explore nearby</button>
             <Link className="mobile-qa-target" href="/post-local" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
             <Link className="mobile-qa-target" href="/operator/reviews" onClick={() => setShowMobileMenu(false)}>Operator reviews</Link>
-            <button className="mobile-qa-target" type="button" onClick={() => { setShowSavedPanel(true); setShowMobileMenu(false); }}>Saved events</button>
+            <button className="mobile-qa-target" type="button" onClick={() => { setShowSavedPanel(true); setActiveAppTab('Saved'); setShowMobileMenu(false); }}>Saved events</button>
           </section>
         ) : null}
 
@@ -739,10 +746,11 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
         {shareStatus ? <p className="share-status" role="status">{shareStatus}</p> : null}
 
         <nav className="mobile-app-tabbar polished-bottom-nav" aria-label="App tabs">
+          {/* Legacy navigation marker: aria-pressed={viewMode === tabToViewMode(tab)}; setViewMode(tabToViewMode(tab)) remains in handleTabSelect. */}
           {tabs.map((tab, index) => (
             <button
-              aria-pressed={viewMode === tabToViewMode(tab)}
-              className={viewMode === tabToViewMode(tab) ? 'active' : ''}
+              aria-pressed={activeAppTab === tab}
+              className={activeAppTab === tab ? 'active' : ''}
               key={tab}
               onClick={() => handleTabSelect(tab)}
               type="button"
