@@ -9,6 +9,7 @@ import { submissionPublicationQuality } from '@/lib/local-submission-quality';
 import { statusCapabilityForSubmission } from '@/lib/local-submissions/capability';
 import { getLocalSubmissionsRepository } from '@/lib/local-submissions/repository';
 import { sanitizeLocalSubmissionMedia } from '@/lib/local-submissions/schemas';
+import type { StoredMediaReference } from '@/lib/local-submissions/media-storage';
 
 // api-backed-local-submissions-pass: file-backed review queue until Supabase persistence is wired.
 // Legacy persistence marker moved behind repository: runtime-data/local-submissions.json.
@@ -68,9 +69,14 @@ export type LocalSubmissionRecord = {
   contactEmail?: string;
   eventCategory?: string;
   eventDescription?: string;
-  // post-local-media-persistence-pass: keep first-pass uploaded media as data URLs until object storage is wired.
+  // post-local-media-persistence-pass: file-adapter compatibility retains inline data;
+  // the Supabase adapter rewrites it to governed object references.
   logoDataUrl?: string;
   eventImageDataUrl?: string;
+  logoMedia?: StoredMediaReference;
+  eventImageMedia?: StoredMediaReference;
+  logoMediaUrl?: string;
+  eventImageMediaUrl?: string;
   logoFileName?: string;
   eventImageFileName?: string;
   status: LocalSubmissionStatus;

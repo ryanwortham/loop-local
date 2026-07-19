@@ -6,6 +6,7 @@ import {
   submissionDataForStorage,
   SupabaseLocalSubmissionsRepository,
 } from '../lib/local-submissions/supabase-repository.ts';
+import type { StoredMediaReference } from '../lib/local-submissions/media-storage.ts';
 
 test('Supabase repository configuration requires an explicit server-only credential', () => {
   assert.throws(
@@ -89,4 +90,162 @@ test('Supabase capability authorization sends only a hash to the server', async 
   assert.equal(await repository.authorizeStatusCapability('55555555-5555-4555-8555-555555555555', token), true);
   assert.equal(requestedUrl.includes(token), false);
   assert.equal(requestedUrl.includes(hashStatusCapability(token)), true);
+});
+
+test('Supabase repository uploads embedded pending media before the database compare-and-swap', async () => {
+  const writes: Array<Record<string, unknown>> = [];
+  const media: StoredMediaReference = {
+    bucket: 'submission-media',
+    objectPath: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+    mimeType: 'image/png',
+    byteSize: 3,
+    sha256: 'a'.repeat(64),
+    kind: 'eventImage',
+  };
+  let uploadCalls = 0;
+  const mediaStorage = {
+    uploadPending: async () => { uploadCalls += 1; return media; },
+    promotePending: async () => { throw new Error('not expected'); },
+    removePending: async () => undefined,
+  };
+  const responses = [
+    { revision: 4, store: { version: 1, pendingSubmissions: [], publishedLocalEvents: [] } },
+    { applied: true, revision: 5 },
+  ];
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    {
+      mediaStorage,
+      fetchImpl: async (_input, init) => {
+        if (init?.body && String(init.body) !== '{}') writes.push(JSON.parse(String(init.body)));
+        return new Response(JSON.stringify(responses.shift()), { status: 200 });
+      },
+    },
+  );
+  const dataUrl = 'data:image/png;base64,iVBORw0KGgo=';
+  await repository.mutate((store) => ({
+    store: {
+      ...store,
+      pendingSubmissions: [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventImageDataUrl: dataUrl }],
+    },
+    result: true,
+  }));
+  const persisted = (writes[0].next_store as { pendingSubmissions: Array<Record<string, unknown>> }).pendingSubmissions[0];
+  assert.equal(uploadCalls, 1);
+  assert.equal(persisted.eventImageDataUrl, undefined);
+  assert.deepEqual(persisted.eventImageMedia, media);
+});
+
+test('Supabase repository signs private media only for read responses', async () => {
+  const media: StoredMediaReference = {
+    bucket: 'submission-media', objectPath: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+    mimeType: 'image/png', byteSize: 3, sha256: 'd'.repeat(64), kind: 'eventImage',
+  };
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    {
+      mediaStorage: {
+        uploadPending: async () => media,
+        promotePending: async () => media,
+        removePending: async () => undefined,
+        signPending: async () => 'https://project.supabase.co/signed-private-image',
+      },
+      fetchImpl: async () => new Response(JSON.stringify({
+        revision: 1,
+        store: { version: 1, pendingSubmissions: [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventImageMedia: media }], publishedLocalEvents: [] },
+      }), { status: 200 }),
+    },
+  );
+  const store = await repository.read();
+  const submission = store.pendingSubmissions[0] as Record<string, unknown>;
+  assert.equal(submission.eventImageMediaUrl, 'https://project.supabase.co/signed-private-image');
+  assert.deepEqual(submission.eventImageMedia, media);
+});
+
+test('Supabase repository promotes pending media before publication and removes private media only after commit', async () => {
+  const pendingMedia: StoredMediaReference = {
+    bucket: 'submission-media',
+    objectPath: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+    mimeType: 'image/png',
+    byteSize: 3,
+    sha256: 'b'.repeat(64),
+    kind: 'eventImage',
+  };
+  const publicMedia: StoredMediaReference = {
+    ...pendingMedia,
+    bucket: 'event-media',
+    objectPath: 'local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+    publicUrl: 'https://project.supabase.co/storage/v1/object/public/event-media/local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+  };
+  const actions: string[] = [];
+  const mediaStorage = {
+    uploadPending: async () => { throw new Error('not expected'); },
+    promotePending: async () => { actions.push('promote'); return publicMedia; },
+    removePending: async (references: StoredMediaReference[]) => { actions.push(`remove:${references.length}`); },
+  };
+  const snapshot = {
+    version: 1 as const,
+    pendingSubmissions: [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', eventImageMedia: pendingMedia }],
+    publishedLocalEvents: [],
+  };
+  let persistedEvent: Record<string, unknown> | undefined;
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    {
+      mediaStorage,
+      fetchImpl: async (_input, init) => {
+        const body = JSON.parse(String(init?.body || '{}'));
+        if ('next_store' in body) {
+          persistedEvent = (body.next_store.publishedLocalEvents as Array<Record<string, unknown>>)[0];
+          actions.push('compare-and-swap');
+          return new Response(JSON.stringify({ applied: true, revision: 10 }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ revision: 9, store: snapshot }), { status: 200 });
+      },
+    },
+  );
+  await repository.mutate((store) => ({
+    store: {
+      ...store,
+      pendingSubmissions: [],
+      publishedLocalEvents: [{ id: 'local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', title: 'Published' }],
+    },
+    result: true,
+  }));
+  assert.equal(persistedEvent?.image_url, publicMedia.publicUrl);
+  assert.equal(persistedEvent?.imageState, 'photo');
+  assert.equal(persistedEvent?.visualKey, 'local-submission-media');
+  assert.deepEqual(actions, ['promote', 'compare-and-swap', 'remove:1']);
+});
+
+test('Supabase repository does not commit publication when media promotion fails', async () => {
+  const pendingMedia: StoredMediaReference = {
+    bucket: 'submission-media', objectPath: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/logo.png',
+    mimeType: 'image/png', byteSize: 3, sha256: 'c'.repeat(64), kind: 'logo',
+  };
+  let writes = 0;
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    {
+      mediaStorage: {
+        uploadPending: async () => pendingMedia,
+        promotePending: async () => { throw new Error('checksum mismatch'); },
+        removePending: async () => undefined,
+      },
+      fetchImpl: async (_input, init) => {
+        const body = JSON.parse(String(init?.body || '{}'));
+        if ('next_store' in body) writes += 1;
+        return new Response(JSON.stringify({ revision: 1, store: {
+          version: 1,
+          pendingSubmissions: [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', logoMedia: pendingMedia }],
+          publishedLocalEvents: [],
+        } }), { status: 200 });
+      },
+    },
+  );
+  await assert.rejects(repository.mutate((store) => ({
+    store: { ...store, pendingSubmissions: [], publishedLocalEvents: [{ id: 'local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' }] },
+    result: true,
+  })), /checksum mismatch/);
+  assert.equal(writes, 0);
 });

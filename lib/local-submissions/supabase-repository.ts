@@ -4,13 +4,42 @@ import type {
   RepositoryMutation,
   RepositoryStoreShape,
 } from './repository';
+import {
+  SupabaseSubmissionMediaStorage,
+  type GovernedMediaKind,
+  type StoredMediaReference,
+} from './media-storage.ts';
 
 type SupabaseRepositoryEnv = Record<string, string | undefined>;
 export type SupabaseRepositoryConfig = { supabaseUrl: string; serviceRoleKey: string };
-type SupabaseRepositoryOptions = { fetchImpl?: typeof fetch; maxMutationAttempts?: number };
+type SubmissionMediaStorage = Pick<SupabaseSubmissionMediaStorage, 'uploadPending' | 'promotePending' | 'removePending'>
+  & Partial<Pick<SupabaseSubmissionMediaStorage, 'signPending'>>;
+type SupabaseRepositoryOptions = {
+  fetchImpl?: typeof fetch;
+  maxMutationAttempts?: number;
+  mediaStorage?: SubmissionMediaStorage;
+};
 type UnknownRecord = Record<string, unknown>;
 type RepositorySnapshot = { revision: number; store: RepositoryStoreShape };
 type ReplaceResult = { applied: boolean; revision: number };
+type PreparedMediaMutation = { store: RepositoryStoreShape; removedPendingMedia: StoredMediaReference[] };
+
+function asRecord(value: unknown): UnknownRecord | undefined {
+  return value && typeof value === 'object' ? value as UnknownRecord : undefined;
+}
+
+function asPendingMedia(value: unknown): StoredMediaReference | undefined {
+  const record = asRecord(value);
+  if (!record || record.bucket !== 'submission-media' || typeof record.objectPath !== 'string'
+    || typeof record.mimeType !== 'string' || typeof record.byteSize !== 'number'
+    || typeof record.sha256 !== 'string' || (record.kind !== 'logo' && record.kind !== 'eventImage')) return undefined;
+  return record as StoredMediaReference;
+}
+
+function submissionMedia(record: UnknownRecord): StoredMediaReference[] {
+  return [asPendingMedia(record.eventImageMedia), asPendingMedia(record.logoMedia)]
+    .filter((item): item is StoredMediaReference => Boolean(item));
+}
 
 export function resolveSupabaseRepositoryConfig(env: SupabaseRepositoryEnv = process.env): SupabaseRepositoryConfig {
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim() || env.SUPABASE_URL?.trim();
@@ -41,11 +70,13 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
   readonly config: SupabaseRepositoryConfig;
   private readonly fetchImpl: typeof fetch;
   private readonly maxMutationAttempts: number;
+  private readonly mediaStorage: SubmissionMediaStorage;
 
   constructor(config = resolveSupabaseRepositoryConfig(), options: SupabaseRepositoryOptions = {}) {
     this.config = config;
     this.fetchImpl = options.fetchImpl || fetch;
     this.maxMutationAttempts = Math.max(1, options.maxMutationAttempts || 8);
+    this.mediaStorage = options.mediaStorage || new SupabaseSubmissionMediaStorage(config, { fetchImpl: this.fetchImpl });
   }
 
   private async request<T>(pathname: string, init: RequestInit = {}): Promise<T> {
@@ -88,8 +119,99 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
     return result;
   }
 
+  private async prepareMediaMutation(
+    previousStore: RepositoryStoreShape,
+    nextStore: RepositoryStoreShape,
+  ): Promise<PreparedMediaMutation> {
+    const pendingSubmissions: UnknownRecord[] = [];
+    for (const value of nextStore.pendingSubmissions) {
+      const submission = asRecord(value);
+      if (!submission) throw new Error('pending submission must be an object');
+      const prepared = { ...submission };
+      delete prepared.logoMediaUrl;
+      delete prepared.eventImageMediaUrl;
+      const mediaFields: Array<{ dataField: string; referenceField: string; kind: GovernedMediaKind }> = [
+        { dataField: 'logoDataUrl', referenceField: 'logoMedia', kind: 'logo' },
+        { dataField: 'eventImageDataUrl', referenceField: 'eventImageMedia', kind: 'eventImage' },
+      ];
+      for (const field of mediaFields) {
+        if (typeof prepared[field.dataField] !== 'string') continue;
+        if (typeof prepared.id !== 'string') throw new Error('pending media requires a canonical submission id');
+        prepared[field.referenceField] = await this.mediaStorage.uploadPending(
+          prepared.id,
+          field.kind,
+          prepared[field.dataField] as string,
+        );
+        delete prepared[field.dataField];
+      }
+      pendingSubmissions.push(prepared);
+    }
+
+    const previousPending = new Map<string, UnknownRecord>();
+    for (const value of previousStore.pendingSubmissions) {
+      const submission = asRecord(value);
+      if (submission && typeof submission.id === 'string') previousPending.set(submission.id, submission);
+    }
+    const previousPublishedIds = new Set(previousStore.publishedLocalEvents
+      .map(asRecord)
+      .map((item) => item?.id)
+      .filter((id): id is string => typeof id === 'string'));
+    const publishedLocalEvents: unknown[] = [];
+    for (const value of nextStore.publishedLocalEvents) {
+      const event = asRecord(value);
+      if (!event || typeof event.id !== 'string' || previousPublishedIds.has(event.id)) {
+        publishedLocalEvents.push(value);
+        continue;
+      }
+      const submissionId = event.id.startsWith('local-approved-') ? event.id.slice('local-approved-'.length) : '';
+      const submission = previousPending.get(submissionId);
+      const media = submission ? submissionMedia(submission)[0] : undefined;
+      if (!media) {
+        publishedLocalEvents.push(event);
+        continue;
+      }
+      const promoted = await this.mediaStorage.promotePending(media, event.id);
+      publishedLocalEvents.push({
+        ...event,
+        image_url: promoted.publicUrl,
+        imageState: 'photo',
+        visualKey: 'local-submission-media',
+      });
+    }
+
+    const nextPendingIds = new Set(pendingSubmissions
+      .map((item) => item.id)
+      .filter((id): id is string => typeof id === 'string'));
+    const removedPendingMedia = [...previousPending.entries()]
+      .filter(([id]) => !nextPendingIds.has(id))
+      .flatMap(([, submission]) => submissionMedia(submission));
+    return {
+      store: { ...nextStore, pendingSubmissions, publishedLocalEvents },
+      removedPendingMedia,
+    };
+  }
+
+  private async hydratePendingMedia(store: RepositoryStoreShape): Promise<RepositoryStoreShape> {
+    if (!this.mediaStorage.signPending) return store;
+    const pendingSubmissions: unknown[] = [];
+    for (const value of store.pendingSubmissions) {
+      const submission = asRecord(value);
+      if (!submission) {
+        pendingSubmissions.push(value);
+        continue;
+      }
+      const hydrated = { ...submission };
+      const eventImage = asPendingMedia(submission.eventImageMedia);
+      const logo = asPendingMedia(submission.logoMedia);
+      if (eventImage) hydrated.eventImageMediaUrl = await this.mediaStorage.signPending(eventImage);
+      if (logo) hydrated.logoMediaUrl = await this.mediaStorage.signPending(logo);
+      pendingSubmissions.push(hydrated);
+    }
+    return { ...store, pendingSubmissions };
+  }
+
   async read(): Promise<RepositoryStoreShape> {
-    return (await this.readSnapshot()).store;
+    return this.hydratePendingMedia((await this.readSnapshot()).store);
   }
 
   async write(store: RepositoryStoreShape): Promise<RepositoryStoreShape> {
@@ -101,8 +223,18 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
       const snapshot = await this.readSnapshot();
       const next = await mutation(snapshot.store);
       if (!isStore(next.store)) throw new Error('Repository mutation returned an invalid store');
-      const written = await this.compareAndSwap(snapshot.revision, next.store);
-      if (written.applied) return next.result;
+      const prepared = await this.prepareMediaMutation(snapshot.store, next.store);
+      const written = await this.compareAndSwap(snapshot.revision, prepared.store);
+      if (written.applied) {
+        if (prepared.removedPendingMedia.length) {
+          try {
+            await this.mediaStorage.removePending(prepared.removedPendingMedia);
+          } catch (error) {
+            console.error('Committed repository mutation left pending media for reconciliation', error);
+          }
+        }
+        return next.result;
+      }
     }
     throw new Error(`Supabase submissions repository mutation conflicted ${this.maxMutationAttempts} times`);
   }

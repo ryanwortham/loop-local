@@ -16,7 +16,9 @@ function present(value?: string): boolean {
 }
 
 export function submissionPublicationQuality(submission: Pick<LocalSubmissionRecord,
-  'id' | 'eventTitle' | 'eventDate' | 'eventCategory' | 'eventImageDataUrl' | 'logoDataUrl'
+  'id' | 'eventTitle' | 'eventDate' | 'eventCategory'
+  | 'eventImageDataUrl' | 'logoDataUrl' | 'eventImageMedia' | 'logoMedia'
+  | 'eventImageMediaUrl' | 'logoMediaUrl'
 >): SubmissionPublicationQuality {
   const normalizedCategory = normalizeEventCategory({ category: submission.eventCategory });
   const validCategory = present(submission.eventCategory) && isEventCategory(normalizedCategory) && normalizedCategory !== 'Local';
@@ -26,23 +28,24 @@ export function submissionPublicationQuality(submission: Pick<LocalSubmissionRec
     ...(!validCategory ? ['Event category'] : []),
   ];
   const stableKey = [submission.id, submission.eventTitle, submission.eventDate].filter(Boolean).join('|');
+  const fallbackImageUrl = eventCategoryFallbackImage(validCategory ? normalizedCategory : 'Local', stableKey);
 
-  if (present(submission.eventImageDataUrl)) {
+  if (present(submission.eventImageDataUrl) || submission.eventImageMedia) {
     return {
       canPublish: missingFields.length === 0,
       missingFields,
       mediaMode: 'event_image',
       mediaLabel: 'Custom event image',
-      previewImageUrl: submission.eventImageDataUrl as string,
+      previewImageUrl: submission.eventImageMediaUrl || submission.eventImageDataUrl || fallbackImageUrl,
     };
   }
-  if (present(submission.logoDataUrl)) {
+  if (present(submission.logoDataUrl) || submission.logoMedia) {
     return {
       canPublish: missingFields.length === 0,
       missingFields,
       mediaMode: 'logo',
       mediaLabel: 'Logo fallback',
-      previewImageUrl: submission.logoDataUrl as string,
+      previewImageUrl: submission.logoMediaUrl || submission.logoDataUrl || fallbackImageUrl,
     };
   }
   return {

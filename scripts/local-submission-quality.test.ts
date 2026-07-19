@@ -51,6 +51,23 @@ test('event imagery wins over a logo while a logo remains a visible secondary fa
   assert.equal(eventImage.mediaLabel, 'Custom event image');
 });
 
+test('governed pending media remains publishable and uses a signed preview when available', () => {
+  const governed = submissionPublicationQuality(submission({
+    eventImageMedia: {
+      bucket: 'submission-media',
+      objectPath: '11111111-1111-4111-8111-111111111111/event-image.png',
+      mimeType: 'image/png',
+      byteSize: 128,
+      sha256: 'a'.repeat(64),
+      kind: 'eventImage',
+    },
+    eventImageMediaUrl: 'https://example.test/signed-event-image',
+  }));
+  assert.equal(governed.canPublish, true);
+  assert.equal(governed.mediaMode, 'event_image');
+  assert.equal(governed.previewImageUrl, 'https://example.test/signed-event-image');
+});
+
 test('browser upload limits fit both encoded images inside the API payload boundary', () => {
   const encodedImageLength = Math.ceil(MAX_LOCAL_SUBMISSION_UPLOAD_BYTES / 3) * 4 + 64;
   assert.ok(encodedImageLength <= MAX_LOCAL_SUBMISSION_DATA_IMAGE_LENGTH);
