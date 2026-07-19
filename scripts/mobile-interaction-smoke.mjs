@@ -63,8 +63,32 @@ async function main() {
   const page = await context.newPage();
   page.setDefaultTimeout(timeout);
 
+  // homepage-date-time-rendering-pass: a deterministic event exposes its visible date and semantic start time on the homepage.
+  const renderingFixture = {
+    id: 'homepage-date-time-regression',
+    title: 'Homepage Date Time Regression',
+    business: 'Regression Venue',
+    city: 'St. Louis',
+    category: 'Community',
+    date: '2026-08-15',
+    time: '7:30 PM UTC',
+    startsAt: '2026-08-15T19:30:00Z',
+    source: 'local_rendering_regression',
+  };
+  await page.request.post(`${baseURL}/api/local-submissions`, {
+    headers: operatorHeaders(),
+    data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [renderingFixture] },
+  });
+
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
   await page.locator('.mobile-interaction-qa-pass').waitFor({ timeout });
+  const renderingCard = page.locator('article.explore-card').filter({ hasText: renderingFixture.title }).first();
+  await renderingCard.waitFor({ state: 'visible', timeout });
+  const visibleDate = (await renderingCard.locator('.floating-date').textContent()) || '';
+  if (!visibleDate.includes('Aug') || !visibleDate.includes('15')) fail(`homepage date not rendered: ${visibleDate}`);
+  const visibleStart = renderingCard.locator(`time[datetime="${renderingFixture.startsAt}"]`);
+  await visibleStart.waitFor({ state: 'visible', timeout });
+  if ((await visibleStart.textContent())?.trim() !== renderingFixture.time) fail('homepage time not rendered');
   await page.locator('.mobile-qa-target').first().waitFor({ timeout });
   await assertSingleActiveAppTab(page);
   await assertBottomNavDoesNotCoverCardActions(page);

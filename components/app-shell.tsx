@@ -125,7 +125,7 @@ function EventCard({ item, compact = false, isSaved = false, onSave }: { item: L
         <p>{venueLine(item)}</p>
         <div className="card-micro-row">
           <span>{item.city || 'Nearby'}</span>
-          <span>{item.time || priceLine(item)}</span>
+          <time dateTime={item.startsAt || item.date || undefined}>{item.time || priceLine(item)}</time>
         </div>
       </div>
       <div className="event-actions card-actions">
