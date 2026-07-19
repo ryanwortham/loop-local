@@ -63,6 +63,13 @@ function cleanSubmissionRecord(input: Record<string, unknown>): ValidationResult
     const value = cleanString(input[field]);
     if (value) (output as Record<string, unknown>)[field] = value;
   }
+  for (const field of ['requestId', 'revisionRequestId'] as const) {
+    if (input[field] === undefined || input[field] === '') continue;
+    if (typeof input[field] !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input[field])) {
+      return { ok: false, error: `invalid ${field}` };
+    }
+    output[field] = input[field];
+  }
   if (output.eventCategory) {
     const eventCategory = normalizeEventCategory({ category: output.eventCategory });
     if (!isEventCategory(eventCategory) || eventCategory === 'Local') return { ok: false, error: 'invalid event category' };

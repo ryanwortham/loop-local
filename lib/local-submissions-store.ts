@@ -67,6 +67,9 @@ export type LocalSubmissionRecord = {
   statusHistory?: LocalSubmissionHistoryEntry[];
   // poster-status-token-pass: signed-ish status links protect submitter PII from guessable IDs.
   statusToken?: string;
+  // submission-transaction-integrity-pass: caller-generated keys make network retries deterministic.
+  requestId?: string;
+  revisionRequestId?: string;
 };
 
 export type LocalSubmissionsStore = {
@@ -159,6 +162,21 @@ function normalizeStore(value: unknown): LocalSubmissionsStore {
   };
 }
 
+let submissionMutationQueue: Promise<void> = Promise.resolve();
+
+async function withSubmissionMutationLock<T>(operation: () => Promise<T>): Promise<T> {
+  const current = submissionMutationQueue.then(operation, operation);
+  submissionMutationQueue = current.then(() => undefined, () => undefined);
+  return current;
+}
+
+async function persistLocalSubmissionsStore(store: LocalSubmissionsStore): Promise<LocalSubmissionsStore> {
+  const normalized = normalizeStore(store);
+  const repository = await getLocalSubmissionsRepository();
+  await repository.write(normalized);
+  return normalized;
+}
+
 export async function readLocalSubmissionsStore(): Promise<LocalSubmissionsStore> {
   const repository = await getLocalSubmissionsRepository();
   const raw = await repository.read();
@@ -166,10 +184,17 @@ export async function readLocalSubmissionsStore(): Promise<LocalSubmissionsStore
 }
 
 export async function writeLocalSubmissionsStore(store: LocalSubmissionsStore): Promise<LocalSubmissionsStore> {
-  const normalized = normalizeStore(store);
-  const repository = await getLocalSubmissionsRepository();
-  await repository.write(normalized);
-  return normalized;
+  return withSubmissionMutationLock(() => persistLocalSubmissionsStore(store));
+}
+
+export async function replaceLocalSubmissionQueues(
+  pendingSubmissions: LocalSubmissionRecord[],
+  publishedLocalEvents: LiveFeedItem[],
+): Promise<LocalSubmissionsStore> {
+  return withSubmissionMutationLock(async () => {
+    const current = await readLocalSubmissionsStore();
+    return persistLocalSubmissionsStore({ ...current, pendingSubmissions, publishedLocalEvents });
+  });
 }
 
 export function publishedMatchesSubmissionId(item: LiveFeedItem, submissionId: string): boolean {
@@ -228,110 +253,131 @@ export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFee
 }
 
 export async function createLocalSubmission(input: Partial<LocalSubmissionRecord>) {
-  const store = await readLocalSubmissionsStore();
-  const submission = normalizeSubmission({ ...input, status: 'pending_review', submittedAt: input.submittedAt || nowIso() });
-  const next = {
-    ...store,
-    pendingSubmissions: [submission, ...store.pendingSubmissions.filter((item) => item.id !== submission.id)],
-  };
-  return { store: await writeLocalSubmissionsStore(next), submission };
+  return withSubmissionMutationLock(async () => {
+    const store = await readLocalSubmissionsStore();
+    const replayedSubmission = input.requestId
+      ? store.pendingSubmissions.find((item) => item.requestId === input.requestId)
+      : undefined;
+    if (replayedSubmission) return { store, submission: replayedSubmission, replayed: true };
+    const submission = normalizeSubmission({ ...input, status: 'pending_review', submittedAt: input.submittedAt || nowIso() });
+    const next = {
+      ...store,
+      pendingSubmissions: [submission, ...store.pendingSubmissions.filter((item) => item.id !== submission.id)],
+    };
+    return { store: await persistLocalSubmissionsStore(next), submission, replayed: false };
+  });
 }
 
 export async function updateLocalSubmission(id: string, patch: Partial<LocalSubmissionRecord>) {
-  const store = await readLocalSubmissionsStore();
-  const nextPending = store.pendingSubmissions.map((item) => {
-    if (item.id !== id) return item;
-    const updated = { ...item, ...patch, statusUpdatedAt: nowIso() };
-    if (patch.status && patch.status !== item.status) {
-      const action = patch.status === 'needs_changes' ? 'needs_changes' : patch.status === 'approved_local' ? 'approved_local' : 'updated';
-      // review-history-timeline-pass markers: action: 'needs_changes' action: 'approved_local'
-      return appendSubmissionHistory(updated, action, patch.reviewerNote || item.reviewerNote);
-    }
-    if (patch.reviewerNote && patch.reviewerNote !== item.reviewerNote) return appendSubmissionHistory(updated, 'updated', patch.reviewerNote);
-    return updated;
+  return withSubmissionMutationLock(async () => {
+    const store = await readLocalSubmissionsStore();
+    const nextPending = store.pendingSubmissions.map((item) => {
+      if (item.id !== id) return item;
+      const updated = { ...item, ...patch, statusUpdatedAt: nowIso() };
+      if (patch.status && patch.status !== item.status) {
+        const action = patch.status === 'needs_changes' ? 'needs_changes' : patch.status === 'approved_local' ? 'approved_local' : 'updated';
+        // review-history-timeline-pass markers: action: 'needs_changes' action: 'approved_local'
+        return appendSubmissionHistory(updated, action, patch.reviewerNote || item.reviewerNote);
+      }
+      if (patch.reviewerNote && patch.reviewerNote !== item.reviewerNote) return appendSubmissionHistory(updated, 'updated', patch.reviewerNote);
+      return updated;
+    });
+    const updated = nextPending.find((item) => item.id === id);
+    if (!updated) return { store, submission: null };
+    const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
+    return { store: await persistLocalSubmissionsStore(nextStore), submission: updated };
   });
-  const updated = nextPending.find((item) => item.id === id);
-  if (!updated) return { store, submission: null };
-  const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
-  return { store: await writeLocalSubmissionsStore(nextStore), submission: updated };
 }
 
 export async function deleteLocalSubmission(id: string) {
-  const store = await readLocalSubmissionsStore();
-  const nextStore = {
-    ...store,
-    pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
-  };
-  return { store: await writeLocalSubmissionsStore(nextStore) };
+  return withSubmissionMutationLock(async () => {
+    const store = await readLocalSubmissionsStore();
+    const nextStore = {
+      ...store,
+      pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
+    };
+    return { store: await persistLocalSubmissionsStore(nextStore) };
+  });
 }
 
 export async function publishLocalSubmission(id: string) {
-  const store = await readLocalSubmissionsStore();
-  const submission = store.pendingSubmissions.find((item) => item.id === id);
-  if (!submission) return { store, submission: null, published: null };
-  const quality = submissionPublicationQuality(submission);
-  if (!quality.canPublish) {
-    return {
-      store,
-      submission,
-      published: null,
-      error: `submission is not publish-ready: ${quality.missingFields.join(', ')}`,
+  return withSubmissionMutationLock(async () => {
+    const store = await readLocalSubmissionsStore();
+    const submission = store.pendingSubmissions.find((item) => item.id === id);
+    if (!submission) return { store, submission: null, published: null };
+    const quality = submissionPublicationQuality(submission);
+    if (!quality.canPublish) {
+      return {
+        store,
+        submission,
+        published: null,
+        error: `submission is not publish-ready: ${quality.missingFields.join(', ')}`,
+      };
+    }
+    const publishedSubmission = appendSubmissionHistory({ ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() }, 'published_local');
+    // review-history-timeline-pass marker: action: 'published_local'
+    const published = submissionToFeedItem(publishedSubmission);
+    const nextStore: LocalSubmissionsStore = {
+      ...store,
+      pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
+      publishedLocalEvents: [published, ...store.publishedLocalEvents.filter((item) => item.id !== published.id)],
     };
-  }
-  const publishedSubmission = appendSubmissionHistory({ ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() }, 'published_local');
-  // review-history-timeline-pass marker: action: 'published_local'
-  const published = submissionToFeedItem(publishedSubmission);
-  const nextStore: LocalSubmissionsStore = {
-    ...store,
-    pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
-    publishedLocalEvents: [published, ...store.publishedLocalEvents.filter((item) => item.id !== published.id)],
-  };
-  return { store: await writeLocalSubmissionsStore(nextStore), submission: publishedSubmission, published };
+    return { store: await persistLocalSubmissionsStore(nextStore), submission: publishedSubmission, published };
+  });
 }
 
 export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSubmissionRecord>) {
   // submitter-revision-flow-pass: needs_changes submissions can be revised and returned to pending_review.
-  const store = await readLocalSubmissionsStore();
-  const submittedAt = nowIso();
-  const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
-  const nextPending = store.pendingSubmissions.map((item) => item.id === id ? appendSubmissionHistory({
-    ...item,
-    ...cleanPatch,
-    id,
-    status: 'pending_review' as const,
-    reviewerNote: undefined,
-    reviewerNoteUpdatedAt: undefined,
-    statusUpdatedAt: submittedAt,
-    revisionSubmittedAt: submittedAt,
-  }, 'resubmitted', undefined, submittedAt) : item);
-  // review-history-timeline-pass marker: action: 'resubmitted'
-  const updated = nextPending.find((item) => item.id === id);
-  if (!updated) return { store, submission: null };
-  const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
-  return { store: await writeLocalSubmissionsStore(nextStore), submission: updated };
+  return withSubmissionMutationLock(async () => {
+    const store = await readLocalSubmissionsStore();
+    const existing = store.pendingSubmissions.find((item) => item.id === id);
+    if (!existing) return { store, submission: null, replayed: false };
+    if (patch.revisionRequestId && existing.revisionRequestId === patch.revisionRequestId) {
+      return { store, submission: existing, replayed: true };
+    }
+    const submittedAt = nowIso();
+    const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+    const nextPending = store.pendingSubmissions.map((item) => item.id === id ? appendSubmissionHistory({
+      ...item,
+      ...cleanPatch,
+      id,
+      status: 'pending_review' as const,
+      reviewerNote: undefined,
+      reviewerNoteUpdatedAt: undefined,
+      statusUpdatedAt: submittedAt,
+      revisionSubmittedAt: submittedAt,
+    }, 'resubmitted', undefined, submittedAt) : item);
+    // review-history-timeline-pass marker: action: 'resubmitted'
+    const updated = nextPending.find((item) => item.id === id);
+    if (!updated) return { store, submission: null, replayed: false };
+    const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
+    return { store: await persistLocalSubmissionsStore(nextStore), submission: updated, replayed: false };
+  });
 }
 
 export async function setEventCategoryOverride(
   event: Pick<LiveFeedItem, 'id' | 'title' | 'category' | 'sourceCategory'>,
   category?: string,
 ) {
-  const store = await readLocalSubmissionsStore();
-  const nextOverrides = { ...store.eventCategoryOverrides };
-  if (!category) {
-    delete nextOverrides[event.id];
-  } else {
-    const candidate = normalizeEventCategoryOverrides({
-      [event.id]: {
-        category,
-        sourceCategory: event.sourceCategory || event.category || 'Local',
-        eventTitle: event.title,
-        reviewedAt: nowIso(),
-      },
-    });
-    if (!candidate[event.id]) return { store, override: null, error: 'invalid event category override' };
-    nextOverrides[event.id] = candidate[event.id];
-  }
-  const nextStore: LocalSubmissionsStore = { ...store, eventCategoryOverrides: nextOverrides };
-  const written = await writeLocalSubmissionsStore(nextStore);
-  return { store: written, override: written.eventCategoryOverrides[event.id] || null };
+  return withSubmissionMutationLock(async () => {
+    const store = await readLocalSubmissionsStore();
+    const nextOverrides = { ...store.eventCategoryOverrides };
+    if (!category) {
+      delete nextOverrides[event.id];
+    } else {
+      const candidate = normalizeEventCategoryOverrides({
+        [event.id]: {
+          category,
+          sourceCategory: event.sourceCategory || event.category || 'Local',
+          eventTitle: event.title,
+          reviewedAt: nowIso(),
+        },
+      });
+      if (!candidate[event.id]) return { store, override: null, error: 'invalid event category override' };
+      nextOverrides[event.id] = candidate[event.id];
+    }
+    const nextStore: LocalSubmissionsStore = { ...store, eventCategoryOverrides: nextOverrides };
+    const written = await persistLocalSubmissionsStore(nextStore);
+    return { store: written, override: written.eventCategoryOverrides[event.id] || null };
+  });
 }

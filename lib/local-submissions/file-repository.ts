@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { LocalSubmissionsRepository, RepositoryStoreShape } from './repository';
@@ -16,7 +17,7 @@ export class FileLocalSubmissionsRepository implements LocalSubmissionsRepositor
 
   async write(store: RepositoryStoreShape): Promise<unknown> {
     await mkdir(path.dirname(this.runtimePath), { recursive: true });
-    const tempPath = `${this.runtimePath}.${process.pid}.${Date.now()}.tmp`;
+    const tempPath = `${this.runtimePath}.${process.pid}.${randomUUID()}.tmp`;
     await writeFile(tempPath, `${JSON.stringify(store, null, 2)}\n`, 'utf8');
     await rename(tempPath, this.runtimePath);
     return store;

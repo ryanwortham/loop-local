@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { FileDropInput } from '@/components/file-drop-input';
 import { SUBMISSION_EVENT_CATEGORIES } from '@/lib/event-taxonomy';
 
@@ -155,6 +155,39 @@ function readPostLocalFileAsDataUrl(input: HTMLInputElement | null): Promise<{ d
   });
 }
 
+function newSubmissionRequestId(): string {
+  // submission-transaction-integrity-pass: retries reuse one high-entropy request identity.
+  return crypto.randomUUID();
+}
+
+function submissionRequestStorageKey(revisionId: string): string {
+  return `looplocal:submission-request:${revisionId || 'create'}`;
+}
+
+function readStoredSubmissionRequestId(key: string): string {
+  try {
+    return sessionStorage.getItem(key) || '';
+  } catch {
+    return '';
+  }
+}
+
+function storeSubmissionRequestId(key: string, requestId: string) {
+  try {
+    sessionStorage.setItem(key, requestId);
+  } catch {
+    // In-memory idempotency still protects same-page retries when storage is unavailable.
+  }
+}
+
+function clearStoredSubmissionRequestId(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // A completed response is already safe; stale storage is harmless if storage is unavailable.
+  }
+}
+
 export function PostLocalWizard() {
   const [draft, setDraft] = useState<PostLocalDraft>(readInitialDraft);
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
@@ -165,6 +198,7 @@ export function PostLocalWizard() {
   const [statusLookupId, setStatusLookupId] = useState('');
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
   const [activeWizardStep, setActiveWizardStep] = useState<WizardStepId>('profile');
+  const submissionRequestId = useRef('');
 
   useEffect(() => {
     localStorage.setItem('looplocal:post-local-draft', JSON.stringify(draft));
@@ -250,6 +284,9 @@ export function PostLocalWizard() {
     // legacy migration marker: looplocal:post-local-submissions moved from source-of-truth to API-backed review queue.
     const logoMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="logo"]'));
     const eventImageMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="event_image"]'));
+    const requestStorageKey = submissionRequestStorageKey(revisionId);
+    if (!submissionRequestId.current) submissionRequestId.current = readStoredSubmissionRequestId(requestStorageKey) || newSubmissionRequestId();
+    storeSubmissionRequestId(requestStorageKey, submissionRequestId.current);
     // Legacy contract marker: fetch('/api/local-submissions' now supports create and resubmit branches.
     const response = await fetch(revisionId ? '/api/local-submissions' : '/api/local-submissions', {
       method: revisionId ? 'PATCH' : 'POST',
@@ -259,6 +296,8 @@ export function PostLocalWizard() {
         id: revisionId || undefined,
         action: revisionId ? 'resubmit' : undefined,
         statusToken: revisionId ? submittedStatusToken : undefined,
+        requestId: revisionId ? undefined : submissionRequestId.current,
+        revisionRequestId: revisionId ? submissionRequestId.current : undefined,
         // submitter-revision-flow-pass marker: action: 'resubmit'
         logoDataUrl: logoMedia.dataUrl,
         logoFileName: logoMedia.fileName,
@@ -269,7 +308,10 @@ export function PostLocalWizard() {
       }),
     });
     if (!response.ok) throw new Error('Failed to submit Post Local draft');
-    return response.json();
+    const data = await response.json();
+    clearStoredSubmissionRequestId(requestStorageKey);
+    submissionRequestId.current = '';
+    return data;
   }
 
   function handleStatusLookup(event: FormEvent<HTMLFormElement>) {

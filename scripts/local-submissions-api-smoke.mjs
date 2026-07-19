@@ -76,8 +76,52 @@ async function main() {
   assert(Array.isArray(data.pendingSubmissions) && data.pendingSubmissions.length === 0, 'reset pending should be empty');
   assert(Array.isArray(data.publishedLocalEvents) && data.publishedLocalEvents.length === 0, 'reset published should be empty');
 
+  const concurrentCreateResponses = await Promise.all(Array.from({ length: 16 }, (_, index) => request('', {
+    method: 'POST',
+    headers: operatorHeaders(),
+    body: JSON.stringify({
+      entityName: `Concurrent Integrity ${index}`,
+      eventTitle: `Concurrent Integrity Event ${index}`,
+      eventDate: '2026-11-01',
+      eventCategory: 'Community',
+      requestId: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    }),
+  })));
+  for (const [index, concurrentResponse] of concurrentCreateResponses.entries()) {
+    assertStatus(concurrentResponse, 201, `concurrent create ${index}`);
+    await json(concurrentResponse);
+  }
+  response = await request('', { headers: operatorHeaders() });
+  assertStatus(response, 200, 'queue after concurrent creates');
+  data = await json(response);
+  assert(data.pendingSubmissions.filter((item) => item.eventTitle?.startsWith('Concurrent Integrity Event')).length === 16, 'concurrent creates must not lose submissions');
+
+  const idempotentCreatePayload = {
+    entityName: 'Idempotent Integrity',
+    eventTitle: 'Idempotent Integrity Event',
+    eventDate: '2026-11-02',
+    eventCategory: 'Community',
+    requestId: '11111111-1111-4111-8111-111111111111',
+  };
+  response = await request('', { method: 'POST', headers: operatorHeaders(), body: JSON.stringify(idempotentCreatePayload) });
+  assertStatus(response, 201, 'first idempotent create');
+  data = await json(response);
+  const idempotentSubmissionId = data.submission.id;
+  response = await request('', { method: 'POST', headers: operatorHeaders(), body: JSON.stringify(idempotentCreatePayload) });
+  assertStatus(response, 200, 'replayed idempotent create');
+  data = await json(response);
+  assert(data.submission.id === idempotentSubmissionId, 'replayed create should return the original submission');
+  response = await request('', { headers: operatorHeaders() });
+  data = await json(response);
+  assert(data.pendingSubmissions.filter((item) => item.requestId === idempotentCreatePayload.requestId).length === 1, 'replayed create must persist exactly once');
+
   response = await request('', { method: 'POST', body: JSON.stringify({}) });
   assertStatus(response, 400, 'missing create payload');
+
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Weak Idempotency Smoke', eventTitle: 'Weak Idempotency Event', eventDate: '2026-11-03', eventCategory: 'Community', requestId: 'guessable-key' }) });
+  assertStatus(response, 400, 'weak idempotency key');
+  data = await json(response);
+  assert(data.error === 'invalid requestId', 'idempotency keys must be UUID capability values');
 
   response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Missing Category Smoke', eventTitle: 'Missing Category Event', eventDate: '2026-09-21' }) });
   assertStatus(response, 400, 'event category completeness');
@@ -194,6 +238,7 @@ async function main() {
       eventState: 'MO',
       eventCategory: 'Community',
       eventDescription: 'Direct API smoke test submission.',
+      requestId: '22222222-2222-4222-8222-222222222222',
       logoDataUrl: mediaDataUrl,
       logoFileName: 'api-direct-smoke-logo.png',
       eventImageDataUrl: mediaDataUrl,
@@ -254,15 +299,17 @@ async function main() {
   assert(statusHtml.includes('Needs changes'), 'status page should show Needs changes');
   assert(statusHtml.includes('reviewerNote'), 'status page should show reviewer note');
 
+  const revisionPayload = {
+    id,
+    action: 'resubmit',
+    statusToken,
+    revisionRequestId: '33333333-3333-4333-8333-333333333333',
+    eventTitle: 'API Direct Smoke Night Revised',
+    eventDescription: 'Revised after reviewer note.',
+  };
   response = await request('', {
     method: 'PATCH',
-    body: JSON.stringify({
-      id,
-      action: 'resubmit',
-      statusToken,
-      eventTitle: 'API Direct Smoke Night Revised',
-      eventDescription: 'Revised after reviewer note.',
-    }),
+    body: JSON.stringify(revisionPayload),
   });
   assertStatus(response, 200, 'resubmit revised submission');
   data = await json(response);
@@ -273,6 +320,13 @@ async function main() {
   assert(!('pendingSubmissions' in data), 'resubmit response must not expose pending queue');
   assert(!('publishedLocalEvents' in data), 'resubmit response must not expose published queue');
   assert(!('eventCategoryOverrides' in data), 'resubmit response must not expose taxonomy store');
+
+  response = await request('', { method: 'PATCH', body: JSON.stringify(revisionPayload) });
+  assertStatus(response, 200, 'replayed idempotent resubmit');
+  response = await request('', { headers: operatorHeaders() });
+  data = await json(response);
+  const idempotentRevision = data.pendingSubmissions.find((item) => item.id === id);
+  assert(idempotentRevision?.statusHistory?.filter((entry) => entry.action === 'resubmitted').length === 1, 'replayed resubmit must append history exactly once');
 
   response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
   assertStatus(response, 200, 'single status after resubmit');

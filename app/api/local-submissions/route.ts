@@ -6,10 +6,10 @@ import {
   findLocalSubmissionStatus,
   publishLocalSubmission,
   readLocalSubmissionsStore,
+  replaceLocalSubmissionQueues,
   resubmitLocalSubmission,
   setEventCategoryOverride,
   updateLocalSubmission,
-  writeLocalSubmissionsStore,
   type LocalSubmissionRecord,
 } from '@/lib/local-submissions-store';
 import {
@@ -112,19 +112,16 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized;
     const replacement = validateReplaceStoreInput(body);
     if (!replacement.ok) return error(replacement.error, replacement.status || 400);
-    const currentStore = await readLocalSubmissionsStore();
-    const store = await writeLocalSubmissionsStore({
-      version: 1,
-      pendingSubmissions: replacement.value.pendingSubmissions,
-      publishedLocalEvents: replacement.value.publishedLocalEvents.filter(isLiveFeedItem),
-      eventCategoryOverrides: currentStore.eventCategoryOverrides,
-    });
+    const store = await replaceLocalSubmissionQueues(
+      replacement.value.pendingSubmissions,
+      replacement.value.publishedLocalEvents.filter(isLiveFeedItem),
+    );
     return NextResponse.json({ ok: true, api: '/api/local-submissions', ...store });
   }
   const create = validateCreateLocalSubmissionInput(body);
   if (!create.ok) return error(create.error, create.status || 400);
-  const { submission } = await createLocalSubmission(create.value);
-  return publicSubmissionResponse(submission, 201);
+  const { submission, replayed } = await createLocalSubmission(create.value);
+  return publicSubmissionResponse(submission, replayed ? 200 : 201);
 }
 
 export async function PATCH(request: NextRequest) {

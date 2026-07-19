@@ -1811,6 +1811,24 @@ def test_loop_local_public_submission_api_minimizes_queue_exposure_and_rate_limi
         assert marker in api_smoke, f'missing public response privacy smoke assertion {marker}'
 
 
+def test_loop_local_submission_mutations_are_transactional_and_idempotent():
+    store = read('lib/local-submissions-store.ts')
+    repository = read('lib/local-submissions/file-repository.ts')
+    schema = read('lib/local-submissions/schemas.ts')
+    route = read('app/api/local-submissions/route.ts')
+    wizard = read('components/post-local-wizard.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    for marker in ['withSubmissionMutationLock', 'requestId', 'revisionRequestId', 'replayed: true', 'replaceLocalSubmissionQueues']:
+        assert marker in store, f'missing transaction/idempotency store marker {marker}'
+    assert 'randomUUID()' in repository, 'atomic temp writes need collision-proof names'
+    assert 'invalid ${field}' in schema, 'idempotency capability keys need strict validation'
+    assert 'replayed ? 200 : 201' in route, 'replayed creates must return an idempotent success status'
+    for marker in ['useRef', 'crypto.randomUUID', 'sessionStorage', 'requestId:', 'revisionRequestId:']:
+        assert marker in wizard, f'missing stable browser idempotency marker {marker}'
+    for marker in ['concurrent creates must not lose submissions', 'replayed create must persist exactly once', 'replayed resubmit must append history exactly once']:
+        assert marker in api_smoke, f'missing submission integrity API assertion {marker}'
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1864,4 +1882,5 @@ if __name__ == '__main__':
     test_loop_local_operator_review_surfaces_publish_readiness_and_media_quality()
     test_loop_local_operator_taxonomy_remediation_is_explicit_and_reversible()
     test_loop_local_public_submission_api_minimizes_queue_exposure_and_rate_limits_abuse()
+    test_loop_local_submission_mutations_are_transactional_and_idempotent()
     print('loop_local_complete_frontend_rebuild_contract_ok')
