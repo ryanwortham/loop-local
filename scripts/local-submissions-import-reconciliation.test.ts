@@ -60,3 +60,24 @@ test('reconciliation reports exact queue and history mismatches without exposing
   assert.deepEqual(report.historyMismatches, ['11111111-1111-4111-8111-111111111111']);
   assert.equal(JSON.stringify(report).includes('plaintext-capability'), false);
 });
+
+test('reconciliation treats governed media references as the canonical form of valid embedded media', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgo=';
+  const pendingId = '11111111-1111-4111-8111-111111111111';
+  const eventId = 'local-approved-22222222-2222-4222-8222-222222222222';
+  const withEmbeddedMedia = {
+    version: 1 as const,
+    pendingSubmissions: [{ id: pendingId, status: 'pending_review', eventImageDataUrl: png }],
+    publishedLocalEvents: [{ id: eventId, image_url: png }],
+  };
+  const canonical = canonicalRepositoryState(withEmbeddedMedia);
+  const destination = {
+    ...canonical,
+    publishedLocalEvents: [{ id: eventId, image_url: `https://project.supabase.co/storage/v1/object/public/event-media/${eventId}/event-image.png` }],
+  };
+  const report = reconcileRepositoryStates(withEmbeddedMedia, destination);
+  assert.equal(report.matches, true);
+  const pending = canonical.pendingSubmissions[0] as Record<string, unknown>;
+  assert.equal(pending.eventImageDataUrl, undefined);
+  assert.match(JSON.stringify(pending.eventImageMedia), /submission-media/);
+});

@@ -218,6 +218,65 @@ test('Supabase repository promotes pending media before publication and removes 
   assert.deepEqual(actions, ['promote', 'compare-and-swap', 'remove:1']);
 });
 
+test('Supabase repository rewrites imported published data URLs to governed public media', async () => {
+  let persisted: Record<string, unknown> | undefined;
+  let imported = 0;
+  const publicRef: StoredMediaReference = {
+    bucket: 'event-media', objectPath: 'local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+    mimeType: 'image/png', byteSize: 16, sha256: 'f'.repeat(64), kind: 'eventImage',
+    publicUrl: 'https://project.supabase.co/storage/v1/object/public/event-media/local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png',
+  };
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    {
+      mediaStorage: {
+        uploadPending: async () => { throw new Error('unexpected private upload'); },
+        uploadPublic: async () => { imported += 1; return publicRef; },
+        promotePending: async () => { throw new Error('unexpected promotion'); },
+        removePending: async () => undefined,
+      },
+      fetchImpl: async (url, init) => {
+        if (String(url).includes('read_local_submission_repository_state')) return new Response(JSON.stringify({ revision: 0, store: { version: 1, pendingSubmissions: [], publishedLocalEvents: [] } }), { status: 200 });
+        const body = JSON.parse(String(init?.body));
+        persisted = body.next_store.publishedLocalEvents[0];
+        return new Response(JSON.stringify({ applied: true, revision: 1 }), { status: 200 });
+      },
+    },
+  );
+  await repository.mutate((store) => ({
+    store: { ...store, publishedLocalEvents: [{ id: 'local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', image_url: 'data:image/png;base64,iVBORw0KGgo=' }] },
+    result: true,
+  }));
+  assert.equal(imported, 1);
+  assert.equal(persisted?.image_url, publicRef.publicUrl);
+});
+
+test('Supabase repository removes governed public media only after event deletion commits', async () => {
+  const publicUrl = 'https://project.supabase.co/storage/v1/object/public/event-media/local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/event-image.png';
+  const actions: string[] = [];
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    {
+      mediaStorage: {
+        uploadPending: async () => { throw new Error('unexpected upload'); },
+        promotePending: async () => { throw new Error('unexpected promotion'); },
+        removePending: async () => undefined,
+        removePublic: async (urls) => { actions.push(`remove:${urls[0]}`); },
+      },
+      fetchImpl: async (url) => {
+        if (String(url).includes('read_local_submission_repository_state')) return new Response(JSON.stringify({
+          revision: 4,
+          store: { version: 1, pendingSubmissions: [], publishedLocalEvents: [{ id: 'local-approved-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', image_url: publicUrl }] },
+        }), { status: 200 });
+        actions.push('compare-and-swap');
+        return new Response(JSON.stringify({ applied: true, revision: 5 }), { status: 200 });
+      },
+    },
+  );
+  await repository.mutate((store) => ({ store: { ...store, publishedLocalEvents: [] }, result: true }));
+  assert.deepEqual(actions, ['compare-and-swap', `remove:${publicUrl}`]);
+});
+
 test('Supabase repository does not commit publication when media promotion fails', async () => {
   const pendingMedia: StoredMediaReference = {
     bucket: 'submission-media', objectPath: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/logo.png',

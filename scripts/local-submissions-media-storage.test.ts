@@ -58,6 +58,22 @@ test('pending upload uses the private bucket, governed headers, and returns chec
   assert.deepEqual(Buffer.from(requests[0].init?.body as Uint8Array), pngBytes);
 });
 
+test('direct published-media import validates bytes and writes only to the public canonical path', async () => {
+  let requestUrl = '';
+  const storage = new SupabaseSubmissionMediaStorage(
+    { supabaseUrl: 'https://example.supabase.co', serviceRoleKey: 'server-secret' },
+    { fetchImpl: async (url) => {
+      requestUrl = String(url);
+      return response(200, '{}', { 'content-type': 'application/json' });
+    } },
+  );
+  const result = await storage.uploadPublic(`local-approved-${submissionId}`, 'eventImage', pngDataUrl);
+  assert.equal(requestUrl, `https://example.supabase.co/storage/v1/object/event-media/local-approved-${submissionId}/event-image.png`);
+  assert.equal(result.bucket, 'event-media');
+  assert.equal(result.sha256, parseGovernedDataImage(pngDataUrl).sha256);
+  assert.equal(result.publicUrl, `https://example.supabase.co/storage/v1/object/public/event-media/local-approved-${submissionId}/event-image.png`);
+});
+
 test('promotion verifies the private checksum before writing the public object', async () => {
   const requests: string[] = [];
   const storage = new SupabaseSubmissionMediaStorage(
@@ -120,6 +136,19 @@ test('private reads use short-lived server-created signed URLs', async () => {
   });
   assert.equal(url, 'https://example.supabase.co/storage/v1/object/sign/submission-media/path.png?token=signed');
   assert.deepEqual(JSON.parse(body), { expiresIn: 900 });
+});
+
+test('public cleanup deletes only canonical event-media URLs through the trusted batch endpoint', async () => {
+  let body = '';
+  const storage = new SupabaseSubmissionMediaStorage(
+    { supabaseUrl: 'https://example.supabase.co', serviceRoleKey: 'server-secret' },
+    { fetchImpl: async (_url, init) => { body = String(init?.body); return response(200, '[]'); } },
+  );
+  await storage.removePublic([
+    `https://example.supabase.co/storage/v1/object/public/event-media/local-approved-${submissionId}/event-image.png`,
+    'https://external.example/image.png',
+  ]);
+  assert.deepEqual(JSON.parse(body), { prefixes: [`local-approved-${submissionId}/event-image.png`] });
 });
 
 test('private cleanup uses the trusted batch-delete endpoint with canonical stored paths', async () => {

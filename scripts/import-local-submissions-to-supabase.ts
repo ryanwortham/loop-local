@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { chmod, mkdir, open, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { canonicalRepositoryState, reconcileRepositoryStates, repositoryStateHash } from '../lib/local-submissions/import-reconciliation.ts';
+import { buildMediaMigrationManifest, reconcileMediaMigration } from '../lib/local-submissions/media-migration.ts';
 import type { RepositoryStoreShape } from '../lib/local-submissions/repository.ts';
 import { SupabaseLocalSubmissionsRepository } from '../lib/local-submissions/supabase-repository.ts';
 
@@ -10,6 +11,7 @@ type Arguments = {
   apply: boolean;
   source: string;
   backup?: string;
+  mediaManifest?: string;
 };
 
 function parseArguments(argv: string[]): Arguments {
@@ -23,6 +25,7 @@ function parseArguments(argv: string[]): Arguments {
     else if (arg === '--dry-run' || arg === '--reconcile-only') args.apply = false;
     else if (arg === '--source') args.source = argv[++index] || '';
     else if (arg === '--backup') args.backup = argv[++index] || '';
+    else if (arg === '--media-manifest') args.mediaManifest = argv[++index] || '';
     else throw new Error(`Unknown argument: ${arg}`);
   }
   if (!args.source) throw new Error('--source requires a path');
@@ -58,7 +61,7 @@ function validateDatabaseIdentifiers(store: RepositoryStoreShape): void {
   if (invalid.size) throw new Error(`Database-incompatible submission IDs: ${[...invalid].sort().join(', ')}`);
 }
 
-async function createImmutableBackup(sourcePath: string, backupPath: string, raw: Buffer): Promise<string> {
+async function createImmutableFile(backupPath: string, raw: Buffer): Promise<string> {
   const sourceHash = createHash('sha256').update(raw).digest('hex');
   await mkdir(path.dirname(backupPath), { recursive: true });
   try {
@@ -90,28 +93,67 @@ function counts(store: RepositoryStoreShape) {
   };
 }
 
+function encodeObjectPath(value: string) {
+  return value.split('/').map(encodeURIComponent).join('/');
+}
+
+async function fetchMediaChecksums(items: ReturnType<typeof buildMediaMigrationManifest>['items']) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) throw new Error('Supabase server credentials are required for media reconciliation');
+  const checksums: Record<string, string> = {};
+  for (const item of items) {
+    const access = item.bucket === 'event-media' ? 'public' : 'authenticated';
+    const response = await fetch(`${supabaseUrl}/storage/v1/object/${access}/${item.bucket}/${encodeObjectPath(item.objectPath)}`, {
+      cache: 'no-store',
+      headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` },
+    });
+    if (response.status === 400 || response.status === 404) continue;
+    if (!response.ok) throw new Error(`Unable to reconcile governed media object ${item.bucket}/${item.objectPath} (${response.status})`);
+    checksums[`${item.bucket}/${item.objectPath}`] = createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex');
+  }
+  return checksums;
+}
+
 const args = parseArguments(process.argv.slice(2));
 const raw = await readFile(args.source);
 const parsed: unknown = JSON.parse(raw.toString('utf8'));
 assertStore(parsed);
 const source = canonicalRepositoryState(parsed);
 validateDatabaseIdentifiers(source);
+const sourceFileHash = createHash('sha256').update(raw).digest('hex');
+const mediaManifest = buildMediaMigrationManifest(parsed, {
+  generatedAt: new Date().toISOString(),
+  sourcePath: path.resolve(args.source),
+  sourceFileSha256: sourceFileHash,
+});
+if (args.apply && mediaManifest.items.length > 0 && !args.mediaManifest) {
+  throw new Error('--apply with embedded media requires an immutable --media-manifest path');
+}
 const destinationRepository = new SupabaseLocalSubmissionsRepository();
 const before = await destinationRepository.read();
 const beforeReport = reconcileRepositoryStates(source, before);
+const beforeMediaChecksums = await fetchMediaChecksums(mediaManifest.items);
 let backupHash: string | undefined;
+let mediaManifestHash: string | undefined;
 let applied = false;
 let report = beforeReport;
+let mediaReport = reconcileMediaMigration(mediaManifest, before, beforeMediaChecksums);
 let capabilityMismatches: string[] = [];
 
 if (args.apply) {
-  backupHash = await createImmutableBackup(args.source, args.backup!, raw);
-  if (!beforeReport.matches) {
+  backupHash = await createImmutableFile(args.backup!, raw);
+  if (args.mediaManifest) {
+    const manifestRaw = Buffer.from(`${JSON.stringify(mediaManifest, null, 2)}\n`, 'utf8');
+    mediaManifestHash = await createImmutableFile(args.mediaManifest, manifestRaw);
+  }
+  if (!beforeReport.matches || !mediaReport.matches) {
     await destinationRepository.write(parsed);
     applied = true;
   }
   const after = await destinationRepository.read();
   report = reconcileRepositoryStates(source, after);
+  mediaReport = reconcileMediaMigration(mediaManifest, after, await fetchMediaChecksums(mediaManifest.items));
   capabilityMismatches = [];
   for (const rawSubmission of parsed.pendingSubmissions) {
     const submission = rawSubmission && typeof rawSubmission === 'object' ? rawSubmission as Record<string, unknown> : {};
@@ -119,7 +161,7 @@ if (args.apply) {
       if (!await destinationRepository.authorizeStatusCapability(submission.id, submission.statusToken)) capabilityMismatches.push(submission.id);
     }
   }
-  if (!report.matches || capabilityMismatches.length) throw new Error(`Post-import reconciliation failed for ${report.missingPendingIds.length + report.missingPublishedIds.length + report.statusMismatches.length + report.historyMismatches.length + capabilityMismatches.length} item(s)`);
+  if (!report.matches || !mediaReport.matches || capabilityMismatches.length) throw new Error(`Post-import reconciliation failed for ${report.missingPendingIds.length + report.missingPublishedIds.length + report.statusMismatches.length + report.historyMismatches.length + mediaReport.missingReferences.length + mediaReport.checksumMismatches.length + mediaReport.embeddedMediaRemaining.length + capabilityMismatches.length} item(s)`);
 }
 
 console.log(JSON.stringify({
@@ -131,6 +173,11 @@ console.log(JSON.stringify({
   sourceHash: repositoryStateHash(source),
   destinationBeforeHash: repositoryStateHash(before),
   reconciliation: report,
+  mediaMigration: {
+    manifestItems: mediaManifest.items.length,
+    manifest: args.mediaManifest ? { path: args.mediaManifest, sha256: mediaManifestHash } : null,
+    reconciliation: mediaReport,
+  },
   capabilityMismatches,
   backup: args.backup ? { path: args.backup, sha256: backupHash } : null,
 }, null, 2));

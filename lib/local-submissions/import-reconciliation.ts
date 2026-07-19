@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { RepositoryStoreShape } from './repository';
+import { governedPendingObjectPath, parseGovernedDataImage } from './media-storage.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -41,6 +42,50 @@ function canonicalSubmission(value: unknown): UnknownRecord {
   delete safe.statusToken;
   delete safe.statusCapabilities;
   delete safe.statusUpdatedAt;
+  delete safe.logoMediaUrl;
+  delete safe.eventImageMediaUrl;
+  const submissionId = safe.id;
+  if (typeof submissionId === 'string') {
+    for (const field of [
+      { data: 'logoDataUrl', reference: 'logoMedia', kind: 'logo' as const },
+      { data: 'eventImageDataUrl', reference: 'eventImageMedia', kind: 'eventImage' as const },
+    ]) {
+      const dataUrl = safe[field.data];
+      if (typeof dataUrl !== 'string') continue;
+      try {
+        const parsed = parseGovernedDataImage(dataUrl);
+        safe[field.reference] = {
+          bucket: 'submission-media',
+          objectPath: governedPendingObjectPath(submissionId, field.kind, parsed.mimeType),
+          mimeType: parsed.mimeType,
+          byteSize: parsed.byteSize,
+          sha256: parsed.sha256,
+          kind: field.kind,
+        };
+        delete safe[field.data];
+      } catch {
+        // Keep invalid legacy input visible so reconciliation cannot report a false match.
+      }
+    }
+  }
+  return canonicalValue(safe) as UnknownRecord;
+}
+
+function canonicalPublished(value: unknown): UnknownRecord {
+  const safe = { ...(asRecord(value) || {}) };
+  if (typeof safe.id !== 'string' || typeof safe.image_url !== 'string') return canonicalValue(safe) as UnknownRecord;
+  if (safe.image_url.startsWith('data:image/')) {
+    try {
+      const parsed = parseGovernedDataImage(safe.image_url);
+      safe.image_url = `governed:event-media/${safe.id}/event-image.${parsed.extension}`;
+    } catch {
+      // Invalid embedded media remains byte-for-byte visible to reconciliation.
+    }
+  } else {
+    const marker = '/storage/v1/object/public/event-media/';
+    const index = safe.image_url.indexOf(marker);
+    if (index >= 0) safe.image_url = `governed:event-media/${decodeURIComponent(safe.image_url.slice(index + marker.length))}`;
+  }
   return canonicalValue(safe) as UnknownRecord;
 }
 
@@ -60,7 +105,7 @@ export function canonicalRepositoryState(value: RepositoryStoreShape): Repositor
   return {
     version: 1,
     pendingSubmissions: sortedItems(Array.isArray(value.pendingSubmissions) ? value.pendingSubmissions : [], canonicalSubmission),
-    publishedLocalEvents: sortedItems(Array.isArray(value.publishedLocalEvents) ? value.publishedLocalEvents : [], (item) => canonicalValue(asRecord(item) || {}) as UnknownRecord),
+    publishedLocalEvents: sortedItems(Array.isArray(value.publishedLocalEvents) ? value.publishedLocalEvents : [], canonicalPublished),
     eventCategoryOverrides: canonicalValue(asRecord(value.eventCategoryOverrides) || {}) as UnknownRecord,
     operatorAuditLog: sortedItems(Array.isArray(value.operatorAuditLog) ? value.operatorAuditLog : [], canonicalAudit),
   };

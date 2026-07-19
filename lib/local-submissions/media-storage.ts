@@ -75,11 +75,15 @@ export function governedPendingObjectPath(
   return `${submissionId}/${mediaBaseName(kind)}.${MIME_EXTENSIONS[mimeType]}`;
 }
 
-function governedPublishedObjectPath(eventId: string, reference: StoredMediaReference) {
+export function governedPublicObjectPath(
+  eventId: string,
+  kind: GovernedMediaKind,
+  mimeType: GovernedMediaMimeType,
+) {
   if (!eventId.startsWith('local-approved-') || !UUID_PATTERN.test(eventId.slice('local-approved-'.length))) {
     throw new Error('governed media requires a canonical published event id');
   }
-  return `${eventId}/${mediaBaseName(reference.kind)}.${MIME_EXTENSIONS[reference.mimeType]}`;
+  return `${eventId}/${mediaBaseName(kind)}.${MIME_EXTENSIONS[mimeType]}`;
 }
 
 function encodeObjectPath(path: string) {
@@ -137,6 +141,17 @@ export class SupabaseSubmissionMediaStorage {
     };
   }
 
+  async uploadPublic(eventId: string, kind: GovernedMediaKind, dataUrl: string): Promise<StoredMediaReference> {
+    const parsed = parseGovernedDataImage(dataUrl);
+    const objectPath = governedPublicObjectPath(eventId, kind, parsed.mimeType);
+    await this.upload('event-media', objectPath, parsed);
+    return {
+      bucket: 'event-media', objectPath, mimeType: parsed.mimeType, byteSize: parsed.byteSize,
+      sha256: parsed.sha256, kind,
+      publicUrl: `${this.config.supabaseUrl}/storage/v1/object/public/event-media/${encodeObjectPath(objectPath)}`,
+    };
+  }
+
   async promotePending(reference: StoredMediaReference, eventId: string): Promise<StoredMediaReference> {
     if (reference.bucket !== 'submission-media') throw new Error('only pending submission media can be promoted');
     const download = await this.fetchImpl(
@@ -156,7 +171,7 @@ export class SupabaseSubmissionMediaStorage {
       byteSize: bytes.byteLength,
       sha256,
     };
-    const objectPath = governedPublishedObjectPath(eventId, reference);
+    const objectPath = governedPublicObjectPath(eventId, reference.kind, reference.mimeType);
     await this.upload('event-media', objectPath, parsed);
     return {
       ...reference,
@@ -182,6 +197,20 @@ export class SupabaseSubmissionMediaStorage {
     const signedPath = result.signedURL || result.signedUrl;
     if (!signedPath) throw new Error('Supabase governed media sign returned no URL');
     return signedPath.startsWith('http') ? signedPath : `${this.config.supabaseUrl}/storage/v1${signedPath.startsWith('/') ? '' : '/'}${signedPath}`;
+  }
+
+  async removePublic(publicUrls: string[]) {
+    const marker = '/storage/v1/object/public/event-media/';
+    const paths = publicUrls.flatMap((value) => {
+      const index = value.indexOf(marker);
+      return index >= 0 ? [decodeURIComponent(value.slice(index + marker.length))] : [];
+    });
+    if (!paths.length) return;
+    const response = await this.fetchImpl(`${this.config.supabaseUrl}/storage/v1/object/event-media`, {
+      method: 'DELETE', cache: 'no-store', headers: this.headers('application/json'),
+      body: JSON.stringify({ prefixes: paths }),
+    });
+    await this.expect(response, 'public delete');
   }
 
   async removePending(references: StoredMediaReference[]) {

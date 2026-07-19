@@ -13,7 +13,7 @@ import {
 type SupabaseRepositoryEnv = Record<string, string | undefined>;
 export type SupabaseRepositoryConfig = { supabaseUrl: string; serviceRoleKey: string };
 type SubmissionMediaStorage = Pick<SupabaseSubmissionMediaStorage, 'uploadPending' | 'promotePending' | 'removePending'>
-  & Partial<Pick<SupabaseSubmissionMediaStorage, 'signPending'>>;
+  & Partial<Pick<SupabaseSubmissionMediaStorage, 'uploadPublic' | 'signPending' | 'removePublic'>>;
 type SupabaseRepositoryOptions = {
   fetchImpl?: typeof fetch;
   maxMutationAttempts?: number;
@@ -22,7 +22,11 @@ type SupabaseRepositoryOptions = {
 type UnknownRecord = Record<string, unknown>;
 type RepositorySnapshot = { revision: number; store: RepositoryStoreShape };
 type ReplaceResult = { applied: boolean; revision: number };
-type PreparedMediaMutation = { store: RepositoryStoreShape; removedPendingMedia: StoredMediaReference[] };
+type PreparedMediaMutation = {
+  store: RepositoryStoreShape;
+  removedPendingMedia: StoredMediaReference[];
+  removedPublicMediaUrls: string[];
+};
 
 function asRecord(value: unknown): UnknownRecord | undefined {
   return value && typeof value === 'object' ? value as UnknownRecord : undefined;
@@ -163,6 +167,18 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
         publishedLocalEvents.push(value);
         continue;
       }
+      const importedDataUrl = typeof event.image_url === 'string' && event.image_url.startsWith('data:image/')
+        ? event.image_url
+        : undefined;
+      if (importedDataUrl) {
+        if (!this.mediaStorage.uploadPublic) throw new Error('published embedded media import is not configured');
+        const imported = await this.mediaStorage.uploadPublic(event.id, 'eventImage', importedDataUrl);
+        publishedLocalEvents.push({
+          ...event,
+          image_url: imported.publicUrl,
+        });
+        continue;
+      }
       const submissionId = event.id.startsWith('local-approved-') ? event.id.slice('local-approved-'.length) : '';
       const submission = previousPending.get(submissionId);
       const media = submission ? submissionMedia(submission)[0] : undefined;
@@ -185,9 +201,19 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
     const removedPendingMedia = [...previousPending.entries()]
       .filter(([id]) => !nextPendingIds.has(id))
       .flatMap(([, submission]) => submissionMedia(submission));
+    const nextPublishedIds = new Set(publishedLocalEvents
+      .map(asRecord)
+      .map((item) => item?.id)
+      .filter((id): id is string => typeof id === 'string'));
+    const removedPublicMediaUrls = previousStore.publishedLocalEvents
+      .map(asRecord)
+      .filter((item) => item && typeof item.id === 'string' && !nextPublishedIds.has(item.id))
+      .map((item) => item?.image_url)
+      .filter((url): url is string => typeof url === 'string' && url.includes('/storage/v1/object/public/event-media/'));
     return {
       store: { ...nextStore, pendingSubmissions, publishedLocalEvents },
       removedPendingMedia,
+      removedPublicMediaUrls,
     };
   }
 
@@ -231,6 +257,13 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
             await this.mediaStorage.removePending(prepared.removedPendingMedia);
           } catch (error) {
             console.error('Committed repository mutation left pending media for reconciliation', error);
+          }
+        }
+        if (prepared.removedPublicMediaUrls.length && this.mediaStorage.removePublic) {
+          try {
+            await this.mediaStorage.removePublic(prepared.removedPublicMediaUrls);
+          } catch (error) {
+            console.error('Committed repository mutation left public media for reconciliation', error);
           }
         }
         return next.result;
