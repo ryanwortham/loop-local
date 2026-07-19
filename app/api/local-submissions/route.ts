@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireOperatorAccess } from '@/lib/operator-auth';
+import { hasOperatorAccess, requireOperatorAccess } from '@/lib/operator-auth';
 import {
   createLocalSubmission,
   deleteLocalSubmission,
@@ -20,6 +20,7 @@ import {
 } from '@/lib/local-submissions/schemas';
 import { type LiveFeedItem } from '@/lib/live-feed';
 import { getLiveFeed } from '@/lib/live-feed-server';
+import { publicSubmissionRateLimit, type PublicSubmissionScope } from '@/lib/public-submission-rate-limit';
 
 // api-backed-local-submissions-pass: /api/local-submissions is the app-backed review queue boundary.
 // operator-review-token-gate-pass marker: requireOperatorAccess rejects with "operator token required" using LOOP_LOCAL_OPERATOR_TOKEN and x-loop-local-operator-token.
@@ -35,6 +36,27 @@ type MutationBody = Partial<LocalSubmissionRecord> & {
 
 function error(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
+}
+
+function publicSubmissionResponse(submission: LocalSubmissionRecord | null, status = 200) {
+  return NextResponse.json({ ok: true, api: '/api/local-submissions', submission }, { status });
+}
+
+function submissionRateLimit(request: NextRequest, scope: PublicSubmissionScope) {
+  const decision = publicSubmissionRateLimit(request.headers, scope);
+  if (decision.allowed) return null;
+  return NextResponse.json(
+    { ok: false, error: 'too many submission attempts; try again shortly' },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': String(decision.retryAfterSeconds),
+        'X-RateLimit-Limit': String(decision.limit),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': String(Math.ceil(decision.resetAt / 1000)),
+      },
+    },
+  );
 }
 
 function isLiveFeedItem(item: unknown): item is LiveFeedItem {
@@ -79,6 +101,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!hasOperatorAccess(request)) {
+    const limited = submissionRateLimit(request, 'create');
+    if (limited) return limited;
+  }
   const body = await readBody(request);
   if (payloadTooLarge(body)) return error('payload too large', 413);
   if (body.action === 'replace') {
@@ -97,11 +123,15 @@ export async function POST(request: NextRequest) {
   }
   const create = validateCreateLocalSubmissionInput(body);
   if (!create.ok) return error(create.error, create.status || 400);
-  const { store, submission } = await createLocalSubmission(create.value);
-  return NextResponse.json({ ok: true, api: '/api/local-submissions', submission, ...store }, { status: 201 });
+  const { submission } = await createLocalSubmission(create.value);
+  return publicSubmissionResponse(submission, 201);
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!hasOperatorAccess(request)) {
+    const limited = submissionRateLimit(request, 'resubmit');
+    if (limited) return limited;
+  }
   const body = await readBody(request);
   if (payloadTooLarge(body)) return error('payload too large', 413);
   const mutation = validateReviewMutationInput(body);
@@ -118,7 +148,7 @@ export async function PATCH(request: NextRequest) {
     void _statusToken;
     const result = await resubmitLocalSubmission(id, patch);
     if (!result.submission) return error('submission not found', 404);
-    return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });
+    return publicSubmissionResponse(result.submission);
   }
   const unauthorized = requireOperatorAccess(request);
   if (unauthorized) return unauthorized;

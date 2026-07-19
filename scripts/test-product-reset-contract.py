@@ -1793,6 +1793,24 @@ def test_loop_local_operator_taxonomy_remediation_is_explicit_and_reversible():
         assert marker in panel, f'missing taxonomy review UI marker {marker}'
 
 
+def test_loop_local_public_submission_api_minimizes_queue_exposure_and_rate_limits_abuse():
+    route = read('app/api/local-submissions/route.ts')
+    limiter = read('lib/public-submission-rate-limit.ts')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    for marker in [
+        'publicSubmissionResponse',
+        'submissionRateLimit',
+        'Retry-After',
+        "submissionRateLimit(request, 'create')",
+        "submissionRateLimit(request, 'resubmit')",
+    ]:
+        assert marker in route, f'missing public API hardening marker {marker}'
+    for marker in ['consumeRateLimit', 'publicRequestIdentity', 'MAX_RATE_LIMIT_BUCKETS']:
+        assert marker in limiter, f'missing bounded rate-limit marker {marker}'
+    for marker in ['create response must not expose pending queue', 'resubmit response must not expose pending queue']:
+        assert marker in api_smoke, f'missing public response privacy smoke assertion {marker}'
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1845,4 +1863,5 @@ if __name__ == '__main__':
     test_old_incremental_design_artifacts_removed()
     test_loop_local_operator_review_surfaces_publish_readiness_and_media_quality()
     test_loop_local_operator_taxonomy_remediation_is_explicit_and_reversible()
+    test_loop_local_public_submission_api_minimizes_queue_exposure_and_rate_limits_abuse()
     print('loop_local_complete_frontend_rebuild_contract_ok')

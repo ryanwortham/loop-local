@@ -208,7 +208,9 @@ async function main() {
   assert(statusToken, 'created submission should have statusToken');
   assert(data.submission.status === 'pending_review', 'created submission should be pending_review');
   assert(data.submission.statusHistory?.some((entry) => entry.action === 'submitted'), 'submitted history entry should persist');
-  assert(data.pendingSubmissions.some((item) => item.id === id), 'created submission should appear in queue');
+  assert(!('pendingSubmissions' in data), 'create response must not expose pending queue');
+  assert(!('publishedLocalEvents' in data), 'create response must not expose published queue');
+  assert(!('eventCategoryOverrides' in data), 'create response must not expose taxonomy store');
 
   // single-submission-status-api-pass: direct single status pending_review endpoint.
   // Contract marker URL: /api/local-submissions/${encodeURIComponent(id)}
@@ -254,7 +256,6 @@ async function main() {
 
   response = await request('', {
     method: 'PATCH',
-    headers: operatorHeaders(),
     body: JSON.stringify({
       id,
       action: 'resubmit',
@@ -269,6 +270,9 @@ async function main() {
   assert(data.submission.statusHistory?.some((entry) => entry.action === 'resubmitted'), 'resubmitted history entry should persist');
   assert(data.submission.eventTitle === 'API Direct Smoke Night Revised', 'resubmitted title should persist');
   assert(!data.submission.reviewerNote, 'reviewerNote should clear after resubmit');
+  assert(!('pendingSubmissions' in data), 'resubmit response must not expose pending queue');
+  assert(!('publishedLocalEvents' in data), 'resubmit response must not expose published queue');
+  assert(!('eventCategoryOverrides' in data), 'resubmit response must not expose taxonomy store');
 
   response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
   assertStatus(response, 200, 'single status after resubmit');
