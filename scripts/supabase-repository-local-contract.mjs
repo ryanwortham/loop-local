@@ -44,7 +44,7 @@ try {
     store: {
       ...store,
       pendingSubmissions: store.pendingSubmissions.filter((item) => item?.id !== firstId),
-      publishedLocalEvents: [...store.publishedLocalEvents, { id: `local-approved-${firstId}`, title: 'Repository published event', startsAt: submittedAt }],
+      publishedLocalEvents: [...store.publishedLocalEvents, { id: `local-approved-${firstId}`, title: 'Repository published event', startsAt: submittedAt, city: 'Granite City' }],
     },
     result: undefined,
   }));

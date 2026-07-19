@@ -64,7 +64,7 @@ async function main() {
   console.log(`npm run start -- -p ${port}`);
   serverProcess = spawn('npm', ['run', 'start', '--', '-p', port], {
     stdio: 'inherit',
-    env: { ...process.env, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
+    env: { ...process.env, LOCAL_SUBMISSIONS_ADAPTER: 'file', LOCAL_SUBMISSIONS_FILE: smokeStorePath, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
     shell: false,
   });
   serverProcess.on('error', (error) => {

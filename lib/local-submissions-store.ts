@@ -6,6 +6,7 @@ import {
   type EventCategoryOverrideMap,
 } from '@/lib/event-category-overrides';
 import { submissionPublicationQuality } from '@/lib/local-submission-quality';
+import { statusCapabilityForSubmission } from '@/lib/local-submissions/capability';
 import { getLocalSubmissionsRepository } from '@/lib/local-submissions/repository';
 import { sanitizeLocalSubmissionMedia } from '@/lib/local-submissions/schemas';
 
@@ -164,18 +165,15 @@ function appendOperatorAudit(
   return { ...store, operatorAuditLog: [...store.operatorAuditLog, entry] };
 }
 
-function newStatusToken(): string {
-  return randomUUID().replace(/-/g, '');
-}
-
-function normalizeSubmission(input: Partial<LocalSubmissionRecord>): LocalSubmissionRecord {
+function normalizeSubmission(input: Partial<LocalSubmissionRecord>, createCapability = false): LocalSubmissionRecord {
   const mediaResult = sanitizeLocalSubmissionMedia(input);
   const safeInput = mediaResult.ok ? mediaResult.value : { ...input, logoDataUrl: undefined, eventImageDataUrl: undefined };
   const submittedAt = safeInput.submittedAt || nowIso();
+  const statusToken = statusCapabilityForSubmission(input.statusToken, createCapability);
   const base = {
     ...safeInput,
     id: input.id || randomUUID(),
-    statusToken: input.statusToken || newStatusToken(),
+    ...(statusToken ? { statusToken } : {}),
     status: input.status || 'pending_review',
     submittedAt,
     statusHistory: Array.isArray(input.statusHistory) && input.statusHistory.length
@@ -190,7 +188,7 @@ function normalizeStore(value: unknown): LocalSubmissionsStore {
   const maybe = value as Partial<LocalSubmissionsStore>;
   return {
     version: 1,
-    pendingSubmissions: Array.isArray(maybe.pendingSubmissions) ? maybe.pendingSubmissions.map(normalizeSubmission) : [],
+    pendingSubmissions: Array.isArray(maybe.pendingSubmissions) ? maybe.pendingSubmissions.map((submission) => normalizeSubmission(submission, false)) : [],
     publishedLocalEvents: Array.isArray(maybe.publishedLocalEvents) ? maybe.publishedLocalEvents.filter((item): item is LiveFeedItem => Boolean(item && typeof item === 'object' && 'id' in item)) : [],
     eventCategoryOverrides: Object.prototype.hasOwnProperty.call(maybe, 'eventCategoryOverrides')
       ? normalizeEventCategoryOverrides(maybe.eventCategoryOverrides)
@@ -320,7 +318,7 @@ export async function createLocalSubmission(input: Partial<LocalSubmissionRecord
       ? store.pendingSubmissions.find((item) => item.requestId === input.requestId)
       : undefined;
     if (replayedSubmission) return { store, submission: replayedSubmission, replayed: true };
-    const submission = normalizeSubmission({ ...input, status: 'pending_review', submittedAt: input.submittedAt || nowIso() });
+    const submission = normalizeSubmission({ ...input, status: 'pending_review', submittedAt: input.submittedAt || nowIso() }, true);
     const next = {
       ...store,
       pendingSubmissions: [submission, ...store.pendingSubmissions.filter((item) => item.id !== submission.id)],

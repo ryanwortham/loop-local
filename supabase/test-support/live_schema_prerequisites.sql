@@ -15,6 +15,10 @@ create table if not exists public.cities (
   slug text unique
 );
 
+insert into public.cities (id, name, slug)
+values ('0a803864-18f2-436e-9c9f-a2e755a776a9', 'Granite City', 'granite-city')
+on conflict (id) do update set name = excluded.name, slug = excluded.slug;
+
 create table if not exists public.businesses (
   id uuid primary key default gen_random_uuid(),
   name text,
@@ -24,6 +28,7 @@ create table if not exists public.businesses (
 create table if not exists public.events (
   id uuid primary key default gen_random_uuid(),
   title text not null,
+  slug text,
   status text not null default 'draft',
   starts_at timestamptz not null,
   ends_at timestamptz,
@@ -36,3 +41,10 @@ create table if not exists public.events (
   description text,
   created_by uuid references auth.users(id) on delete set null
 );
+
+alter table public.events add column if not exists slug text;
+
+-- The live schema requires city_id. Local security fixtures predate that constraint and
+-- insert unrelated synthetic events directly, so keep the prerequisite permissive and
+-- assert repository city resolution explicitly in local_submissions_repository.test.sql.
+alter table public.events alter column city_id drop not null;

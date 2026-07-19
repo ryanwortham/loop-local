@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(25);
 
 select has_table('public', 'local_submission_repository_meta', 'repository revision metadata exists');
 select has_function('public', 'read_local_submission_repository_state', array[]::text[], 'atomic repository reader exists');
@@ -73,7 +73,7 @@ select is(
         "title": "Repository published contract",
         "summary": "Published through the normalized repository",
         "category": "Community",
-        "city": "Springfield",
+        "city": "Granite City",
         "location": "Repository Hall",
         "startsAt": "2026-07-20T18:00:00.000Z",
         "localSubmissionId": "55555555-5555-4555-8555-555555555555"
@@ -103,7 +103,9 @@ select is(
 );
 select is((select published_event_id from public.local_submissions where id = '55555555-5555-4555-8555-555555555555'), '55555555-5555-4555-8555-555555555555'::uuid, 'publication mapping links submission to durable event');
 select is((select title from public.events where id = '55555555-5555-4555-8555-555555555555'), 'Repository published contract', 'publication creates the durable event row');
+select is((select slug from public.events where id = '55555555-5555-4555-8555-555555555555'), 'local-55555555-5555-4555-8555-555555555555', 'publication creates a deterministic durable event slug');
 select is((select status from public.events where id = '55555555-5555-4555-8555-555555555555'), 'approved', 'published event is visible to the approved feed query');
+select is((select city_id from public.events where id = '55555555-5555-4555-8555-555555555555'), '0a803864-18f2-436e-9c9f-a2e755a776a9'::uuid, 'publication resolves the durable event city foreign key');
 select is((select category from public.event_category_overrides where event_id = '77777777-7777-4777-8777-777777777777'), 'Music', 'category override is normalized');
 select is((select reviewed_by from public.event_category_overrides where event_id = '77777777-7777-4777-8777-777777777777'), '66666666-6666-4666-8666-666666666666'::uuid, 'category override retains the authenticated actor');
 select is((select actor_user_id from public.operator_audit_logs where request_id = '88888888-8888-4888-8888-888888888888'), '66666666-6666-4666-8666-666666666666'::uuid, 'operator audit actor is durable');
