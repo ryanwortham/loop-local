@@ -169,7 +169,7 @@ function totalFromContentRange(value: string | null, fallback: number): number {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
-function buildEventsUrl(config: FeedConfig, limit: number): URL {
+function buildEventsUrl(config: FeedConfig, limit: number, currentIso: string): URL {
   const url = new URL('/rest/v1/events', config.baseUrl);
   url.searchParams.set('select', [
     'id', 'title', 'slug', 'city', 'business_slug', 'category', 'status', 'starts_at', 'ends_at',
@@ -178,16 +178,17 @@ function buildEventsUrl(config: FeedConfig, limit: number): URL {
   ].join(','));
   url.searchParams.set('status', 'eq.approved');
   url.searchParams.set('is_active', 'eq.true');
+  url.searchParams.set('or', `(starts_at.gte.${currentIso},ends_at.gte.${currentIso})`);
   url.searchParams.set('order', 'starts_at.asc');
   url.searchParams.set('limit', String(Math.min(Math.max(Math.trunc(limit), 1), 160)));
   return url;
 }
 
-async function requestFeed(config: FeedConfig, fetchImpl: FeedFetch, limit: number): Promise<{ items: ReliableFeedItem[]; count: number; status: number }> {
+async function requestFeed(config: FeedConfig, fetchImpl: FeedFetch, limit: number, currentIso: string): Promise<{ items: ReliableFeedItem[]; count: number; status: number }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
   try {
-    const response = await fetchImpl(buildEventsUrl(config, limit), {
+    const response = await fetchImpl(buildEventsUrl(config, limit, currentIso), {
       headers: {
         accept: 'application/json',
         apikey: config.anonKey,
@@ -239,7 +240,7 @@ export async function fetchFeedWithReliability({
   while (attempts <= config.retries) {
     attempts += 1;
     try {
-      const result = await requestFeed(config, fetchImpl, limit);
+      const result = await requestFeed(config, fetchImpl, limit, new Date(now()).toISOString());
       const fetchedAt = new Date(now()).toISOString();
       const feed: ReliableFeedResponse = {
         project: 'looplocal.com',

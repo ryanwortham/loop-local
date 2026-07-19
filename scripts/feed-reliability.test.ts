@@ -100,6 +100,27 @@ test('a successful zero-row response is empty, not an upstream outage', async ()
   assert.deepEqual(feed.items, []);
 });
 
+test('the Supabase request excludes events that have already ended', async () => {
+  const currentTime = Date.parse('2026-07-19T12:00:00Z');
+  let requestedUrl = '';
+  const captureFetch: FeedFetch = async (input) => {
+    requestedUrl = String(input);
+    return response([], 200, '*/0');
+  };
+
+  await fetchFeedWithReliability({
+    config: timeoutConfig,
+    cache: {},
+    fetchImpl: captureFetch,
+    now: () => currentTime,
+  });
+
+  assert.equal(
+    new URL(requestedUrl).searchParams.get('or'),
+    '(starts_at.gte.2026-07-19T12:00:00.000Z,ends_at.gte.2026-07-19T12:00:00.000Z)',
+  );
+});
+
 test('a request that exceeds the configured timeout is aborted and reported unavailable', async () => {
   const timedOutFetch: FeedFetch = (_input, init) => new Promise((_resolve, reject) => {
     init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true });
