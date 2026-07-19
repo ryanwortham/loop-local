@@ -8,6 +8,7 @@ import {
 } from '@/lib/live-feed';
 import { getSupabaseFeed } from '@/lib/supabase-feed';
 import { readLocalSubmissionsStore } from '@/lib/local-submissions-store';
+import { applyEventCategoryOverrides } from '@/lib/event-category-overrides';
 
 // local-published-detail-pages-pass: keep fs-backed local event resolution out of the client bundle.
 
@@ -33,10 +34,14 @@ function dedupeFeedItems(items: LiveFeedItem[]): LiveFeedItem[] {
   });
 }
 
+function normalizePublishedLocalEvents(items: LiveFeedItem[]): LiveFeedItem[] {
+  const allowSmokeRecords = Boolean(process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH);
+  return items.filter((item) => allowSmokeRecords || !isSmokeTestLocalEvent(item)).map(normalizePublishedLocalItem);
+}
+
 export async function loadPublishedLocalEvents(): Promise<LiveFeedItem[]> {
   const store = await readLocalSubmissionsStore();
-  const allowSmokeRecords = Boolean(process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH);
-  return (store.publishedLocalEvents || []).filter((item) => allowSmokeRecords || !isSmokeTestLocalEvent(item)).map(normalizePublishedLocalItem);
+  return normalizePublishedLocalEvents(store.publishedLocalEvents || []);
 }
 
 function isSmokeTestLocalEvent(item: LiveFeedItem): boolean {
@@ -46,12 +51,14 @@ function isSmokeTestLocalEvent(item: LiveFeedItem): boolean {
 }
 
 export async function getLiveFeed(limit = 24): Promise<LiveFeedResponse> {
-  const [remoteFeed, publishedLocalEvents] = await Promise.all([
+  const [remoteFeed, store] = await Promise.all([
     getSupabaseFeed(limit),
-    loadPublishedLocalEvents(),
+    readLocalSubmissionsStore(),
   ]);
+  const publishedLocalEvents = normalizePublishedLocalEvents(store.publishedLocalEvents || []);
   const remoteItems = normalizeFeedItems(remoteFeed.items);
-  const items = dedupeFeedItems([...publishedLocalEvents, ...remoteItems]).slice(0, limit);
+  const sourceItems = dedupeFeedItems([...publishedLocalEvents, ...remoteItems]).slice(0, limit);
+  const items = applyEventCategoryOverrides(sourceItems, store.eventCategoryOverrides);
   return {
     ...remoteFeed,
     source: publishedLocalEvents.length ? `local_api_backed+${remoteFeed.source}` : remoteFeed.source,

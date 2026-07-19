@@ -1773,6 +1773,26 @@ def test_loop_local_operator_review_surfaces_publish_readiness_and_media_quality
         assert marker in panel, f'operator review missing quality marker {marker}'
 
 
+def test_loop_local_operator_taxonomy_remediation_is_explicit_and_reversible():
+    overrides = read('lib/event-category-overrides.ts')
+    server = read('lib/live-feed-server.ts')
+    route = read('app/api/local-submissions/route.ts')
+    panel = read('components/operator-review-panel.tsx')
+    for marker in [
+        'REVIEWED_EVENT_CATEGORY_OVERRIDES',
+        'applyEventCategoryOverrides',
+        'eventTitle !== item.title',
+        'sourceCategory',
+        'categoryOverrideApplied',
+    ]:
+        assert marker in overrides, f'missing explicit taxonomy override marker {marker}'
+    assert 'applyEventCategoryOverrides(sourceItems, store.eventCategoryOverrides)' in server
+    for marker in ['set_category_override', 'taxonomyReviewItems', 'setEventCategoryOverride']:
+        assert marker in route, f'missing taxonomy operator API marker {marker}'
+    for marker in ['Taxonomy review', 'taxonomyReviewItems', 'SUBMISSION_EVENT_CATEGORIES', 'set_category_override', 'Restore source']:
+        assert marker in panel, f'missing taxonomy review UI marker {marker}'
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1824,4 +1844,5 @@ if __name__ == '__main__':
     test_stable_supabase_feed_reliability_replaces_temporary_tunnel()
     test_old_incremental_design_artifacts_removed()
     test_loop_local_operator_review_surfaces_publish_readiness_and_media_quality()
+    test_loop_local_operator_taxonomy_remediation_is_explicit_and_reversible()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -4,6 +4,7 @@ export type RepositoryStoreShape = {
   version: 1;
   pendingSubmissions: unknown[];
   publishedLocalEvents: unknown[];
+  eventCategoryOverrides?: Record<string, unknown>;
 };
 
 export interface LocalSubmissionsRepository {

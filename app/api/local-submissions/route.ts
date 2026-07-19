@@ -7,6 +7,7 @@ import {
   publishLocalSubmission,
   readLocalSubmissionsStore,
   resubmitLocalSubmission,
+  setEventCategoryOverride,
   updateLocalSubmission,
   writeLocalSubmissionsStore,
   type LocalSubmissionRecord,
@@ -18,6 +19,7 @@ import {
   validateReviewMutationInput,
 } from '@/lib/local-submissions/schemas';
 import { type LiveFeedItem } from '@/lib/live-feed';
+import { getLiveFeed } from '@/lib/live-feed-server';
 
 // api-backed-local-submissions-pass: /api/local-submissions is the app-backed review queue boundary.
 // operator-review-token-gate-pass marker: requireOperatorAccess rejects with "operator token required" using LOOP_LOCAL_OPERATOR_TOKEN and x-loop-local-operator-token.
@@ -26,7 +28,7 @@ export const dynamic = 'force-dynamic';
 
 type MutationBody = Partial<LocalSubmissionRecord> & {
   id?: string;
-  action?: 'update' | 'delete' | 'publish' | 'replace' | 'resubmit';
+  action?: 'update' | 'delete' | 'publish' | 'replace' | 'resubmit' | 'set_category_override';
   pendingSubmissions?: LocalSubmissionRecord[];
   publishedLocalEvents?: LiveFeedItem[];
 };
@@ -55,15 +57,24 @@ function payloadTooLarge(body: MutationBody) {
   return Boolean((body as MutationBody & { __payloadTooLarge?: boolean }).__payloadTooLarge);
 }
 
+function taxonomyReviewItems(items: LiveFeedItem[]): LiveFeedItem[] {
+  return items.filter((item) => {
+    const sourceCategory = item.sourceCategory || item.category || 'Local';
+    return item.categoryOverrideApplied || sourceCategory === 'Community' || sourceCategory === 'Local';
+  });
+}
+
 export async function GET(request: NextRequest) {
   // operator-review-token-gate-pass: LOOP_LOCAL_OPERATOR_TOKEN + x-loop-local-operator-token protect review queue reads.
   const unauthorized = requireOperatorAccess(request);
   if (unauthorized) return unauthorized;
-  const store = await readLocalSubmissionsStore();
+  const [store, feed] = await Promise.all([readLocalSubmissionsStore(), getLiveFeed(160)]);
   return NextResponse.json({
     ok: true,
     api: '/api/local-submissions',
     ...store,
+    taxonomyReviewItems: taxonomyReviewItems(feed.items),
+    taxonomyFeedHealth: feed.health,
   });
 }
 
@@ -75,10 +86,12 @@ export async function POST(request: NextRequest) {
     if (unauthorized) return unauthorized;
     const replacement = validateReplaceStoreInput(body);
     if (!replacement.ok) return error(replacement.error, replacement.status || 400);
+    const currentStore = await readLocalSubmissionsStore();
     const store = await writeLocalSubmissionsStore({
       version: 1,
       pendingSubmissions: replacement.value.pendingSubmissions,
       publishedLocalEvents: replacement.value.publishedLocalEvents.filter(isLiveFeedItem),
+      eventCategoryOverrides: currentStore.eventCategoryOverrides,
     });
     return NextResponse.json({ ok: true, api: '/api/local-submissions', ...store });
   }
@@ -109,6 +122,22 @@ export async function PATCH(request: NextRequest) {
   }
   const unauthorized = requireOperatorAccess(request);
   if (unauthorized) return unauthorized;
+  if (cleanBody.action === 'set_category_override') {
+    const feed = await getLiveFeed(160);
+    const event = feed.items.find((item) => item.id === cleanBody.id);
+    if (!event) return error('event not found', 404);
+    const result = await setEventCategoryOverride(event, cleanBody.eventCategory);
+    if ('error' in result && result.error) return error(result.error);
+    const updatedFeed = await getLiveFeed(160);
+    return NextResponse.json({
+      ok: true,
+      api: '/api/local-submissions',
+      override: result.override,
+      ...result.store,
+      taxonomyReviewItems: taxonomyReviewItems(updatedFeed.items),
+      taxonomyFeedHealth: updatedFeed.health,
+    });
+  }
   if (cleanBody.action === 'publish') {
     // Legacy operator contract marker: body.action === 'publish'.
     const result = await publishLocalSubmission(cleanBody.id);

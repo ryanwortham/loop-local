@@ -2080,6 +2080,107 @@ button { -webkit-tap-highlight-color: transparent; }
   cursor: not-allowed;
   opacity: 1;
 }
+.taxonomy-review-panel {
+  margin-top: 18px;
+}
+.taxonomy-review-intro {
+  margin: -2px 0 14px;
+  color: #64748B;
+  line-height: 1.55;
+}
+.taxonomy-review-grid {
+  display: grid;
+  gap: 12px;
+}
+.taxonomy-review-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(148,163,184,.24);
+  border-radius: 18px;
+  background: #FFFFFF;
+  box-shadow: 0 10px 28px rgba(15,23,42,.06);
+}
+.taxonomy-review-preview {
+  position: relative;
+  width: 96px;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #E2E8F0;
+}
+.taxonomy-review-preview img {
+  object-fit: cover;
+}
+.taxonomy-review-content {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.taxonomy-review-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+.taxonomy-review-heading strong {
+  min-width: 0;
+  color: #0F172A;
+  line-height: 1.25;
+}
+.taxonomy-review-heading span {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #EEF2FF;
+  color: #4338CA;
+  font-size: .68rem;
+  font-weight: 800;
+}
+.taxonomy-review-content p {
+  margin: 0;
+  color: #64748B;
+  font-size: .78rem;
+}
+.taxonomy-review-content label {
+  display: grid;
+  gap: 5px;
+  color: #475569;
+  font-size: .74rem;
+  font-weight: 800;
+}
+.taxonomy-review-content select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(100,116,139,.3);
+  border-radius: 11px;
+  padding: 0 10px;
+  background: #FFFFFF;
+  color: #0F172A;
+  font: inherit;
+}
+.taxonomy-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.taxonomy-review-actions button {
+  min-height: 44px;
+  flex: 1 1 118px;
+  border-radius: 11px;
+  border: 0;
+  padding: 9px 12px;
+  background: #2563EB;
+  color: #FFFFFF;
+  font-weight: 800;
+}
+.taxonomy-review-actions .taxonomy-restore-source {
+  border: 1px solid rgba(100,116,139,.28);
+  background: #F8FAFC;
+  color: #475569;
+}
 .pending-submission-card span {
   width: fit-content;
   border-radius: 999px;

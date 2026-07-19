@@ -107,6 +107,66 @@ async function main() {
   data = await json(response);
   assert(data.error === 'invalid event category', 'unknown category should return a stable validation error');
 
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Taxonomy Review Smoke', eventTitle: 'Taxonomy Review Smoke Event', eventDate: '2026-10-01', eventCategory: 'Community' }) });
+  assertStatus(response, 201, 'create taxonomy review target');
+  data = await json(response);
+  const taxonomySubmissionId = data.submission.id;
+  response = await request('', {
+    method: 'PATCH',
+    headers: operatorHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify({ id: taxonomySubmissionId, action: 'publish' }),
+  });
+  assertStatus(response, 200, 'publish taxonomy review target');
+  data = await json(response);
+  const taxonomyEventId = data.published.id;
+
+  response = await request('', { headers: operatorHeaders() });
+  assertStatus(response, 200, 'operator taxonomy review queue');
+  data = await json(response);
+  assert(Array.isArray(data.taxonomyReviewItems) && data.taxonomyReviewItems.some((item) => item.id === taxonomyEventId), 'generic published event should enter taxonomy review queue');
+
+  response = await request('', {
+    method: 'PATCH',
+    body: JSON.stringify({ id: taxonomyEventId, action: 'set_category_override', eventCategory: 'Sports' }),
+  });
+  assertStatus(response, 401, 'taxonomy override requires operator authentication');
+
+  response = await request('', {
+    method: 'PATCH',
+    headers: operatorHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify({ id: taxonomyEventId, action: 'set_category_override', eventCategory: 'Made Up Category' }),
+  });
+  assertStatus(response, 400, 'taxonomy override rejects unsupported category');
+
+  response = await request('', {
+    method: 'PATCH',
+    headers: operatorHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify({ id: taxonomyEventId, action: 'set_category_override', eventCategory: 'Sports' }),
+  });
+  assertStatus(response, 200, 'operator applies explicit taxonomy override');
+  data = await json(response);
+  assert(data.override?.category === 'Sports', 'override response should expose reviewed category');
+
+  response = await fetch(`${baseURL}/api/feed`, { headers: { accept: 'application/json' } });
+  assertStatus(response, 200, 'feed after taxonomy override');
+  data = await json(response);
+  let taxonomyFeedItem = data.items.find((item) => item.id === taxonomyEventId);
+  assert(taxonomyFeedItem?.category === 'Sports', 'explicit override should update consumer taxonomy');
+  assert(taxonomyFeedItem?.sourceCategory === 'Community', 'consumer feed should preserve source category provenance');
+  assert(taxonomyFeedItem?.categoryOverrideApplied === true, 'consumer feed should mark reviewed correction');
+  assert(taxonomyFeedItem?.fallbackImageUrl === '/event-art/sports.svg', 'reviewed category should update fallback art');
+
+  response = await request('', {
+    method: 'PATCH',
+    headers: operatorHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify({ id: taxonomyEventId, action: 'set_category_override' }),
+  });
+  assertStatus(response, 200, 'operator restores source taxonomy');
+  response = await fetch(`${baseURL}/api/feed`, { headers: { accept: 'application/json' } });
+  data = await json(response);
+  taxonomyFeedItem = data.items.find((item) => item.id === taxonomyEventId);
+  assert(taxonomyFeedItem?.category === 'Community' && !taxonomyFeedItem?.categoryOverrideApplied, 'clearing override should restore source-authored category');
+
   response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Bad URL Smoke', eventTitle: 'Bad URL Event', eventDate: '2026-09-21', eventCategory: 'Community', website: 'javascript:alert(1)' }) });
   assertStatus(response, 201, 'invalid URL should be rejected but nonfatal');
   data = await json(response);

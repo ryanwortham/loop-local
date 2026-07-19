@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { eventSlug, type LiveFeedItem } from '@/lib/live-feed';
+import {
+  normalizeEventCategoryOverrides,
+  REVIEWED_EVENT_CATEGORY_OVERRIDES,
+  type EventCategoryOverrideMap,
+} from '@/lib/event-category-overrides';
 import { submissionPublicationQuality } from '@/lib/local-submission-quality';
 import { getLocalSubmissionsRepository } from '@/lib/local-submissions/repository';
 import { sanitizeLocalSubmissionMedia } from '@/lib/local-submissions/schemas';
@@ -68,6 +73,7 @@ export type LocalSubmissionsStore = {
   version: 1;
   pendingSubmissions: LocalSubmissionRecord[];
   publishedLocalEvents: LiveFeedItem[];
+  eventCategoryOverrides: EventCategoryOverrideMap;
 };
 
 export type LocalSubmissionStatusResult = {
@@ -81,6 +87,7 @@ const emptyStore: LocalSubmissionsStore = {
   version: 1,
   pendingSubmissions: [],
   publishedLocalEvents: [],
+  eventCategoryOverrides: REVIEWED_EVENT_CATEGORY_OVERRIDES,
 };
 
 function safeIdPrefix(value?: string): string {
@@ -146,6 +153,9 @@ function normalizeStore(value: unknown): LocalSubmissionsStore {
     version: 1,
     pendingSubmissions: Array.isArray(maybe.pendingSubmissions) ? maybe.pendingSubmissions.map(normalizeSubmission) : [],
     publishedLocalEvents: Array.isArray(maybe.publishedLocalEvents) ? maybe.publishedLocalEvents.filter((item): item is LiveFeedItem => Boolean(item && typeof item === 'object' && 'id' in item)) : [],
+    eventCategoryOverrides: Object.prototype.hasOwnProperty.call(maybe, 'eventCategoryOverrides')
+      ? normalizeEventCategoryOverrides(maybe.eventCategoryOverrides)
+      : REVIEWED_EVENT_CATEGORY_OVERRIDES,
   };
 }
 
@@ -299,4 +309,29 @@ export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSu
   if (!updated) return { store, submission: null };
   const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
   return { store: await writeLocalSubmissionsStore(nextStore), submission: updated };
+}
+
+export async function setEventCategoryOverride(
+  event: Pick<LiveFeedItem, 'id' | 'title' | 'category' | 'sourceCategory'>,
+  category?: string,
+) {
+  const store = await readLocalSubmissionsStore();
+  const nextOverrides = { ...store.eventCategoryOverrides };
+  if (!category) {
+    delete nextOverrides[event.id];
+  } else {
+    const candidate = normalizeEventCategoryOverrides({
+      [event.id]: {
+        category,
+        sourceCategory: event.sourceCategory || event.category || 'Local',
+        eventTitle: event.title,
+        reviewedAt: nowIso(),
+      },
+    });
+    if (!candidate[event.id]) return { store, override: null, error: 'invalid event category override' };
+    nextOverrides[event.id] = candidate[event.id];
+  }
+  const nextStore: LocalSubmissionsStore = { ...store, eventCategoryOverrides: nextOverrides };
+  const written = await writeLocalSubmissionsStore(nextStore);
+  return { store: written, override: written.eventCategoryOverrides[event.id] || null };
 }

@@ -11,6 +11,8 @@ export type LiveFeedItem = {
   business?: string;
   businessSlug?: string;
   category?: string;
+  sourceCategory?: string;
+  categoryOverrideApplied?: boolean;
   status?: string;
   date?: string;
   time?: string;
