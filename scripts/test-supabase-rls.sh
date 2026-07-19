@@ -24,6 +24,7 @@ apply_sql "$ROOT/supabase/migrations/20260719121000_production_persistence_auth_
 apply_sql "$ROOT/supabase/migrations/20260719143000_local_submissions_repository_bridge.sql"
 apply_sql "$ROOT/supabase/migrations/20260719153000_repository_event_city_mapping.sql"
 apply_sql "$ROOT/supabase/migrations/20260719154000_repository_event_slug.sql"
+apply_sql "$ROOT/supabase/migrations/20260719155000_governed_submission_media_storage.sql"
 
 cd "$ROOT"
 supabase test db
