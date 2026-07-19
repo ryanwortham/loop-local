@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, type LiveFeedHealth, type LiveFeedItem } from '@/lib/live-feed';
+import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, normalizeFeedItems, type LiveFeedHealth, type LiveFeedItem } from '@/lib/live-feed';
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
@@ -65,7 +65,7 @@ function formatEventMeta(item: LiveFeedItem): string {
 }
 
 function eventImage(item: LiveFeedItem): string {
-  return item.image_url || '/looplocal-event-placeholder.jpg';
+  return item.image_url || item.fallbackImageUrl || '/looplocal-event-placeholder.jpg';
 }
 
 function venueLine(item: LiveFeedItem): string {
@@ -193,7 +193,7 @@ function EventCard({ item, compact = false, isSaved = false, onSave }: { item: L
 
   return (
     <article className={compact ? 'explore-card explore-card-compact' : 'explore-card'}>
-      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>
+      <div className={hasEventImage ? 'explore-card-image' : 'explore-card-image local-photo-fallback quiet-placeholder-image'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={{ backgroundImage: `url(${eventImage(item)})` }}>
         {!hasEventImage ? <span className="fallback-visual-label">{fallbackVisualLabel(item)}</span> : null}
         {isLocalApproved ? <span className="local-approved-badge">Locally approved</span> : null}
         <span className="floating-date"><strong>{date.month}</strong><b>{date.day}</b></span>
@@ -219,7 +219,7 @@ function PopularRow({ item, isSaved = false, onSave }: { item: LiveFeedItem; isS
   const date = dayBlock(item);
   return (
     <article className="popular-list-row">
-      <div className={item.image_url ? 'popular-thumb' : 'popular-thumb local-photo-fallback quiet-popular-placeholder'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined}>{!item.image_url ? <span>{fallbackVisualLabel(item)}</span> : null}</div>
+      <div className={item.image_url ? 'popular-thumb' : 'popular-thumb local-photo-fallback quiet-popular-placeholder'} data-image-state={eventImageState(item)} data-visual-key={eventVisualKey(item)} style={{ backgroundImage: `url(${eventImage(item)})` }}>{!item.image_url ? <span>{fallbackVisualLabel(item)}</span> : null}</div>
       <div className="popular-date"><span>{date.month}</span><strong>{date.day}</strong></div>
       <div className="popular-copy">
         <span className="mini-tag">{item.category || 'Local'}</span>
@@ -295,7 +295,7 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
     localStorage.setItem('looplocal:approved-local-events', JSON.stringify(approvedLocalItems));
   }, [approvedLocalItems]);
 
-  const combinedFeedItems = useMemo(() => [...approvedLocalItems, ...feedItems], [approvedLocalItems, feedItems]);
+  const combinedFeedItems = useMemo(() => normalizeFeedItems([...approvedLocalItems, ...feedItems]), [approvedLocalItems, feedItems]);
 
   const categories = useMemo(
     () => ['All categories', ...Array.from(new Set(combinedFeedItems.map((item) => item.category).filter(Boolean) as string[])).sort()],

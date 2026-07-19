@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Food and drink illustration">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FF7A45"/><stop offset="1" stop-color="#FFB020"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#07112B" flood-opacity=".22"/></filter></defs>
+<rect width="1200" height="675" rx="48" fill="url(#g)"/><circle cx="1060" cy="86" r="220" fill="white" opacity=".10"/><circle cx="138" cy="630" r="300" fill="white" opacity=".08"/><g filter="url(#s)"><path d="M438 252h210l-18 225H456z" fill="none" stroke="white" stroke-width="22"/><path d="M648 290h42c80 0 80 116 0 116h-50" fill="none" stroke="white" stroke-width="22"/><path d="M492 208c-24-40 26-46 2-86M554 208c-24-40 26-46 2-86" fill="none" stroke="white" stroke-width="18" stroke-linecap="round"/></g>
+</svg>

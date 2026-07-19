@@ -1,3 +1,4 @@
+import { isEventCategory, normalizeEventCategory } from '@/lib/event-taxonomy';
 import { safeExternalUrl } from '@/lib/live-feed';
 import type { LocalSubmissionRecord, LocalSubmissionStatus, LocalSubmissionsStore } from '@/lib/local-submissions-store';
 
@@ -61,6 +62,11 @@ function cleanSubmissionRecord(input: Record<string, unknown>): ValidationResult
   for (const field of shortFields) {
     const value = cleanString(input[field]);
     if (value) (output as Record<string, unknown>)[field] = value;
+  }
+  if (output.eventCategory) {
+    const eventCategory = normalizeEventCategory({ category: output.eventCategory });
+    if (!isEventCategory(eventCategory) || eventCategory === 'Local') return { ok: false, error: 'invalid event category' };
+    output.eventCategory = eventCategory;
   }
   for (const field of ['description', 'eventDescription', 'reviewerNote'] as const) {
     const value = cleanString(input[field], MAX_TEXT_FIELD_LENGTH);

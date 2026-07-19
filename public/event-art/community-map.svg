@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Community map illustration">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#087F8C"/><stop offset="1" stop-color="#2B6FF7"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#07112B" flood-opacity=".22"/></filter></defs>
+<rect width="1200" height="675" rx="48" fill="url(#g)"/><circle cx="1060" cy="86" r="220" fill="white" opacity=".10"/><circle cx="138" cy="630" r="300" fill="white" opacity=".08"/><g filter="url(#s)"><path d="M356 214l166-66 156 62 166-66v324l-166 66-156-62-166 66z" fill="white" opacity=".9"/><path d="M522 148v324M678 210v324" stroke="#167EA8" stroke-width="18" opacity=".6"/><path d="M600 188c-86 0-154 66-154 148 0 98 154 188 154 188s154-90 154-188c0-82-68-148-154-148z" fill="#FF6B6B"/><circle cx="600" cy="334" r="54" fill="white"/></g>
+</svg>

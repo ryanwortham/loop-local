@@ -79,6 +79,11 @@ async function main() {
   response = await request('', { method: 'POST', body: JSON.stringify({}) });
   assertStatus(response, 400, 'missing create payload');
 
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Unknown Category Smoke', eventTitle: 'Unknown Category Event', eventCategory: 'Made Up Category' }) });
+  assertStatus(response, 400, 'unknown event category');
+  data = await json(response);
+  assert(data.error === 'invalid event category', 'unknown category should return a stable validation error');
+
   response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Bad URL Smoke', eventTitle: 'Bad URL Event', website: 'javascript:alert(1)' }) });
   assertStatus(response, 201, 'invalid URL should be rejected but nonfatal');
   data = await json(response);

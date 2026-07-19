@@ -109,7 +109,7 @@ def test_event_media_and_placeholder_assets_stay_intentional():
     shell = read('components/app-shell.tsx')
     css = read('app/globals.css')
     for marker in [
-        "item.image_url || '/looplocal-event-placeholder.jpg'",
+        "item.image_url || item.fallbackImageUrl || '/looplocal-event-placeholder.jpg'",
         "backgroundImage: `url(${eventImage(item)})`",
         '/looplocal-event-placeholder.jpg',
         'quiet-placeholder-image',
@@ -196,9 +196,9 @@ def test_loop_local_cards_clamp_text_and_contain_placeholder_brand_art():
     ]:
         assert marker in css, f'CSS missing card overflow/media fix marker {marker}'
     for marker in [
-        "style={hasEventImage ? { backgroundImage: `url(${eventImage(item)})` } : undefined}",
+        "style={{ backgroundImage: `url(${eventImage(item)})` }}",
         "className={item.image_url ? 'popular-thumb' : 'popular-thumb local-photo-fallback quiet-popular-placeholder'}",
-        "style={item.image_url ? { backgroundImage: `url(${eventImage(item)})` } : undefined}",
+        'item.fallbackImageUrl',
     ]:
         assert marker in shell, f'card markup still forces placeholder crop or missing containment marker {marker}'
 
@@ -366,7 +366,7 @@ def test_loop_local_live_data_quality_and_image_fallbacks_are_normalized():
     for marker in [
         'live-data-quality-pass',
         'normalizeFeedItem',
-        'normalizeCategory',
+        'normalizeEventCategory',
         'cleanTitle',
         'eventVisualKey',
         'eventImageState',

@@ -1,5 +1,7 @@
 // live-data-quality-pass: normalize live feed text/categories and attach category-aware image fallback metadata.
 
+import { eventCategoryFallbackImage, eventCategoryVisualKey, normalizeEventCategory } from './event-taxonomy.ts';
+
 export type LiveFeedItem = {
   // published-status-history-pass: published local events may carry their originating Post Local review timeline.
   id: string;
@@ -29,6 +31,7 @@ export type LiveFeedItem = {
   website?: string;
   price?: string;
   image_url?: string;
+  fallbackImageUrl?: string;
   visualKey?: string;
   imageState?: 'photo' | 'fallback';
   fallbackLabel?: string;
@@ -82,24 +85,8 @@ function cleanTitle(value: string): string {
     .trim();
 }
 
-function normalizeCategory(value?: string): string {
-  const raw = (value || '').trim();
-  if (!raw) return 'Local';
-  if (/music|concert|band|artist/i.test(raw)) return 'Live Music';
-  if (/sport|game|team/i.test(raw)) return 'Sports';
-  if (/family|kid/i.test(raw)) return 'Family';
-  if (/fundraiser|charity|benefit/i.test(raw)) return 'Fundraisers';
-  return raw;
-}
-
 export function eventVisualKey(item: LiveFeedItem): string {
-  const category = normalizeCategory(item.category || item.type).toLowerCase();
-  if (/music|concert|artist/.test(category)) return 'live-music';
-  if (/sport|game/.test(category)) return 'sports';
-  if (/family|kid/.test(category)) return 'family';
-  if (/food|drink|happy/.test(category)) return 'food-drink';
-  if (/fundraiser|community/.test(category)) return 'community';
-  return 'local';
+  return eventCategoryVisualKey(normalizeEventCategory(item));
 }
 
 export function eventImageState(item: LiveFeedItem): 'photo' | 'fallback' {
@@ -107,18 +94,23 @@ export function eventImageState(item: LiveFeedItem): 'photo' | 'fallback' {
 }
 
 export function fallbackVisualLabel(item: LiveFeedItem): string {
-  const category = normalizeCategory(item.category || item.type);
+  const category = normalizeEventCategory(item);
   if (eventImageState(item) === 'photo') return '';
   if (category === 'Live Music') return 'Live music';
   if (category === 'Sports') return 'Game day';
-  if (category === 'Family') return 'Family pick';
+  if (category === 'Family' || category === 'School Activities') return 'Family pick';
+  if (category === 'Food & Drink' || category === 'Happy Hour') return 'Food & drink';
+  if (category === 'Arts & Culture' || category === 'Festivals') return 'Arts & culture';
+  if (category === 'Shopping' || category === 'Deals') return 'Shop local';
   if (category === 'Fundraisers') return 'Local cause';
+  if (category === 'City & Civic') return 'Civic life';
   return 'Local pick';
 }
 
 function categoryPhotoFallback(item: LiveFeedItem): LiveFeedItem {
   return {
     ...item,
+    fallbackImageUrl: eventCategoryFallbackImage(item.category, [item.id, item.title, item.date].filter(Boolean).join('|')),
     visualKey: eventVisualKey(item),
     imageState: eventImageState(item),
     fallbackLabel: fallbackVisualLabel(item),
@@ -126,10 +118,11 @@ function categoryPhotoFallback(item: LiveFeedItem): LiveFeedItem {
 }
 
 function normalizeFeedItem(item: LiveFeedItem): LiveFeedItem {
+  const title = cleanTitle(item.title || '');
   return categoryPhotoFallback({
     ...item,
-    title: cleanTitle(item.title || ''),
-    category: normalizeCategory(item.category || item.type),
+    title,
+    category: normalizeEventCategory({ ...item, title }),
     city: item.city?.trim(),
     business: item.business?.trim(),
     location: item.location?.trim(),

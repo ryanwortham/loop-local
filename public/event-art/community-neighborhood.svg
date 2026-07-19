@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Community neighborhood illustration">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#E85D75"/><stop offset="1" stop-color="#7B5CFA"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#07112B" flood-opacity=".22"/></filter></defs>
+<rect width="1200" height="675" rx="48" fill="url(#g)"/><circle cx="1060" cy="86" r="220" fill="white" opacity=".10"/><circle cx="138" cy="630" r="300" fill="white" opacity=".08"/><g filter="url(#s)"><path d="M312 468h576M350 468V304l128-96 128 96v164M594 468V260l124-90 132 96v202" fill="none" stroke="white" stroke-width="30" stroke-linejoin="round"/><path d="M434 468v-94h82v94M682 468v-96h86v96" fill="white" opacity=".92"/><circle cx="840" cy="150" r="56" fill="#FFD166"/></g>
+</svg>

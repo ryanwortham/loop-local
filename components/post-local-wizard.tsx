@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { FileDropInput } from '@/components/file-drop-input';
+import { SUBMISSION_EVENT_CATEGORIES } from '@/lib/event-taxonomy';
 
 const entityTypes = [
   'Business',
@@ -16,24 +17,7 @@ const entityTypes = [
   'Other',
 ];
 
-const categories = [
-  'Food & Drink',
-  'Live Music',
-  'Family',
-  'Kids',
-  'School Activities',
-  'Sports',
-  'Community',
-  'Festivals',
-  'Fundraisers',
-  'Shopping',
-  'Nightlife',
-  'Jobs',
-  'City Notices',
-  'City & Civic',
-  'Deals',
-  'Happy Hour',
-];
+const categories = [...SUBMISSION_EVENT_CATEGORIES];
 
 const postTypes = [
   'Event',

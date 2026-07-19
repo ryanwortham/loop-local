@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-label="Local market illustration">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#00A99D"/><stop offset="1" stop-color="#2B6FF7"/></linearGradient><filter id="s"><feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#07112B" flood-opacity=".22"/></filter></defs>
+<rect width="1200" height="675" rx="48" fill="url(#g)"/><circle cx="1060" cy="86" r="220" fill="white" opacity=".10"/><circle cx="138" cy="630" r="300" fill="white" opacity=".08"/><g filter="url(#s)"><path d="M374 280h452l-42 238H416z" fill="white" opacity=".95"/><path d="M350 280l70-128h360l70 128" fill="none" stroke="white" stroke-width="24" stroke-linejoin="round"/><path d="M468 280v238M600 280v238M732 280v238" stroke="#0D8E9D" stroke-width="15" opacity=".7"/></g>
+</svg>
