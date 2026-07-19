@@ -2,10 +2,11 @@ import 'server-only';
 
 import {
   eventSlug,
-  getLiveFeed as getRemoteLiveFeed,
+  normalizeFeedItems,
   type LiveFeedItem,
   type LiveFeedResponse,
 } from '@/lib/live-feed';
+import { getSupabaseFeed } from '@/lib/supabase-feed';
 import { readLocalSubmissionsStore } from '@/lib/local-submissions-store';
 
 // local-published-detail-pages-pass: keep fs-backed local event resolution out of the client bundle.
@@ -46,13 +47,14 @@ function isSmokeTestLocalEvent(item: LiveFeedItem): boolean {
 
 export async function getLiveFeed(limit = 24): Promise<LiveFeedResponse> {
   const [remoteFeed, publishedLocalEvents] = await Promise.all([
-    getRemoteLiveFeed(limit),
+    getSupabaseFeed(limit),
     loadPublishedLocalEvents(),
   ]);
-  const items = dedupeFeedItems([...publishedLocalEvents, ...remoteFeed.items]).slice(0, limit);
+  const remoteItems = normalizeFeedItems(remoteFeed.items);
+  const items = dedupeFeedItems([...publishedLocalEvents, ...remoteItems]).slice(0, limit);
   return {
     ...remoteFeed,
-    source: publishedLocalEvents.length ? 'local_api_backed+live_supabase' : remoteFeed.source,
+    source: publishedLocalEvents.length ? `local_api_backed+${remoteFeed.source}` : remoteFeed.source,
     count: remoteFeed.count + publishedLocalEvents.length,
     items,
   };

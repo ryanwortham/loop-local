@@ -1,34 +1,19 @@
 import { NextResponse } from 'next/server';
-import { emptyLiveFeed, referenceFeedBaseUrl, type LiveFeedResponse } from '@/lib/live-feed';
 
-export const revalidate = 60;
+import { getLiveFeed } from '@/lib/live-feed-server';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  try {
-    const response = await fetch(new URL('/api/feed', referenceFeedBaseUrl), {
-      next: { revalidate: 60 },
-      headers: { accept: 'application/json' },
-    });
+  const feed = await getLiveFeed(160);
+  const status = feed.health.status;
 
-    if (!response.ok) {
-      return NextResponse.json({ ...emptyLiveFeed, upstreamStatus: response.status }, { status: 502 });
-    }
-
-    const data = (await response.json()) as LiveFeedResponse;
-
-    return NextResponse.json({
-      project: data.project || 'looplocal.com',
-      source: data.source || 'live_supabase',
-      count: Number(data.count || data.items?.length || 0),
-      items: Array.isArray(data.items) ? data.items : [],
-    });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        ...emptyLiveFeed,
-        error: error instanceof Error ? error.message : 'Unable to load live feed',
-      },
-      { status: 502 },
-    );
-  }
+  return NextResponse.json(feed, {
+    status: status === 'unavailable' ? 503 : 200,
+    headers: {
+      'cache-control': status === 'unavailable' ? 'no-store' : 'public, max-age=60, stale-while-revalidate=300',
+      'x-loop-local-feed-status': status,
+      'x-loop-local-feed-fetched-at': feed.health.fetchedAt || 'unavailable',
+    },
+  });
 }

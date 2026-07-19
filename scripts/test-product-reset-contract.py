@@ -225,6 +225,7 @@ def test_loop_local_real_event_detail_pages_exist_and_cards_link_internally():
     route = read('app/events/[slug]/page.tsx')
     css = read('app/globals.css')
     feed = read('lib/live-feed.ts')
+    server_feed = read('lib/live-feed-server.ts')
     for marker in [
         'event-detail-route-real-page',
         'getEventBySlug',
@@ -250,7 +251,7 @@ def test_loop_local_real_event_detail_pages_exist_and_cards_link_internally():
         'export async function getEventBySlug',
         'eventDetailPath(item)',
     ]:
-        assert marker in feed + shell, f'missing detail routing/data helper marker {marker}'
+        assert marker in feed + server_feed + shell, f'missing detail routing/data helper marker {marker}'
     assert 'href={eventDetailPath(item)}' in shell, 'event cards must link to internal /events/[slug] detail pages'
     assert 'href={eventExternalUrl(heroEvent)}' in shell, 'hero detail preview must preserve external ticket/source CTA separately'
 
@@ -358,6 +359,7 @@ def test_loop_local_event_detail_polish_improves_detail_page_hierarchy_and_mobil
 
 def test_loop_local_live_data_quality_and_image_fallbacks_are_normalized():
     feed = read('lib/live-feed.ts')
+    server_feed = read('lib/live-feed-server.ts')
     shell = read('components/app-shell.tsx')
     route = read('app/events/[slug]/page.tsx')
     css = read('app/globals.css')
@@ -390,7 +392,7 @@ def test_loop_local_live_data_quality_and_image_fallbacks_are_normalized():
     ]:
         assert marker in css, f'missing category fallback CSS marker {marker}'
     for preserved in ['getLiveFeed', 'LiveFeedItem', 'eventDetailPath', 'eventExternalUrl', 'getEventBySlug']:
-        assert preserved in feed, f'live data quality pass removed preserved feed helper {preserved}'
+        assert preserved in feed + server_feed, f'live data quality pass removed preserved feed helper {preserved}'
 
 
 def test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real():
@@ -543,7 +545,7 @@ def test_loop_local_pending_post_submissions_surface_in_discovery_review_panel()
     ]:
         assert marker in css, f'missing pending submission CSS marker {marker}'
     for preserved in ['saved-events-panel', 'showSavedPanel', 'handleTabSelect', 'eventDetailPath(item)', 'getLiveFeed']:
-        assert preserved in shell + read('lib/live-feed.ts'), f'pending submission panel removed preserved behavior {preserved}'
+        assert preserved in shell + read('lib/live-feed.ts') + read('lib/live-feed-server.ts'), f'pending submission panel removed preserved behavior {preserved}'
 
 
 def test_loop_local_local_publish_workflow_approves_submissions_into_discovery_feed():
@@ -579,7 +581,7 @@ def test_loop_local_local_publish_workflow_approves_submissions_into_discovery_f
         'eventDetailPath(item)',
         'sortItems(filtered, sortBy)',
     ]:
-        assert preserved in shell + read('lib/live-feed.ts'), f'local publish workflow removed preserved behavior {preserved}'
+        assert preserved in shell + read('lib/live-feed.ts') + read('lib/live-feed-server.ts'), f'local publish workflow removed preserved behavior {preserved}'
 
 
 def test_loop_local_operator_handoff_exports_local_review_queue_json():
@@ -821,7 +823,7 @@ def test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap()
         'eventDetailPath(item)',
         'getLiveFeed',
     ]:
-        assert preserved in css + read('components/app-shell.tsx') + read('lib/live-feed.ts'), f'mobile containment removed preserved behavior {preserved}'
+        assert preserved in css + read('components/app-shell.tsx') + read('lib/live-feed.ts') + read('lib/live-feed-server.ts'), f'mobile containment removed preserved behavior {preserved}'
 
 
 def test_loop_local_mobile_first_homepage_polish_feels_intentional_after_containment():
@@ -853,7 +855,7 @@ def test_loop_local_mobile_first_homepage_polish_feels_intentional_after_contain
         'mobile-app-tabbar',
         'getLiveFeed',
     ]:
-        assert preserved in css + shell + read('lib/live-feed.ts'), f'mobile-first polish removed preserved behavior {preserved}'
+        assert preserved in css + shell + read('lib/live-feed.ts') + read('lib/live-feed-server.ts'), f'mobile-first polish removed preserved behavior {preserved}'
 
 
 def test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable():
@@ -1696,6 +1698,59 @@ def test_old_incremental_design_artifacts_removed():
         assert forbidden not in combined, f'old incremental design artifact remains after full rebuild: {forbidden}'
 
 
+def test_stable_supabase_feed_reliability_replaces_temporary_tunnel():
+    package = read('package.json')
+    route = read('app/api/feed/route.ts')
+    reliability = read('lib/feed-reliability.ts')
+    source = read('lib/supabase-feed.ts') if (ROOT / 'lib/supabase-feed.ts').exists() else ''
+    server_feed = read('lib/live-feed-server.ts')
+    page = read('app/page.tsx')
+    shell = read('components/app-shell.tsx')
+    combined = route + reliability + source + server_feed + page + shell
+    assert 'trycloudflare.com' not in combined, 'runtime feed must not depend on a temporary Cloudflare tunnel'
+    for marker in [
+        '"test:feed"',
+        'node --test scripts/feed-reliability.test.ts',
+    ]:
+        assert marker in package, f'missing stable feed test command marker {marker}'
+    for marker in [
+        'resolveFeedConfig',
+        'NEXT_PUBLIC_SUPABASE_URL',
+        'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+        'LOOP_LOCAL_FEED_TIMEOUT_MS',
+        'LOOP_LOCAL_FEED_RETRIES',
+        'LOOP_LOCAL_FEED_STALE_MAX_AGE_MS',
+        "result.items.length ? 'fresh' : 'empty'",
+        "status: 'stale'",
+        "status: 'unavailable'",
+        'content-range',
+        'AbortController',
+    ]:
+        assert marker in reliability, f'missing feed reliability marker {marker}'
+    for marker in [
+        'getSupabaseFeed',
+        'feedCache',
+        'fetchFeedWithReliability',
+    ]:
+        assert marker in source, f'missing stable Supabase feed source marker {marker}'
+    for marker in [
+        'feed.health.status',
+        "status === 'unavailable' ? 503 : 200",
+        "status === 'unavailable' ? 'no-store'",
+        'x-loop-local-feed-status',
+        'x-loop-local-feed-fetched-at',
+    ]:
+        assert marker in route, f'missing feed health API marker {marker}'
+    for marker in [
+        'health={feed.health}',
+        'feed-health-status',
+        'Live feed is temporarily unavailable',
+        'No upcoming events are published yet',
+        'Showing recently cached events',
+    ]:
+        assert marker in page + shell, f'missing consumer feed state marker {marker}'
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1744,5 +1799,6 @@ if __name__ == '__main__':
     test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup()
     test_loop_local_persistence_media_validation_boundary_is_hardened()
     test_loop_local_mobile_shell_and_post_local_true_wizard_are_corrected()
+    test_stable_supabase_feed_reliability_replaces_temporary_tunnel()
     test_old_incremental_design_artifacts_removed()
     print('loop_local_complete_frontend_rebuild_contract_ok')

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, type LiveFeedItem } from '@/lib/live-feed';
+import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, type LiveFeedHealth, type LiveFeedItem } from '@/lib/live-feed';
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
@@ -239,9 +239,10 @@ type AppShellProps = {
   feedItems: LiveFeedItem[];
   totalCount: number;
   source: string;
+  health: LiveFeedHealth;
 };
 
-export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
+export function AppShell({ feedItems, totalCount, source, health }: AppShellProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('St. Louis, MO');
   const [activeCategory, setActiveCategory] = useState('All categories');
@@ -323,8 +324,16 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
   const featuredItems = filteredItems.slice(0, 6);
   const popularItems = filteredItems.slice(6, 14);
   const visibleItems = filteredItems.slice(0, viewMode === 'list' ? 24 : 18);
+  const mapLeadEvent = visibleItems[0];
   const calendarItems = filteredItems.slice(0, 12);
   const hasLiveData = combinedFeedItems.length > 0;
+  const feedHealthMessage = health.status === 'unavailable'
+    ? 'Live feed is temporarily unavailable. Local submissions remain available.'
+    : health.status === 'empty'
+      ? 'No upcoming events are published yet. Check back soon or post a local event.'
+      : health.status === 'stale'
+        ? `Showing recently cached events${health.ageSeconds !== null ? ` from ${Math.max(1, Math.round(health.ageSeconds / 60))} minutes ago` : ''}.`
+        : 'Live feed connected and current.';
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
   const savedItems = combinedFeedItems.filter((item) => savedEventIds.includes(item.id));
@@ -571,9 +580,10 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
           <strong>loop <em>local</em></strong>
         </Link>
-        <p className="eyebrow">{source === 'live_supabase' ? 'Live local · support local' : 'Local discovery'}</p>
+        <p className="eyebrow">{health.status === 'fresh' ? 'Live local · support local' : 'Local discovery'}</p>
         <h1>Discover what’s happening near you.</h1>
         <p className="hero-subcopy">{hasLiveData ? `${totalCount} live local picks, refreshed from the current feed.` : 'Find live music, events, food, deals, markets, and neighborhood experiences around you.'}</p>
+        <p className={`feed-health-status feed-health-${health.status}`} data-feed-source={source} role={health.status === 'unavailable' ? 'alert' : 'status'}>{feedHealthMessage}</p>
         <button className="location-pill" type="button" onClick={() => setLocationQuery('St. Louis, MO')}>⌖ {locationQuery}</button>
         <div className="hero-actions">
           <a className="primary-action" href="#events">➤ Explore Nearby</a>
@@ -647,7 +657,7 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
 
         {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}</div> : null}
         {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}</div> : null}
-        {visibleItems.length > 0 && viewMode === 'map' ? (
+        {viewMode === 'map' ? (
           <section className="map-experience-upgrade map-discovery-shell" id="map" aria-label="Map discovery view">
             <div className="map-control-bar">
               <span className="map-radius-chip">Within 10 mi</span>
@@ -668,12 +678,14 @@ export function AppShell({ feedItems, totalCount, source }: AppShellProps) {
                   <span>{item.category || 'Local'}</span>
                 </Link>
               ))}
-              <article className="map-selected-event-card">
-                <small>Closest highlight</small>
-                <strong>{visibleItems[0]?.title}</strong>
-                <span>{venueLine(visibleItems[0])} · {distanceLine(visibleItems[0])}</span>
-                <div><Link href={eventDetailPath(visibleItems[0])}>Open event</Link><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine(visibleItems[0]) || venueLine(visibleItems[0]) || visibleItems[0]?.city || visibleItems[0]?.title || 'event')}`}>Directions</a></div>
-              </article>
+              {mapLeadEvent ? (
+                <article className="map-selected-event-card">
+                  <small>Closest highlight</small>
+                  <strong>{mapLeadEvent.title}</strong>
+                  <span>{venueLine(mapLeadEvent)} · {distanceLine(mapLeadEvent)}</span>
+                  <div><Link href={eventDetailPath(mapLeadEvent)}>Open event</Link><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine(mapLeadEvent) || venueLine(mapLeadEvent) || mapLeadEvent.city || mapLeadEvent.title || 'event')}`}>Directions</a></div>
+                </article>
+              ) : <p className="map-empty-state">No map matches yet. Clear filters to see nearby events.</p>}
             </div>
             <aside className="map-side-results" aria-label="Map results list">
               {visibleItems.slice(0, 6).map((item, index) => (

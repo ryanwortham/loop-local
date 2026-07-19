@@ -4,5 +4,5 @@ import { getLiveFeed } from '@/lib/live-feed-server';
 export default async function Page() {
   const feed = await getLiveFeed(24);
 
-  return <AppShell feedItems={feed.items} totalCount={feed.count} source={feed.source} />;
+  return <AppShell feedItems={feed.items} totalCount={feed.count} source={feed.source} health={feed.health} />;
 }

@@ -1,5 +1,3 @@
-export const referenceFeedBaseUrl = 'https://replaced-gaming-selected-spectacular.trycloudflare.com';
-
 // live-data-quality-pass: normalize live feed text/categories and attach category-aware image fallback metadata.
 
 export type LiveFeedItem = {
@@ -45,18 +43,35 @@ export type LiveFeedItem = {
   localSubmissionStatusHistory?: Array<{ action: string; label?: string; at?: string; note?: string }>;
 };
 
+export type LiveFeedHealth = {
+  status: 'fresh' | 'empty' | 'stale' | 'unavailable';
+  fetchedAt: string | null;
+  ageSeconds: number | null;
+  attempts: number;
+  upstreamStatus?: number;
+  message?: string;
+};
+
 export type LiveFeedResponse = {
   project: string;
   source: 'live_supabase' | string;
   count: number;
   items: LiveFeedItem[];
+  health: LiveFeedHealth;
 };
 
 export const emptyLiveFeed: LiveFeedResponse = {
   project: 'looplocal.com',
-  source: 'live_supabase',
+  source: 'live_supabase_unavailable',
   count: 0,
   items: [],
+  health: {
+    status: 'unavailable',
+    fetchedAt: null,
+    ageSeconds: null,
+    attempts: 0,
+    message: 'Live feed unavailable',
+  },
 };
 
 function cleanTitle(value: string): string {
@@ -122,7 +137,7 @@ function normalizeFeedItem(item: LiveFeedItem): LiveFeedItem {
   });
 }
 
-function cleanItems(items: LiveFeedItem[]): LiveFeedItem[] {
+export function normalizeFeedItems(items: LiveFeedItem[]): LiveFeedItem[] {
   const seen = new Set<string>();
   return items
     .filter((item) => item && item.id && item.title)
@@ -166,35 +181,4 @@ export function safeExternalUrl(value?: string): string {
 
 export function eventExternalUrl(item: LiveFeedItem): string {
   return safeExternalUrl(item.ticketUrl || item.ticket_url || item.event_url || item.venueUrl || item.website);
-}
-
-export async function getEventBySlug(slug: string): Promise<LiveFeedItem | null> {
-  const feed = await getLiveFeed(120);
-  return feed.items.find((item) => eventSlug(item) === slug || item.slug === slug || item.id === slug) || null;
-}
-
-export async function getLiveFeed(limit = 24): Promise<LiveFeedResponse> {
-  const url = new URL('/api/feed', referenceFeedBaseUrl);
-
-  try {
-    const response = await fetch(url, {
-      // Keep the workbench close to the actual app without hammering the tunnel.
-      next: { revalidate: 60 },
-      headers: { accept: 'application/json' },
-    });
-
-    if (!response.ok) return emptyLiveFeed;
-
-    const data = (await response.json()) as LiveFeedResponse;
-    const items = cleanItems(Array.isArray(data.items) ? data.items : []).slice(0, limit);
-
-    return {
-      project: data.project || 'looplocal.com',
-      source: data.source || 'live_supabase',
-      count: Number(data.count || items.length),
-      items,
-    };
-  } catch {
-    return emptyLiveFeed;
-  }
 }
