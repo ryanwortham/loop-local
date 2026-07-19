@@ -6,7 +6,7 @@ Loop Local is a local-discovery prototype for events, businesses, and community 
 
 Phase 1, **Immediate product correctness**, is implemented in the application:
 
-- live `starts_at` values are normalized into deterministic visible UTC date and time fields;
+- live `starts_at` values are normalized into deterministic visible St. Louis market date and time fields;
 - homepage cards expose the event start through semantic `<time datetime="…">` markup;
 - browser media limits and API payload boundaries share one limits module;
 - navigations and private/dynamic routes are excluded from service-worker caches;
@@ -66,14 +66,15 @@ The local submission repository is file-backed for the prototype. Supabase-backe
 
 ## Data and time behavior
 
-The public feed uses Supabase project `itraeknotcdtdzaeukan` (`Local Loop App`). Valid live timestamps are retained as `startsAt` and normalized to:
+The public feed uses Supabase project `itraeknotcdtdzaeukan` (`Local Loop App`). Valid live timestamps remain unchanged in `startsAt` and are normalized for the configured local market:
 
 ```text
 date: YYYY-MM-DD
-time: h:mm AM/PM UTC
+time: h:mm AM/PM CDT|CST
+timezone: America/Chicago
 ```
 
-UTC is intentional for deterministic server/browser rendering. Venue-local timezone presentation is a future enhancement.
+`LOOP_LOCAL_FEED_TIME_ZONE` accepts a valid IANA time zone and defaults to `America/Chicago`. Formatting happens server-side, including daylight-saving changes and local calendar-day rollover, so browsers receive one deterministic St. Louis market time.
 
 ## Service-worker policy
 
@@ -121,7 +122,7 @@ git diff --check
 The suite covers:
 
 - scaffold and product contracts;
-- live-feed reliability and UTC normalization;
+- live-feed reliability and configured market-time normalization;
 - event taxonomy and operator-reviewed category overrides;
 - submission quality, upload boundaries, and public rate limiting;
 - local-submission API privacy and lifecycle behavior;
@@ -162,6 +163,6 @@ scripts/mobile-interaction-smoke.mjs
 ## Known follow-ups
 
 1. Add reboot persistence for the production origin with a tested macOS LaunchAgent or process manager.
-2. Add venue-local timezone display while preserving deterministic timestamp storage.
+2. Extend configured market-time display to per-venue timezones when Loop Local expands beyond one market.
 3. Move the file-backed operator queue to durable Supabase persistence.
 4. Continue event media and source-data quality improvements without guessing taxonomy in presentation code.

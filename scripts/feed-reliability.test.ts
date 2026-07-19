@@ -11,6 +11,7 @@ import {
 const validEnv = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'public-anon-key',
+  LOOP_LOCAL_FEED_TIME_ZONE: 'America/Chicago',
   LOOP_LOCAL_FEED_TIMEOUT_MS: '1000',
   LOOP_LOCAL_FEED_RETRIES: '1',
   LOOP_LOCAL_FEED_STALE_MAX_AGE_MS: '3600000',
@@ -28,6 +29,7 @@ function response(body: unknown, status = 200, contentRange = '0-0/1'): Response
 test('resolveFeedConfig validates the stable Supabase source and bounded reliability values', () => {
   const config = resolveFeedConfig(validEnv);
   assert.equal(config.baseUrl, 'https://project.supabase.co');
+  assert.equal(config.timeZone, 'America/Chicago');
   assert.equal(config.timeoutMs, 1000);
   assert.equal(config.retries, 1);
   assert.throws(
@@ -37,6 +39,10 @@ test('resolveFeedConfig validates the stable Supabase source and bounded reliabi
   assert.throws(
     () => resolveFeedConfig({ ...validEnv, NEXT_PUBLIC_SUPABASE_ANON_KEY: '' }),
     /anon key/i,
+  );
+  assert.throws(
+    () => resolveFeedConfig({ ...validEnv, LOOP_LOCAL_FEED_TIME_ZONE: 'Mars/Olympus' }),
+    /time zone/i,
   );
 });
 
@@ -83,9 +89,33 @@ test('fetchFeedWithReliability retries a transient failure and reports a fresh n
   assert.equal(feed.items[0]?.summary, 'A neighborhood market.');
   assert.equal(feed.items[0]?.location, 'Market Hall');
   assert.equal(feed.items[0]?.date, '2026-07-20');
-  assert.equal(feed.items[0]?.time, '11:00 PM UTC');
+  assert.equal(feed.items[0]?.time, '6:00 PM CDT');
+  assert.equal(feed.items[0]?.timezone, 'America/Chicago');
   assert.equal(feed.items[0]?.source, 'live_supabase');
   assert.ok(cache.value, 'fresh feed should populate the stale fallback cache');
+});
+
+test('feed timestamps use the configured market timezone across local calendar boundaries', async () => {
+  const startsAt = '2026-01-01T02:00:00Z';
+  const feed = await fetchFeedWithReliability({
+    config: resolveFeedConfig(validEnv),
+    fetchImpl: async () => response([{
+      id: 'new-years-eve',
+      title: 'New Years Eve Local',
+      starts_at: startsAt,
+      city: 'St. Louis',
+      category: 'Community',
+      status: 'approved',
+    }]),
+    cache: {},
+    now: () => Date.parse('2025-12-31T18:00:00Z'),
+    sleep: async () => undefined,
+  });
+
+  assert.equal(feed.items[0]?.startsAt, startsAt);
+  assert.equal(feed.items[0]?.date, '2025-12-31');
+  assert.equal(feed.items[0]?.time, '8:00 PM CST');
+  assert.equal(feed.items[0]?.timezone, 'America/Chicago');
 });
 
 test('a successful zero-row response is empty, not an upstream outage', async () => {

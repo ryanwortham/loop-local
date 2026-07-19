@@ -13,6 +13,7 @@ export type ReliableFeedItem = {
   endsAt?: string | null;
   date?: string;
   time?: string;
+  timezone?: string;
   location?: string;
   address?: string;
   latitude?: number;
@@ -51,6 +52,7 @@ export type FeedCache = {
 export type FeedConfig = {
   baseUrl: string;
   anonKey: string;
+  timeZone: string;
   timeoutMs: number;
   retries: number;
   staleMaxAgeMs: number;
@@ -117,6 +119,16 @@ function boundedInteger(env: FeedEnvironment, key: string, fallback: number, min
   return parsed;
 }
 
+function configuredTimeZone(env: FeedEnvironment): string {
+  const timeZone = env.LOOP_LOCAL_FEED_TIME_ZONE?.trim() || 'America/Chicago';
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format(0);
+  } catch {
+    throw new Error('LOOP_LOCAL_FEED_TIME_ZONE must be a valid IANA time zone');
+  }
+  return timeZone;
+}
+
 export function resolveFeedConfig(env: FeedEnvironment): FeedConfig {
   const rawBaseUrl = requiredValue(env, 'NEXT_PUBLIC_SUPABASE_URL', 'Supabase URL');
   const parsed = new URL(rawBaseUrl);
@@ -128,6 +140,7 @@ export function resolveFeedConfig(env: FeedEnvironment): FeedConfig {
   return {
     baseUrl: parsed.origin,
     anonKey: requiredValue(env, 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'Supabase anon key'),
+    timeZone: configuredTimeZone(env),
     timeoutMs: boundedInteger(env, 'LOOP_LOCAL_FEED_TIMEOUT_MS', 4500, 250, 15000),
     retries: boundedInteger(env, 'LOOP_LOCAL_FEED_RETRIES', 2, 0, 3),
     staleMaxAgeMs: boundedInteger(env, 'LOOP_LOCAL_FEED_STALE_MAX_AGE_MS', 21_600_000, 60_000, 86_400_000),
@@ -142,24 +155,41 @@ function numberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
-function utcDateTimeParts(value: unknown): { date?: string; time?: string } {
+function marketDateTimeParts(value: unknown, timeZone: string): { date?: string; time?: string; timezone?: string } {
   const startsAt = stringValue(value);
   if (!startsAt) return {};
   const parsed = new Date(startsAt);
   if (Number.isNaN(parsed.getTime())) return {};
+  const dateParts = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone,
+  }).formatToParts(parsed);
+  const part = (type: Intl.DateTimeFormatPartTypes) => dateParts.find((entry) => entry.type === type)?.value;
+  const year = part('year');
+  const month = part('month');
+  const day = part('day');
   return {
-    date: parsed.toISOString().slice(0, 10),
-    time: `${parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })} UTC`,
+    date: year && month && day ? `${year}-${month}-${day}` : undefined,
+    time: parsed.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone,
+      timeZoneName: 'short',
+    }),
+    timezone: timeZone,
   };
 }
 
-function normalizeRow(row: SupabaseEventRow): ReliableFeedItem | null {
+function normalizeRow(row: SupabaseEventRow, timeZone: string): ReliableFeedItem | null {
   const id = stringValue(row.id);
   const title = stringValue(row.title);
   if (!id || !title) return null;
   const website = stringValue(row.website);
   const startsAt = stringValue(row.starts_at) || null;
-  const displayDateTime = utcDateTimeParts(startsAt);
+  const displayDateTime = marketDateTimeParts(startsAt, timeZone);
   return {
     id,
     title,
@@ -275,7 +305,7 @@ async function requestFeed(config: FeedConfig, fetchImpl: FeedFetch, limit: numb
     }
     const body: unknown = await response.json();
     if (!Array.isArray(body)) throw new FeedRequestError('Upstream returned an invalid feed payload', false, response.status);
-    const normalizedItems = body.map((row) => normalizeRow(row as SupabaseEventRow)).filter((item): item is ReliableFeedItem => Boolean(item));
+    const normalizedItems = body.map((row) => normalizeRow(row as SupabaseEventRow, config.timeZone)).filter((item): item is ReliableFeedItem => Boolean(item));
     const items = await enrichWithBusinessMetadata(config, fetchImpl, controller.signal, normalizedItems);
     return { items, count: totalFromContentRange(response.headers.get('content-range'), items.length), status: response.status };
   } catch (error) {

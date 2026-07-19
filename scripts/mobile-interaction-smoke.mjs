@@ -71,8 +71,8 @@ async function main() {
     city: 'St. Louis',
     category: 'Community',
     date: '2026-08-15',
-    time: '7:30 PM UTC',
-    startsAt: '2026-08-15T19:30:00Z',
+    time: '7:30 PM CDT',
+    startsAt: '2026-08-16T00:30:00Z',
     source: 'local_rendering_regression',
   };
   await page.request.post(`${baseURL}/api/local-submissions`, {
