@@ -111,15 +111,6 @@ const emptyStore: LocalSubmissionsStore = {
   operatorAuditLog: [],
 };
 
-function safeIdPrefix(value?: string): string {
-  return (value || 'local-submission')
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48) || 'local-submission';
-}
-
 function nowIso() {
   return new Date().toISOString();
 }
@@ -183,7 +174,7 @@ function normalizeSubmission(input: Partial<LocalSubmissionRecord>): LocalSubmis
   const submittedAt = safeInput.submittedAt || nowIso();
   const base = {
     ...safeInput,
-    id: input.id || `${safeIdPrefix(input.eventTitle || input.entityName)}-${Date.parse(submittedAt) || Date.now()}`,
+    id: input.id || randomUUID(),
     statusToken: input.statusToken || newStatusToken(),
     status: input.status || 'pending_review',
     submittedAt,
@@ -212,19 +203,27 @@ function normalizeStore(value: unknown): LocalSubmissionsStore {
   };
 }
 
-let submissionMutationQueue: Promise<void> = Promise.resolve();
-
-async function withSubmissionMutationLock<T>(operation: () => Promise<T>): Promise<T> {
-  const current = submissionMutationQueue.then(operation, operation);
-  submissionMutationQueue = current.then(() => undefined, () => undefined);
-  return current;
-}
-
 async function persistLocalSubmissionsStore(store: LocalSubmissionsStore): Promise<LocalSubmissionsStore> {
   const normalized = normalizeStore(store);
   const repository = await getLocalSubmissionsRepository();
   await repository.write(normalized);
   return normalized;
+}
+
+type LocalStoreMutationResult = { store: LocalSubmissionsStore } & Record<string, unknown>;
+
+async function mutateLocalSubmissionsStore<T extends LocalStoreMutationResult>(
+  operation: (store: LocalSubmissionsStore) => Promise<T> | T,
+): Promise<T> {
+  const repository = await getLocalSubmissionsRepository();
+  return repository.mutate(async (rawStore) => {
+    const result = await operation(normalizeStore(rawStore));
+    const normalizedStore = normalizeStore(result.store);
+    return {
+      store: normalizedStore,
+      result: { ...result, store: normalizedStore },
+    };
+  });
 }
 
 export async function readLocalSubmissionsStore(): Promise<LocalSubmissionsStore> {
@@ -234,7 +233,7 @@ export async function readLocalSubmissionsStore(): Promise<LocalSubmissionsStore
 }
 
 export async function writeLocalSubmissionsStore(store: LocalSubmissionsStore): Promise<LocalSubmissionsStore> {
-  return withSubmissionMutationLock(() => persistLocalSubmissionsStore(store));
+  return persistLocalSubmissionsStore(store);
 }
 
 export async function replaceLocalSubmissionQueues(
@@ -242,18 +241,19 @@ export async function replaceLocalSubmissionQueues(
   publishedLocalEvents: LiveFeedItem[],
   actor: OperatorMutationActor,
 ): Promise<LocalSubmissionsStore> {
-  return withSubmissionMutationLock(async () => {
-    const current = await readLocalSubmissionsStore();
+  const result = await mutateLocalSubmissionsStore(async (current) => {
     const replaced = { ...current, pendingSubmissions, publishedLocalEvents };
-    return persistLocalSubmissionsStore(appendOperatorAudit(
+    const store = appendOperatorAudit(
       replaced,
       actor,
       'replace_queues',
       'submission_queue',
       'local-submissions',
       { pendingCount: pendingSubmissions.length, publishedCount: publishedLocalEvents.length },
-    ));
+    );
+    return { store };
   });
+  return result.store;
 }
 
 export function publishedMatchesSubmissionId(item: LiveFeedItem, submissionId: string): boolean {
@@ -262,8 +262,11 @@ export function publishedMatchesSubmissionId(item: LiveFeedItem, submissionId: s
 }
 
 export async function findLocalSubmissionStatus(submissionId: string, statusToken?: string): Promise<LocalSubmissionStatusResult> {
-  const store = await readLocalSubmissionsStore();
-  const submission = store.pendingSubmissions.find((item) => item.id === submissionId && (!item.statusToken || item.statusToken === statusToken));
+  const repository = await getLocalSubmissionsRepository();
+  const authorized = statusToken ? await repository.authorizeStatusCapability(submissionId, statusToken) : false;
+  if (!authorized) return { submissionId };
+  const store = normalizeStore(await repository.read());
+  const submission = store.pendingSubmissions.find((item) => item.id === submissionId);
   const published = store.publishedLocalEvents.find((item) => publishedMatchesSubmissionId(item, submissionId));
   return {
     submissionId,
@@ -312,8 +315,7 @@ export function submissionToFeedItem(submission: LocalSubmissionRecord): LiveFee
 }
 
 export async function createLocalSubmission(input: Partial<LocalSubmissionRecord>) {
-  return withSubmissionMutationLock(async () => {
-    const store = await readLocalSubmissionsStore();
+  return mutateLocalSubmissionsStore(async (store) => {
     const replayedSubmission = input.requestId
       ? store.pendingSubmissions.find((item) => item.requestId === input.requestId)
       : undefined;
@@ -323,7 +325,7 @@ export async function createLocalSubmission(input: Partial<LocalSubmissionRecord
       ...store,
       pendingSubmissions: [submission, ...store.pendingSubmissions.filter((item) => item.id !== submission.id)],
     };
-    return { store: await persistLocalSubmissionsStore(next), submission, replayed: false };
+    return { store: next, submission, replayed: false };
   });
 }
 
@@ -332,8 +334,7 @@ export async function updateLocalSubmission(
   patch: Partial<LocalSubmissionRecord>,
   actor: OperatorMutationActor,
 ) {
-  return withSubmissionMutationLock(async () => {
-    const store = await readLocalSubmissionsStore();
+  return mutateLocalSubmissionsStore(async (store) => {
     const nextPending = store.pendingSubmissions.map((item) => {
       if (item.id !== id) return item;
       const updated = { ...item, ...patch, statusUpdatedAt: nowIso() };
@@ -357,13 +358,12 @@ export async function updateLocalSubmission(
       id,
       { status: patch.status || updated.status, reviewerNoteChanged: Boolean(patch.reviewerNote) },
     );
-    return { store: await persistLocalSubmissionsStore(nextStore), submission: updated };
+    return { store: nextStore, submission: updated };
   });
 }
 
 export async function deleteLocalSubmission(id: string, actor: OperatorMutationActor) {
-  return withSubmissionMutationLock(async () => {
-    const store = await readLocalSubmissionsStore();
+  return mutateLocalSubmissionsStore(async (store) => {
     const nextStore = appendOperatorAudit(
       {
         ...store,
@@ -374,13 +374,12 @@ export async function deleteLocalSubmission(id: string, actor: OperatorMutationA
       'local_submission',
       id,
     );
-    return { store: await persistLocalSubmissionsStore(nextStore) };
+    return { store: nextStore };
   });
 }
 
 export async function publishLocalSubmission(id: string, actor: OperatorMutationActor) {
-  return withSubmissionMutationLock(async () => {
-    const store = await readLocalSubmissionsStore();
+  return mutateLocalSubmissionsStore(async (store) => {
     const submission = store.pendingSubmissions.find((item) => item.id === id);
     if (!submission) return { store, submission: null, published: null };
     const quality = submissionPublicationQuality(submission);
@@ -413,14 +412,13 @@ export async function publishLocalSubmission(id: string, actor: OperatorMutation
       id,
       { publishedEventId: published.id },
     );
-    return { store: await persistLocalSubmissionsStore(nextStore), submission: publishedSubmission, published };
+    return { store: nextStore, submission: publishedSubmission, published };
   });
 }
 
 export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSubmissionRecord>) {
   // submitter-revision-flow-pass: needs_changes submissions can be revised and returned to pending_review.
-  return withSubmissionMutationLock(async () => {
-    const store = await readLocalSubmissionsStore();
+  return mutateLocalSubmissionsStore(async (store) => {
     const existing = store.pendingSubmissions.find((item) => item.id === id);
     if (!existing) return { store, submission: null, replayed: false };
     if (patch.revisionRequestId && existing.revisionRequestId === patch.revisionRequestId) {
@@ -442,7 +440,7 @@ export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSu
     const updated = nextPending.find((item) => item.id === id);
     if (!updated) return { store, submission: null, replayed: false };
     const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
-    return { store: await persistLocalSubmissionsStore(nextStore), submission: updated, replayed: false };
+    return { store: nextStore, submission: updated, replayed: false };
   });
 }
 
@@ -451,8 +449,7 @@ export async function setEventCategoryOverride(
   category: string | undefined,
   actor: OperatorMutationActor,
 ) {
-  return withSubmissionMutationLock(async () => {
-    const store = await readLocalSubmissionsStore();
+  return mutateLocalSubmissionsStore(async (store) => {
     const nextOverrides = { ...store.eventCategoryOverrides };
     if (!category) {
       delete nextOverrides[event.id];
@@ -476,7 +473,6 @@ export async function setEventCategoryOverride(
       event.id,
       { category: category || null, sourceCategory: event.sourceCategory || event.category || 'Local' },
     );
-    const written = await persistLocalSubmissionsStore(nextStore);
-    return { store: written, override: written.eventCategoryOverrides[event.id] || null };
+    return { store: nextStore, override: nextStore.eventCategoryOverrides[event.id] || null };
   });
 }

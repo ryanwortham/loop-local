@@ -110,7 +110,7 @@ select set_config('request.jwt.claim.sub', '', true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-4333-8333-333333333333', true);
 
-select is((select count(*)::integer from public.local_submissions), 2, 'an operator can read the review queue');
+select is((select count(*)::integer from public.local_submissions where coalesce((submission_data ->> 'repositoryDeleted')::boolean, false) = false), 2, 'an operator can read the review queue');
 select ok(
   pg_temp.try_sql($attempt$insert into public.event_category_overrides
     (event_id, category, source_category, reviewed_by)

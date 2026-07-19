@@ -117,6 +117,7 @@ async function main() {
   assertStatus(response, 201, 'first idempotent create');
   data = await json(response);
   const idempotentSubmissionId = data.submission.id;
+  assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idempotentSubmissionId), 'new submissions must use database-compatible UUID ids');
   response = await request('', { method: 'POST', headers: operatorHeaders(), body: JSON.stringify(idempotentCreatePayload) });
   assertStatus(response, 200, 'replayed idempotent create');
   data = await json(response);

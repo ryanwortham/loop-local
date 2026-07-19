@@ -1532,7 +1532,7 @@ def test_loop_local_submission_mutations_are_transactional_and_idempotent():
     route = read('app/api/local-submissions/route.ts')
     wizard = read('components/post-local-wizard.tsx')
     api_smoke = read('scripts/local-submissions-api-smoke.mjs')
-    for marker in ['withSubmissionMutationLock', 'requestId', 'revisionRequestId', 'replayed: true', 'replaceLocalSubmissionQueues']:
+    for marker in ['mutateLocalSubmissionsStore', 'repository.mutate', 'requestId', 'revisionRequestId', 'replayed: true', 'replaceLocalSubmissionQueues']:
         assert marker in store, f'missing transaction/idempotency store marker {marker}'
     assert 'randomUUID()' in repository, 'atomic temp writes need collision-proof names'
     assert 'invalid ${field}' in schema, 'idempotency capability keys need strict validation'
