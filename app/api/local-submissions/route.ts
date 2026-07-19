@@ -50,8 +50,8 @@ function publicSubmissionResponse(submission: LocalSubmissionRecord | null, stat
   return NextResponse.json({ ok: true, api: '/api/local-submissions', submission }, { status });
 }
 
-function submissionRateLimit(request: NextRequest, scope: PublicSubmissionScope) {
-  const decision = publicSubmissionRateLimit(request.headers, scope);
+async function submissionRateLimit(request: NextRequest, scope: PublicSubmissionScope) {
+  const decision = await publicSubmissionRateLimit(request.headers, scope);
   if (decision.allowed) return null;
   return NextResponse.json(
     { ok: false, error: 'too many submission attempts; try again shortly' },
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const access = await resolveOperatorAccess(request);
   if (!access.authorized) {
-    const limited = submissionRateLimit(request, 'create');
+    const limited = await submissionRateLimit(request, 'create');
     if (limited) return limited;
   }
   const body = await readBody(request);
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const access = await resolveOperatorAccess(request);
   if (!access.authorized) {
-    const limited = submissionRateLimit(request, 'resubmit');
+    const limited = await submissionRateLimit(request, 'resubmit');
     if (limited) return limited;
   }
   const body = await readBody(request);

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   consumeRateLimit,
+  hashRateLimitIdentity,
   publicRequestIdentity,
+  publicSubmissionRateLimit,
   type RateLimitBucket,
 } from '../lib/public-submission-rate-limit.ts';
 
@@ -36,4 +38,40 @@ test('expired windows reset and stale buckets are pruned', () => {
   assert.equal(reset.allowed, true);
   assert.equal(reset.remaining, 0);
   assert.equal(buckets.has('stale'), false);
+});
+
+test('durable identity hashes are deterministic and do not retain the address', () => {
+  const first = hashRateLimitIdentity('203.0.113.9', 'server-only-pepper');
+  assert.equal(first, hashRateLimitIdentity('203.0.113.9', 'server-only-pepper'));
+  assert.match(first, /^[0-9a-f]{64}$/);
+  assert.equal(first.includes('203.0.113.9'), false);
+});
+
+test('Supabase adapter consumes the durable atomic rate-limit RPC', async () => {
+  let requestBody = '';
+  const decision = await publicSubmissionRateLimit(
+    new Headers({ 'x-real-ip': '203.0.113.9' }),
+    'create',
+    10_000,
+    {
+      env: {
+        LOOP_LOCAL_SUBMISSIONS_ADAPTER: 'supabase',
+        NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 'server-only-secret',
+        LOOP_LOCAL_PUBLIC_SUBMISSION_RATE_LIMIT: '2',
+        LOOP_LOCAL_PUBLIC_SUBMISSION_RATE_WINDOW_MS: '10000',
+      },
+      fetchImpl: async (_url, init) => {
+        requestBody = String(init?.body);
+        return new Response(JSON.stringify({ allowed: false, remaining: 0, resetAt: 18 }), { status: 200 });
+      },
+    },
+  );
+  const body = JSON.parse(requestBody);
+  assert.equal(body.p_scope, 'create');
+  assert.equal(body.p_limit, 2);
+  assert.equal(body.p_window_seconds, 10);
+  assert.match(body.p_identity_hash, /^[0-9a-f]{64}$/);
+  assert.equal(requestBody.includes('203.0.113.9'), false);
+  assert.deepEqual(decision, { allowed: false, limit: 2, remaining: 0, retryAfterSeconds: 8, resetAt: 18_000 });
 });

@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useSavedEvents } from '@/lib/use-saved-events';
 
 type SavedShareActionsProps = {
   eventId: string;
@@ -11,25 +12,13 @@ type SavedShareActionsProps = {
 };
 
 export function SavedShareActions({ eventId, title, summary, url, calendarHref }: SavedShareActionsProps) {
-  const [savedEventIds, setSavedEventIds] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = JSON.parse(localStorage.getItem('looplocal:saved-events') || '[]');
-      return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
+  const { isSavedEvent, toggleSavedEvent: persistSavedEvent, saveStatus } = useSavedEvents();
   const [shareStatus, setShareStatus] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('looplocal:saved-events', JSON.stringify(savedEventIds));
-  }, [savedEventIds]);
-
-  const isSaved = savedEventIds.includes(eventId);
+  const isSaved = isSavedEvent(eventId);
 
   function toggleSavedEvent() {
-    setSavedEventIds((current) => current.includes(eventId) ? current.filter((id) => id !== eventId) : [eventId, ...current]);
+    void persistSavedEvent(eventId);
   }
 
   async function handleShareEvent() {
@@ -54,6 +43,7 @@ export function SavedShareActions({ eventId, title, summary, url, calendarHref }
         <a href={calendarHref}>Add to calendar</a>
       </div>
       {shareStatus ? <p className="share-status" role="status">{shareStatus}</p> : null}
+      {saveStatus ? <p className="share-status" role="status">{saveStatus}</p> : null}
     </>
   );
 }

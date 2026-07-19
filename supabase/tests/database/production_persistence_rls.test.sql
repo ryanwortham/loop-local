@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(36);
 
 select has_column('public', 'profiles', 'app_role', 'profiles has explicit app_role');
 select has_table('public', 'local_submissions', 'local_submissions exists');
@@ -9,6 +9,7 @@ select has_table('public', 'submission_review_events', 'submission_review_events
 select has_table('public', 'event_category_overrides', 'event_category_overrides exists');
 select has_table('public', 'operator_audit_logs', 'operator_audit_logs exists');
 select has_table('public', 'public_rate_limits', 'public_rate_limits exists');
+select has_table('public', 'saved_events', 'saved_events exists');
 select has_function('public', 'is_loop_operator', array[]::text[], 'operator predicate exists');
 select has_function('public', 'consume_public_rate_limit', array['text', 'text', 'integer', 'integer'], 'atomic rate-limit function exists');
 
@@ -51,8 +52,16 @@ where id = '33333333-3333-4333-8333-333333333333';
 alter table public.profiles enable trigger profiles_prevent_admin_self_elevation;
 
 insert into public.events (id, title, status, starts_at)
-values ('44444444-4444-4444-8444-444444444444', 'RLS test event', 'approved', now() + interval '1 day')
+values
+  ('44444444-4444-4444-8444-444444444444', 'RLS test event', 'approved', now() + interval '1 day'),
+  ('55555555-5555-4555-8555-555555555555', 'Second RLS test event', 'approved', now() + interval '2 days')
 on conflict (id) do nothing;
+
+insert into public.saved_events (user_id, event_id)
+values
+  ('11111111-1111-4111-8111-111111111111', '44444444-4444-4444-8444-444444444444'),
+  ('22222222-2222-4222-8222-222222222222', '44444444-4444-4444-8444-444444444444')
+on conflict do nothing;
 
 insert into public.local_submissions (
   id, owner_user_id, status_token_hash, status, submission_data
@@ -66,6 +75,14 @@ select set_config('request.jwt.claim.sub', '11111111-1111-4111-8111-111111111111
 
 select is((select count(*)::integer from public.local_submissions), 1, 'a user sees only their own submission');
 select is((select id from public.local_submissions limit 1), 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'::uuid, 'a user cannot enumerate another submission');
+select is((select count(*)::integer from public.saved_events), 1, 'a user sees only their own saved events');
+select is((select user_id from public.saved_events limit 1), auth.uid(), 'saved-event ownership is scoped to auth.uid');
+select is(
+  pg_temp.try_sql($attempt$insert into public.saved_events (user_id, event_id)
+    values ('22222222-2222-4222-8222-222222222222', '55555555-5555-4555-8555-555555555555')$attempt$),
+  false,
+  'a user cannot save an event for another account'
+);
 
 update public.profiles
 set app_role = 'operator', is_admin = true
@@ -111,6 +128,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', '33333333-3333-4333-8333-333333333333', true);
 
 select is((select count(*)::integer from public.local_submissions where coalesce((submission_data ->> 'repositoryDeleted')::boolean, false) = false), 2, 'an operator can read the review queue');
+select is((select count(*)::integer from public.saved_events), 0, 'operator role does not bypass private saved-event ownership');
 select ok(
   pg_temp.try_sql($attempt$insert into public.event_category_overrides
     (event_id, category, source_category, reviewed_by)

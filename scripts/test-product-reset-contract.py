@@ -425,14 +425,12 @@ def test_loop_local_saved_and_share_interactions_are_real_not_static_icons():
     shell = read('components/app-shell.tsx')
     route = read('app/events/[slug]/page.tsx') + read('components/event-detail-client-actions.tsx')
     css = read('app/globals.css')
+    saved = read('lib/use-saved-events.ts') + read('lib/saved-events.ts')
     for marker in [
         'saved-share-interaction-pass',
-        'useEffect',
-        'savedEventIds',
+        'useSavedEvents',
         'toggleSavedEvent',
         'isSavedEvent',
-        'localStorage.setItem',
-        'looplocal:saved-events',
         'handleShareEvent',
         'navigator.share',
         'navigator.clipboard.writeText',
@@ -441,10 +439,21 @@ def test_loop_local_saved_and_share_interactions_are_real_not_static_icons():
     ]:
         assert marker in shell, f'missing saved/share homepage marker {marker}'
     for marker in [
+        'useEffect',
+        'savedEventIds',
+        "from('saved_events')",
+        'onAuthStateChange',
+        'localStorage.setItem',
+        'looplocal:saved-events',
+        'mergeSavedEventIds',
+        'persistedEventId',
+    ]:
+        assert marker in saved, f'missing durable saved-event marker {marker}'
+    for marker in [
         'event-detail-client-actions',
         'SavedShareActions',
         'saved-share-interaction-pass',
-        'looplocal:saved-events',
+        'useSavedEvents',
         'navigator.share',
         'navigator.clipboard.writeText',
     ]:

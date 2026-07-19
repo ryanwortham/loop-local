@@ -17,7 +17,7 @@
     "test:category-overrides": "node --test scripts/event-category-overrides.test.ts",
     "test:public-rate-limit": "node --test scripts/public-submission-rate-limit.test.ts",
     "test:operator-auth": "node --test scripts/operator-auth.test.ts",
-    "test:repository": "node --test scripts/local-submissions-repository-adapter.test.ts scripts/local-submissions-repository-contract.test.ts scripts/supabase-local-submissions-repository.test.ts scripts/local-submissions-media-storage.test.ts scripts/local-submissions-media-migration.test.ts scripts/local-submissions-import-reconciliation.test.ts",
+    "test:repository": "node --test scripts/local-submissions-repository-adapter.test.ts scripts/local-submissions-repository-contract.test.ts scripts/supabase-local-submissions-repository.test.ts scripts/local-submissions-media-storage.test.ts scripts/local-submissions-media-migration.test.ts scripts/saved-events.test.ts scripts/local-submissions-import-reconciliation.test.ts",
     "test:repository:local-db": "bash scripts/test-supabase-repository-local-contract.sh",
     "repository:import": "node scripts/import-local-submissions-to-supabase.ts --dry-run",
     "repository:import:apply": "node scripts/import-local-submissions-to-supabase.ts --apply",
