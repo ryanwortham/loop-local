@@ -18,6 +18,7 @@ export type ReliableFeedItem = {
   summary?: string;
   source?: string;
   ticketUrl?: string;
+  venueUrl?: string;
   website?: string;
   price?: string;
   image_url?: string;
@@ -78,6 +79,12 @@ type SupabaseEventRow = {
   price?: unknown;
   price_text?: unknown;
   image_url?: unknown;
+};
+
+type SupabaseBusinessRow = {
+  name?: unknown;
+  slug?: unknown;
+  website?: unknown;
 };
 
 class FeedRequestError extends Error {
@@ -184,6 +191,54 @@ function buildEventsUrl(config: FeedConfig, limit: number, currentIso: string): 
   return url;
 }
 
+function buildBusinessesUrl(config: FeedConfig): URL {
+  const url = new URL('/rest/v1/businesses', config.baseUrl);
+  url.searchParams.set('select', 'name,slug,website');
+  url.searchParams.set('limit', '500');
+  return url;
+}
+
+async function enrichWithBusinessMetadata(
+  config: FeedConfig,
+  fetchImpl: FeedFetch,
+  signal: AbortSignal,
+  items: ReliableFeedItem[],
+): Promise<ReliableFeedItem[]> {
+  if (!items.some((item) => item.businessSlug)) return items;
+
+  try {
+    const response = await fetchImpl(buildBusinessesUrl(config), {
+      headers: {
+        accept: 'application/json',
+        apikey: config.anonKey,
+        authorization: `Bearer ${config.anonKey}`,
+      },
+      cache: 'no-store',
+      signal,
+    });
+    if (!response.ok) return items;
+    const body: unknown = await response.json();
+    if (!Array.isArray(body)) return items;
+    const businesses = new Map<string, { name?: string; website?: string }>();
+    for (const raw of body) {
+      const row = raw as SupabaseBusinessRow;
+      const slug = stringValue(row.slug);
+      if (slug) businesses.set(slug, { name: stringValue(row.name), website: stringValue(row.website) });
+    }
+    return items.map((item) => {
+      const business = item.businessSlug ? businesses.get(item.businessSlug) : undefined;
+      if (!business) return item;
+      return {
+        ...item,
+        business: business.name || item.business,
+        venueUrl: item.venueUrl || business.website,
+      };
+    });
+  } catch {
+    return items;
+  }
+}
+
 async function requestFeed(config: FeedConfig, fetchImpl: FeedFetch, limit: number, currentIso: string): Promise<{ items: ReliableFeedItem[]; count: number; status: number }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
@@ -204,7 +259,8 @@ async function requestFeed(config: FeedConfig, fetchImpl: FeedFetch, limit: numb
     }
     const body: unknown = await response.json();
     if (!Array.isArray(body)) throw new FeedRequestError('Upstream returned an invalid feed payload', false, response.status);
-    const items = body.map((row) => normalizeRow(row as SupabaseEventRow)).filter((item): item is ReliableFeedItem => Boolean(item));
+    const normalizedItems = body.map((row) => normalizeRow(row as SupabaseEventRow)).filter((item): item is ReliableFeedItem => Boolean(item));
+    const items = await enrichWithBusinessMetadata(config, fetchImpl, controller.signal, normalizedItems);
     return { items, count: totalFromContentRange(response.headers.get('content-range'), items.length), status: response.status };
   } catch (error) {
     if (error instanceof FeedRequestError) throw error;

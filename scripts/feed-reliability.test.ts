@@ -41,11 +41,12 @@ test('resolveFeedConfig validates the stable Supabase source and bounded reliabi
 });
 
 test('fetchFeedWithReliability retries a transient failure and reports a fresh normalized feed', async () => {
-  let calls = 0;
+  let eventCalls = 0;
   const fetchImpl: FeedFetch = async (input) => {
-    calls += 1;
+    if (String(input).includes('/rest/v1/businesses')) return response([]);
+    eventCalls += 1;
     assert.match(String(input), /\/rest\/v1\/events/);
-    if (calls === 1) throw new TypeError('temporary network failure');
+    if (eventCalls === 1) throw new TypeError('temporary network failure');
     return response([
       {
         id: 'event-1',
@@ -75,7 +76,7 @@ test('fetchFeedWithReliability retries a transient failure and reports a fresh n
     limit: 24,
   });
 
-  assert.equal(calls, 2);
+  assert.equal(eventCalls, 2);
   assert.equal(feed.health.status, 'fresh');
   assert.equal(feed.health.attempts, 2);
   assert.equal(feed.count, 1);
@@ -119,6 +120,43 @@ test('the Supabase request excludes events that have already ended', async () =>
     new URL(requestedUrl).searchParams.get('or'),
     '(starts_at.gte.2026-07-19T12:00:00.000Z,ends_at.gte.2026-07-19T12:00:00.000Z)',
   );
+});
+
+test('matching public business metadata enriches event display names and fallback links', async () => {
+  const requestedPaths: string[] = [];
+  const enrichmentFetch: FeedFetch = async (input) => {
+    const url = new URL(String(input));
+    requestedPaths.push(`${url.pathname}?${url.searchParams.toString()}`);
+    if (url.pathname.endsWith('/events')) {
+      return response([{
+        id: 'event-2',
+        title: 'Neighborhood Night',
+        business_slug: 'Sample Cafe ',
+        category: 'Community',
+        status: 'approved',
+        starts_at: '2026-07-20T18:00:00Z',
+        venue: 'Sample Cafe',
+        city: 'Charlotte',
+      }], 200, '0-0/1');
+    }
+    return response([{
+      slug: 'Sample Cafe ',
+      name: 'Sample Café',
+      website: 'https://sample.example/events',
+    }]);
+  };
+
+  const feed = await fetchFeedWithReliability({
+    config: timeoutConfig,
+    cache: {},
+    fetchImpl: enrichmentFetch,
+    now: () => Date.parse('2026-07-19T12:00:00Z'),
+  });
+
+  assert.equal(feed.health.status, 'fresh');
+  assert.equal(feed.items[0]?.business, 'Sample Café');
+  assert.equal(feed.items[0]?.venueUrl, 'https://sample.example/events');
+  assert.equal(requestedPaths.some((path) => path.startsWith('/rest/v1/businesses?')), true);
 });
 
 test('a request that exceeds the configured timeout is aborted and reported unavailable', async () => {
