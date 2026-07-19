@@ -79,12 +79,35 @@ async function main() {
   response = await request('', { method: 'POST', body: JSON.stringify({}) });
   assertStatus(response, 400, 'missing create payload');
 
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Missing Category Smoke', eventTitle: 'Missing Category Event', eventDate: '2026-09-21' }) });
+  assertStatus(response, 400, 'event category completeness');
+  data = await json(response);
+  assert(data.error === 'event category is required', 'event submissions should require a category');
+
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Missing Date Smoke', eventTitle: 'Missing Date Event', eventCategory: 'Community' }) });
+  assertStatus(response, 400, 'event date completeness');
+  data = await json(response);
+  assert(data.error === 'event date is required', 'event submissions should require a date');
+
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Entity Only Smoke' }) });
+  assertStatus(response, 201, 'non-event entity submission remains valid');
+  data = await json(response);
+  const entityOnlyId = data.submission.id;
+  response = await request('', {
+    method: 'PATCH',
+    headers: operatorHeaders({ 'content-type': 'application/json' }),
+    body: JSON.stringify({ id: entityOnlyId, action: 'publish' }),
+  });
+  assertStatus(response, 400, 'incomplete entity-only submission cannot publish as an event');
+  data = await json(response);
+  assert(data.error === 'submission is not publish-ready: Event title, Event date, Event category', 'publish readiness should list missing fields');
+
   response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Unknown Category Smoke', eventTitle: 'Unknown Category Event', eventCategory: 'Made Up Category' }) });
   assertStatus(response, 400, 'unknown event category');
   data = await json(response);
   assert(data.error === 'invalid event category', 'unknown category should return a stable validation error');
 
-  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Bad URL Smoke', eventTitle: 'Bad URL Event', website: 'javascript:alert(1)' }) });
+  response = await request('', { method: 'POST', body: JSON.stringify({ entityName: 'Bad URL Smoke', eventTitle: 'Bad URL Event', eventDate: '2026-09-21', eventCategory: 'Community', website: 'javascript:alert(1)' }) });
   assertStatus(response, 201, 'invalid URL should be rejected but nonfatal');
   data = await json(response);
   assert(!data.submission.website, 'invalid URL should be rejected');
@@ -231,7 +254,7 @@ async function main() {
 
   response = await request('', {
     method: 'POST',
-    body: JSON.stringify({ entityName: 'Delete Smoke Org', eventTitle: 'Delete Smoke Event' }),
+    body: JSON.stringify({ entityName: 'Delete Smoke Org', eventTitle: 'Delete Smoke Event', eventDate: '2026-09-22', eventCategory: 'Community' }),
   });
   assertStatus(response, 201, 'create delete target');
   data = await json(response);

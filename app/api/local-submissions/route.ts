@@ -112,6 +112,7 @@ export async function PATCH(request: NextRequest) {
   if (cleanBody.action === 'publish') {
     // Legacy operator contract marker: body.action === 'publish'.
     const result = await publishLocalSubmission(cleanBody.id);
+    if ('error' in result && result.error) return error(result.error);
     if (!result.submission) return error('submission not found', 404);
     return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, published: result.published, ...result.store });
   }

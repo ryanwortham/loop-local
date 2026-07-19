@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { submissionPublicationQuality } from '../lib/local-submission-quality.ts';
+import type { LocalSubmissionRecord } from '../lib/local-submissions-store.ts';
+
+function submission(overrides: Partial<LocalSubmissionRecord> = {}): LocalSubmissionRecord {
+  return {
+    id: 'quality-1',
+    entityName: 'Quality Venue',
+    eventTitle: 'Quality Event',
+    eventDate: '2026-09-21',
+    eventCategory: 'Arts & Culture',
+    status: 'pending_review',
+    submittedAt: '2026-07-19T00:00:00.000Z',
+    ...overrides,
+  };
+}
+
+test('complete submissions are publishable with an honest bundled-art fallback', () => {
+  const quality = submissionPublicationQuality(submission());
+  assert.equal(quality.canPublish, true);
+  assert.deepEqual(quality.missingFields, []);
+  assert.equal(quality.mediaMode, 'bundled');
+  assert.match(quality.previewImageUrl, /^\/event-art\/arts-culture\.svg$/);
+  assert.equal(quality.mediaLabel, 'Bundled fallback art');
+});
+
+test('publication readiness identifies every missing event field', () => {
+  const quality = submissionPublicationQuality(submission({ eventTitle: undefined, eventDate: undefined, eventCategory: undefined }));
+  assert.equal(quality.canPublish, false);
+  assert.deepEqual(quality.missingFields, ['Event title', 'Event date', 'Event category']);
+});
+
+test('event imagery wins over a logo while a logo remains a visible secondary fallback', () => {
+  const logo = submissionPublicationQuality(submission({ logoDataUrl: 'data:image/png;base64,logo' }));
+  assert.equal(logo.mediaMode, 'logo');
+  assert.equal(logo.previewImageUrl, 'data:image/png;base64,logo');
+  assert.equal(logo.mediaLabel, 'Logo fallback');
+
+  const eventImage = submissionPublicationQuality(submission({
+    logoDataUrl: 'data:image/png;base64,logo',
+    eventImageDataUrl: 'data:image/jpeg;base64,event',
+  }));
+  assert.equal(eventImage.mediaMode, 'event_image');
+  assert.equal(eventImage.previewImageUrl, 'data:image/jpeg;base64,event');
+  assert.equal(eventImage.mediaLabel, 'Custom event image');
+});

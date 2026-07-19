@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { eventSlug, type LiveFeedItem } from '@/lib/live-feed';
+import { submissionPublicationQuality } from '@/lib/local-submission-quality';
 import { getLocalSubmissionsRepository } from '@/lib/local-submissions/repository';
 import { sanitizeLocalSubmissionMedia } from '@/lib/local-submissions/schemas';
 
@@ -258,6 +259,15 @@ export async function publishLocalSubmission(id: string) {
   const store = await readLocalSubmissionsStore();
   const submission = store.pendingSubmissions.find((item) => item.id === id);
   if (!submission) return { store, submission: null, published: null };
+  const quality = submissionPublicationQuality(submission);
+  if (!quality.canPublish) {
+    return {
+      store,
+      submission,
+      published: null,
+      error: `submission is not publish-ready: ${quality.missingFields.join(', ')}`,
+    };
+  }
   const publishedSubmission = appendSubmissionHistory({ ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() }, 'published_local');
   // review-history-timeline-pass marker: action: 'published_local'
   const published = submissionToFeedItem(publishedSubmission);

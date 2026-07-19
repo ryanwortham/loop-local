@@ -2038,6 +2038,48 @@ button { -webkit-tap-highlight-color: transparent; }
   padding: 12px;
   background: #FFFFFF;
 }
+.operator-quality-summary {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin: 8px 0 4px;
+  padding: 10px;
+  border: 1px solid rgba(148,163,184,.22);
+  border-radius: 16px;
+  background: #F8FAFC;
+}
+.operator-quality-preview {
+  width: 88px;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  background-color: #E2E8F0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(15,23,42,.1);
+}
+.operator-quality-preview img {
+  object-fit: cover;
+}
+.operator-quality-summary > div:last-child {
+  min-width: 0;
+}
+.operator-quality-summary strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: .82rem;
+}
+.pending-submission-actions button {
+  min-height: 44px;
+  flex: 1 1 132px;
+}
+.pending-submission-actions button:disabled {
+  color: #64748B;
+  background: #E2E8F0;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
 .pending-submission-card span {
   width: fit-content;
   border-radius: 999px;

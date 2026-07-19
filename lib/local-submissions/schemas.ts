@@ -96,6 +96,8 @@ export function validateCreateLocalSubmissionInput(input: unknown): ValidationRe
   const cleaned = cleanSubmissionRecord(input);
   if (!cleaned.ok) return cleaned;
   if (!cleaned.value.eventTitle && !cleaned.value.entityName) return { ok: false, error: 'eventTitle or entityName is required' };
+  if (cleaned.value.eventTitle && !cleaned.value.eventCategory) return { ok: false, error: 'event category is required' };
+  if (cleaned.value.eventTitle && !cleaned.value.eventDate) return { ok: false, error: 'event date is required' };
   return cleaned;
 }
 

@@ -1751,6 +1751,28 @@ def test_stable_supabase_feed_reliability_replaces_temporary_tunnel():
         assert marker in page + shell, f'missing consumer feed state marker {marker}'
 
 
+def test_loop_local_operator_review_surfaces_publish_readiness_and_media_quality():
+    quality = read('lib/local-submission-quality.ts')
+    panel = read('components/operator-review-panel.tsx')
+    for marker in [
+        'submissionPublicationQuality',
+        'missingFields',
+        'mediaMode',
+        'previewImageUrl',
+        'canPublish',
+    ]:
+        assert marker in quality, f'missing publication quality marker {marker}'
+    for marker in [
+        'submissionPublicationQuality(submission)',
+        'quality.previewImageUrl',
+        'quality.mediaLabel',
+        'disabled={!quality.canPublish}',
+        'Complete required fields',
+        'Publish with fallback art',
+    ]:
+        assert marker in panel, f'operator review missing quality marker {marker}'
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1801,4 +1823,5 @@ if __name__ == '__main__':
     test_loop_local_mobile_shell_and_post_local_true_wizard_are_corrected()
     test_stable_supabase_feed_reliability_replaces_temporary_tunnel()
     test_old_incremental_design_artifacts_removed()
+    test_loop_local_operator_review_surfaces_publish_readiness_and_media_quality()
     print('loop_local_complete_frontend_rebuild_contract_ok')

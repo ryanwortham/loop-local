@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import type { LiveFeedItem } from '@/lib/live-feed';
+import { submissionPublicationQuality } from '@/lib/local-submission-quality';
 import type { LocalSubmissionRecord } from '@/lib/local-submissions-store';
 
 type ReviewQueueState = {
@@ -90,14 +92,19 @@ export function OperatorReviewPanel() {
           <div className="pending-submission-grid">
             {queue.pendingSubmissions.map((submission) => {
               const note = reviewerNotes[submission.id] ?? submission.reviewerNote ?? '';
+              const quality = submissionPublicationQuality(submission);
               return <article className="pending-submission-card" key={submission.id}>
                 <span>{submission.status || 'pending_review'}</span>
                 <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
                 <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
                 <small>{submission.entityName || 'Local contributor'}</small>
+                <div className="operator-quality-summary">
+                  <div className="operator-quality-preview"><Image alt={`${quality.mediaLabel} preview`} src={quality.previewImageUrl} fill sizes="88px" unoptimized /></div>
+                  <div><strong>{quality.mediaLabel}</strong><p>{quality.canPublish ? 'Required event details complete' : `Missing ${quality.missingFields.join(', ')}`}</p></div>
+                </div>
                 <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={note} onChange={(event) => setReviewerNotes((current) => ({ ...current, [submission.id]: event.target.value }))} placeholder="Required before requesting changes" rows={2} /></label>
                 <div className="operator-submitter-link-pass pending-submitter-link-row"><Link href={submitterStatusHref(submission)}>Open status page</Link><button type="button" onClick={() => copySubmitterLink(submission)}>Copy submitter link</button></div>
-                <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => mutateReview({ id: submission.id, status: 'needs_changes', reviewerNote: note }, 'Requested changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => mutateReview({ id: submission.id, status: 'approved_local' }, 'Approved only')}>Approve only</button><button className="publish-local" type="button" onClick={() => mutateReview({ id: submission.id, action: 'publish' }, 'Published locally')}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeReview(submission.id)}>Remove</button></div>
+                <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => mutateReview({ id: submission.id, status: 'needs_changes', reviewerNote: note }, 'Requested changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => mutateReview({ id: submission.id, status: 'approved_local' }, 'Approved only')}>Approve only</button><button className="publish-local" type="button" disabled={!quality.canPublish} title={quality.canPublish ? quality.mediaLabel : `Missing ${quality.missingFields.join(', ')}`} onClick={() => mutateReview({ id: submission.id, action: 'publish' }, 'Published locally')}>{!quality.canPublish ? 'Complete required fields' : quality.mediaMode === 'bundled' ? 'Publish with fallback art' : 'Publish locally'}</button><button className="remove-local" type="button" onClick={() => removeReview(submission.id)}>Remove</button></div>
               </article>;
             })}
           </div>
