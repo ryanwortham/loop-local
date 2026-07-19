@@ -17,7 +17,6 @@ type StatusApiPayload = {
 
 type SubmissionStatusLiveCardProps = {
   submissionId: string;
-  statusToken?: string;
   initialStatus: StatusApiPayload;
 };
 
@@ -41,6 +40,22 @@ function dateLine(value?: string) {
   return value ? new Date(value).toLocaleString() : '';
 }
 
+function normalizeStatusCapability(value?: string | null): string {
+  return value?.match(/[a-f0-9]{32}/i)?.[0] || '';
+}
+
+function statusCapabilityStorageKey(submissionId: string) {
+  return `looplocal:status-token:${submissionId}`;
+}
+
+function storedStatusCapability(submissionId: string): string {
+  try {
+    return sessionStorage.getItem(statusCapabilityStorageKey(submissionId)) || '';
+  } catch {
+    return '';
+  }
+}
+
 function historyLabelFor(action?: string) {
   return {
     submitted: 'Submitted for review',
@@ -52,8 +67,10 @@ function historyLabelFor(action?: string) {
   }[action || ''] || 'Updated';
 }
 
-export function SubmissionStatusLiveCard({ submissionId, statusToken = '', initialStatus }: SubmissionStatusLiveCardProps) {
+export function SubmissionStatusLiveCard({ submissionId, initialStatus }: SubmissionStatusLiveCardProps) {
   const [statusData, setStatusData] = useState<StatusApiPayload>(initialStatus);
+  const [capabilityToken, setCapabilityToken] = useState('');
+  const [capabilityReady, setCapabilityReady] = useState(false);
   const [lastChecked, setLastChecked] = useState<string>('Just now');
   const [refreshError, setRefreshError] = useState<string>('');
 
@@ -69,11 +86,33 @@ export function SubmissionStatusLiveCard({ submissionId, statusToken = '', initi
 
   const publishedHref = useMemo(() => published ? eventDetailPath(published) : '', [published]);
 
+  useEffect(() => {
+    const hashToken = normalizeStatusCapability(new URLSearchParams(window.location.hash.slice(1)).get('statusToken'));
+    const legacyQueryToken = normalizeStatusCapability(new URLSearchParams(window.location.search).get('statusToken'));
+    const nextToken = hashToken || legacyQueryToken || normalizeStatusCapability(storedStatusCapability(submissionId));
+    if (nextToken) {
+      try {
+        sessionStorage.setItem(statusCapabilityStorageKey(submissionId), nextToken);
+      } catch {
+        // The in-memory capability still works when session storage is unavailable.
+      }
+    }
+    window.history.replaceState(null, '', window.location.pathname);
+    const readyTimer = window.setTimeout(() => {
+      setCapabilityToken(nextToken);
+      setCapabilityReady(true);
+    }, 0);
+    return () => window.clearTimeout(readyTimer);
+  }, [submissionId]);
+
   const refreshSubmissionStatus = useCallback(async function refreshSubmissionStatus() {
     try {
       // submitter-status-live-refresh-pass legacy marker: `/api/local-submissions/${encodeURIComponent(submissionId)}`.
-      const url = `/api/local-submissions/${encodeURIComponent(submissionId)}${statusToken ? `?statusToken=${encodeURIComponent(statusToken)}` : ''}`;
-      const response = await fetch(url, { cache: 'no-store' });
+      const url = `/api/local-submissions/${encodeURIComponent(submissionId)}`;
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: capabilityToken ? { 'x-loop-local-status-token': capabilityToken } : undefined,
+      });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || 'Status refresh failed');
       setStatusData(data);
@@ -82,14 +121,31 @@ export function SubmissionStatusLiveCard({ submissionId, statusToken = '', initi
     } catch (error) {
       setRefreshError(error instanceof Error ? error.message : 'Status refresh failed');
     }
-  }, [submissionId, statusToken]);
+  }, [submissionId, capabilityToken]);
 
   useEffect(() => {
+    if (!capabilityReady) return;
+    const initialRefresh = window.setTimeout(() => void refreshSubmissionStatus(), 0);
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') void refreshSubmissionStatus();
     }, 5000);
-    return () => clearInterval(interval);
-  }, [refreshSubmissionStatus, submissionId]);
+    return () => {
+      window.clearTimeout(initialRefresh);
+      clearInterval(interval);
+    };
+  }, [capabilityReady, refreshSubmissionStatus]);
+
+  if (!submission && !published) {
+    return (
+      <section className="ll-card post-flow-card post-wizard-stage-card submitter-status-live-refresh-pass" aria-live="polite">
+        <p className="ll-kicker">Post Local status</p>
+        <h1>Submission status</h1>
+        <p>Submission ID: <code>{submissionId}</code></p>
+        {refreshError ? <p role="alert" className="form-alert">{refreshError}</p> : <p>Loading secure submission status…</p>}
+        <div className="ll-submit-actions"><Link href="/post-local">Back to Post Local</Link></div>
+      </section>
+    );
+  }
 
   return (
     <section className="ll-card post-flow-card post-wizard-stage-card submitter-status-live-refresh-pass" aria-live="polite">
@@ -122,7 +178,7 @@ export function SubmissionStatusLiveCard({ submissionId, statusToken = '', initi
       </section>
       <div className="ll-submit-actions">
         <Link href="/post-local">Back to Post Local</Link>
-        {status === 'needs_changes' ? <Link className="primary-action submitter-revision-flow-pass" href={`/post-local?revisionId=${encodeURIComponent(submissionId)}${statusToken ? `&statusToken=${encodeURIComponent(statusToken)}` : ''}`}>Revise submission</Link> : null}
+        {status === 'needs_changes' ? <Link className="primary-action submitter-revision-flow-pass" href={`/post-local?revisionId=${encodeURIComponent(submissionId)}${capabilityToken ? `#statusToken=${encodeURIComponent(capabilityToken)}` : ''}`}>Revise submission</Link> : null}
         {published && publishedHref ? <Link className="primary-action" href={publishedHref}>View published event</Link> : null}
       </div>
     </section>

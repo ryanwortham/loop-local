@@ -11,6 +11,8 @@ export type ReliableFeedItem = {
   status?: string;
   startsAt?: string | null;
   endsAt?: string | null;
+  date?: string;
+  time?: string;
   location?: string;
   address?: string;
   latitude?: number;
@@ -140,11 +142,24 @@ function numberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+function utcDateTimeParts(value: unknown): { date?: string; time?: string } {
+  const startsAt = stringValue(value);
+  if (!startsAt) return {};
+  const parsed = new Date(startsAt);
+  if (Number.isNaN(parsed.getTime())) return {};
+  return {
+    date: parsed.toISOString().slice(0, 10),
+    time: `${parsed.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' })} UTC`,
+  };
+}
+
 function normalizeRow(row: SupabaseEventRow): ReliableFeedItem | null {
   const id = stringValue(row.id);
   const title = stringValue(row.title);
   if (!id || !title) return null;
   const website = stringValue(row.website);
+  const startsAt = stringValue(row.starts_at) || null;
+  const displayDateTime = utcDateTimeParts(startsAt);
   return {
     id,
     title,
@@ -153,8 +168,9 @@ function normalizeRow(row: SupabaseEventRow): ReliableFeedItem | null {
     businessSlug: stringValue(row.business_slug),
     category: stringValue(row.category) || 'Community',
     status: stringValue(row.status),
-    startsAt: stringValue(row.starts_at) || null,
+    startsAt,
     endsAt: stringValue(row.ends_at) || null,
+    ...displayDateTime,
     location: stringValue(row.venue) || stringValue(row.location_name),
     address: stringValue(row.address),
     latitude: numberValue(row.latitude),

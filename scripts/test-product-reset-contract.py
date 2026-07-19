@@ -514,285 +514,6 @@ def test_loop_local_post_local_draft_validation_and_live_preview_are_real():
         assert preserved in post, f'functional draft pass removed preserved field/functionality {preserved}'
 
 
-def test_loop_local_pending_post_submissions_surface_in_discovery_review_panel():
-    shell = read('components/app-shell.tsx')
-    post = read('components/post-local-wizard.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'post-submission-review-panel-pass',
-        'LocalSubmission',
-        'pendingSubmissions',
-        'showSubmissionPanel',
-        'loadPendingSubmissions',
-        'clearPendingSubmissions',
-        'looplocal:post-local-submissions',
-        'pending-submissions-panel',
-        'Review queue',
-        'Pending local submissions',
-        'Open Post Local',
-    ]:
-        assert marker in shell, f'missing pending submission review panel marker {marker}'
-    for marker in [
-        'looplocal:post-local-submissions',
-        'pending_review',
-    ]:
-        assert marker in post, f'Post Local submission storage marker missing {marker}'
-    for marker in [
-        'post-submission-review-panel-pass',
-        '.pending-submissions-panel',
-        '.pending-submission-card',
-        '.pending-submission-empty',
-    ]:
-        assert marker in css, f'missing pending submission CSS marker {marker}'
-    for preserved in ['saved-events-panel', 'showSavedPanel', 'handleTabSelect', 'eventDetailPath(item)', 'getLiveFeed']:
-        assert preserved in shell + read('lib/live-feed.ts') + read('lib/live-feed-server.ts'), f'pending submission panel removed preserved behavior {preserved}'
-
-
-def test_loop_local_local_publish_workflow_approves_submissions_into_discovery_feed():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'local-publish-workflow-pass',
-        'approvedLocalItems',
-        'localSubmissionToFeedItem',
-        'approveLocalSubmission',
-        'removeLocalSubmission',
-        'combinedFeedItems',
-        'looplocal:approved-local-events',
-        'Approve to discovery',
-        'Remove',
-        'Locally approved',
-        'local-approved-badge',
-    ]:
-        assert marker in shell, f'missing local publish workflow marker {marker}'
-    for marker in [
-        'local-publish-workflow-pass',
-        '.local-approved-badge',
-        '.pending-submission-actions button.approve-local',
-        '.pending-submission-actions button.remove-local',
-    ]:
-        assert marker in css, f'missing local publish workflow CSS marker {marker}'
-    for preserved in [
-        'feedItems',
-        'getLiveFeed',
-        'looplocal:post-local-submissions',
-        'pending-submissions-panel',
-        'saved-events-panel',
-        'eventDetailPath(item)',
-        'sortItems(filtered, sortBy)',
-    ]:
-        assert preserved in shell + read('lib/live-feed.ts') + read('lib/live-feed-server.ts'), f'local publish workflow removed preserved behavior {preserved}'
-
-
-def test_loop_local_operator_handoff_exports_local_review_queue_json():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'operator-handoff-export-pass',
-        'buildOperatorHandoffPayload',
-        'copyOperatorHandoff',
-        'downloadOperatorHandoff',
-        'operatorExportStatus',
-        'loop-local-review-queue.json',
-        'Copy queue JSON',
-        'Download JSON',
-        'Operator handoff',
-        'pendingCount',
-        'approvedCount',
-        'navigator.clipboard.writeText',
-        'URL.createObjectURL',
-    ]:
-        assert marker in shell, f'missing operator handoff export marker {marker}'
-    for marker in [
-        'operator-handoff-export-pass',
-        '.operator-handoff-card',
-        '.operator-handoff-actions',
-        '.operator-export-status',
-    ]:
-        assert marker in css, f'missing operator handoff export CSS marker {marker}'
-    for preserved in [
-        'looplocal:post-local-submissions',
-        'looplocal:approved-local-events',
-        'approveLocalSubmission',
-        'removeLocalSubmission',
-        'combinedFeedItems',
-    ]:
-        assert preserved in shell, f'operator handoff export removed preserved local workflow {preserved}'
-
-
-def test_loop_local_operator_handoff_import_restores_review_queue_json():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'operator-handoff-import-pass',
-        'importOperatorHandoff',
-        'parseOperatorHandoffPayload',
-        'operatorImportText',
-        'setOperatorImportText',
-        'Import queue JSON',
-        'Paste exported review queue JSON',
-        'pendingSubmissions: parsed.pendingSubmissions',
-        'approvedLocalEvents: parsed.approvedLocalEvents',
-        'localStorage.setItem(\'looplocal:post-local-submissions\'',
-        'localStorage.setItem(\'looplocal:approved-local-events\'',
-    ]:
-        assert marker in shell, f'missing operator handoff import marker {marker}'
-    for marker in [
-        'operator-handoff-import-pass',
-        '.operator-import-area',
-        '.operator-import-area textarea',
-    ]:
-        assert marker in css, f'missing operator handoff import CSS marker {marker}'
-    for preserved in [
-        'buildOperatorHandoffPayload',
-        'copyOperatorHandoff',
-        'downloadOperatorHandoff',
-        'approveLocalSubmission',
-        'combinedFeedItems',
-    ]:
-        assert preserved in shell, f'operator import removed preserved export/local workflow {preserved}'
-
-
-def test_loop_local_review_queue_status_lifecycle_controls_are_local_and_exported():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'review-status-lifecycle-pass',
-        'SubmissionStatus',
-        'updateLocalSubmissionStatus',
-        'needs_changes',
-        'approved_local',
-        'published_local',
-        'Needs changes',
-        'Approve only',
-        'Publish locally',
-        'statusUpdatedAt',
-        'reviewStatusCounts',
-        'needsChangesCount',
-        'publishedCount',
-    ]:
-        assert marker in shell, f'missing review status lifecycle marker {marker}'
-    for marker in [
-        'review-status-lifecycle-pass',
-        '.review-status-summary',
-        '.pending-submission-actions button.needs-changes-local',
-        '.pending-submission-actions button.approve-only-local',
-        '.pending-submission-actions button.publish-local',
-    ]:
-        assert marker in css, f'missing review status lifecycle CSS marker {marker}'
-    for preserved in [
-        'buildOperatorHandoffPayload',
-        'pendingSubmissions',
-        'approveLocalSubmission',
-        'removeLocalSubmission',
-        'operator-handoff-import-pass',
-        'looplocal:post-local-submissions',
-    ]:
-        assert preserved in shell, f'review status lifecycle removed preserved local workflow {preserved}'
-
-
-def test_loop_local_reviewer_notes_attach_to_local_submissions_and_handoff():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'reviewer-notes-pass',
-        'reviewerNote',
-        'reviewerNoteUpdatedAt',
-        'updateLocalSubmissionReviewerNote',
-        'Reviewer note',
-        'Internal note for changes, approval context, or publish handoff',
-        'value={submission.reviewerNote || \'\'}',
-        'onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)}',
-        'reviewerNoteUpdatedAt: new Date().toISOString()',
-    ]:
-        assert marker in shell, f'missing reviewer notes marker {marker}'
-    for marker in [
-        'reviewer-notes-pass',
-        '.reviewer-note-field',
-        '.reviewer-note-field textarea',
-    ]:
-        assert marker in css, f'missing reviewer notes CSS marker {marker}'
-    for preserved in [
-        'buildOperatorHandoffPayload',
-        'parseOperatorHandoffPayload',
-        'updateLocalSubmissionStatus',
-        'statusUpdatedAt',
-        'looplocal:post-local-submissions',
-    ]:
-        assert preserved in shell, f'reviewer notes removed preserved review workflow {preserved}'
-
-
-def test_loop_local_review_queue_status_filters_scope_visible_submissions():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'review-queue-filter-pass',
-        'ReviewQueueFilter',
-        'activeReviewFilter',
-        'setActiveReviewFilter',
-        'reviewQueueFilters',
-        'filteredPendingSubmissions',
-        "activeReviewFilter === 'all'",
-        "submission.status === activeReviewFilter",
-        'All reviews',
-        'Pending',
-        'Needs changes',
-        'Approved only',
-        'showing ${filteredPendingSubmissions.length}',
-    ]:
-        assert marker in shell, f'missing review queue filter marker {marker}'
-    for marker in [
-        'review-queue-filter-pass',
-        '.review-queue-filter-row',
-        '.review-queue-filter-row button.active',
-    ]:
-        assert marker in css, f'missing review queue filter CSS marker {marker}'
-    for preserved in [
-        'reviewer-notes-pass',
-        'updateLocalSubmissionReviewerNote',
-        'updateLocalSubmissionStatus',
-        'buildOperatorHandoffPayload',
-        'approveLocalSubmission',
-    ]:
-        assert preserved in shell, f'review queue filters removed preserved workflow {preserved}'
-
-
-def test_loop_local_review_queue_search_scopes_submissions_without_mutating_queue():
-    shell = read('components/app-shell.tsx')
-    css = read('app/globals.css')
-    for marker in [
-        'review-queue-search-pass',
-        'reviewQueueSearch',
-        'setReviewQueueSearch',
-        'reviewSubmissionSearchText',
-        'reviewSearchQuery',
-        'filteredPendingSubmissions',
-        'submission.reviewerNote',
-        'submission.entityName',
-        'submission.eventTitle',
-        'Search review queue',
-        'Title, entity, status, note…',
-        'value={reviewQueueSearch}',
-        'onChange={(event) => setReviewQueueSearch(event.target.value)}',
-    ]:
-        assert marker in shell, f'missing review queue search marker {marker}'
-    for marker in [
-        'review-queue-search-pass',
-        '.review-queue-search-field',
-        '.review-queue-search-field input',
-    ]:
-        assert marker in css, f'missing review queue search CSS marker {marker}'
-    for preserved in [
-        'review-queue-filter-pass',
-        'activeReviewFilter',
-        'reviewer-notes-pass',
-        'updateLocalSubmissionReviewerNote',
-        'buildOperatorHandoffPayload',
-        'looplocal:post-local-submissions',
-    ]:
-        assert preserved in shell, f'review queue search removed preserved workflow {preserved}'
-
-
 def test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap():
     css = read('app/globals.css')
     layout = read('app/layout.tsx')
@@ -817,7 +538,6 @@ def test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap()
     ]:
         assert marker in css + layout, f'missing mobile webview containment marker {marker}'
     for preserved in [
-        'review-queue-search-pass',
         'saved-share-interaction-pass',
         'navigation-interaction-polish',
         'eventDetailPath(item)',
@@ -850,7 +570,6 @@ def test_loop_local_mobile_first_homepage_polish_feels_intentional_after_contain
         assert marker in css + shell, f'missing mobile-first homepage polish marker {marker}'
     for preserved in [
         'mobile-webview-layout-containment-pass',
-        'review-queue-search-pass',
         'setShowSavedPanel',
         'mobile-app-tabbar',
         'getLiveFeed',
@@ -872,7 +591,7 @@ def test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable():
         "onClick={() => setShowSavedPanel(true)}",
         'setShowMobileMenu(false)',
         'Open Post Local',
-        'Review queue',
+        'Operator reviews',
     ]:
         assert marker in shell, f'missing mobile tap reliability shell marker {marker}'
     for marker in [
@@ -994,7 +713,7 @@ def test_loop_local_mobile_smoke_full_runner_builds_starts_tests_and_cleans_up()
 
 def test_loop_local_api_backed_post_local_submissions_persist_through_review_queue():
     post = read('components/post-local-wizard.tsx')
-    shell = read('components/app-shell.tsx')
+    operator = read('components/operator-review-panel.tsx')
     api = read('app/api/local-submissions/route.ts') if (ROOT / 'app/api/local-submissions/route.ts').exists() else ''
     store = read('lib/local-submissions-store.ts') if (ROOT / 'lib/local-submissions-store.ts').exists() else ''
     smoke = read('scripts/mobile-interaction-smoke.mjs')
@@ -1032,17 +751,15 @@ def test_loop_local_api_backed_post_local_submissions_persist_through_review_que
     ]:
         assert marker in post, f'missing API-backed Post Local submit marker {marker}'
     for marker in [
-        'api-backed-local-submissions-pass',
-        'loadLocalSubmissionsFromApi',
+        'operator-review-route-pass',
         "fetch('/api/local-submissions'",
-        'syncLocalSubmissionMutation',
-        'pendingSubmissions',
-        'approvedLocalItems',
+        'loadReviews',
+        'mutateReview',
+        'reviews',
         'publishedLocalEvents',
-        'apiBackedReviewQueue',
-        'setOperatorExportStatus(\'Review queue synced\')',
+        "'x-loop-local-operator-token'",
     ]:
-        assert marker in shell, f'missing API-backed review queue marker {marker}'
+        assert marker in operator, f'missing routed API-backed review queue marker {marker}'
     for marker in [
         'API Smoke Bakery',
         'API Smoke Market Night',
@@ -1170,6 +887,7 @@ def test_loop_local_post_local_media_survives_submit_review_publish():
 def test_loop_local_submitter_status_page_tracks_review_and_publish_state():
     post = read('components/post-local-wizard.tsx')
     status_page = read('app/post-local/status/[id]/page.tsx') if (ROOT / 'app/post-local/status/[id]/page.tsx').exists() else ''
+    status_card = read('components/submission-status-live-card.tsx')
     api_smoke = read('scripts/local-submissions-api-smoke.mjs')
     for marker in [
         'submitter-status-page-pass',
@@ -1183,16 +901,12 @@ def test_loop_local_submitter_status_page_tracks_review_and_publish_state():
     for marker in [
         'submitter-status-page-pass',
         "export const dynamic = 'force-dynamic'",
-        'readLocalSubmissionsStore',
-        'pendingSubmissions',
-        'publishedLocalEvents',
-        'needs_changes',
-        'published_local',
-        'reviewerNote',
+        'SubmissionStatusLiveCard',
         'Back to Post Local',
-        'View published event',
     ]:
         assert marker in status_page, f'missing submitter status page marker {marker}'
+    for marker in ['needs_changes', 'published_local', 'reviewerNote', 'View published event']:
+        assert marker in status_card, f'missing submitter status card marker {marker}'
     for marker in [
         'submitter-status-page-pass',
         '/post-local/status/',
@@ -1242,6 +956,7 @@ def test_loop_local_single_submission_status_api_boundary():
     store = read('lib/local-submissions-store.ts')
     route = read('app/api/local-submissions/[id]/route.ts') if (ROOT / 'app/api/local-submissions/[id]/route.ts').exists() else ''
     status_page = read('app/post-local/status/[id]/page.tsx') if (ROOT / 'app/post-local/status/[id]/page.tsx').exists() else ''
+    status_card = read('components/submission-status-live-card.tsx')
     api_smoke = read('scripts/local-submissions-api-smoke.mjs')
     for marker in [
         'single-submission-status-api-pass',
@@ -1261,12 +976,10 @@ def test_loop_local_single_submission_status_api_boundary():
         'submission not found',
     ]:
         assert marker in route, f'missing single submission status API route marker {marker}'
-    for marker in [
-        'single-submission-status-api-pass',
-        'findLocalSubmissionStatus(id)',
-        'StatusResult',
-    ]:
-        assert marker in status_page, f'missing status page shared lookup marker {marker}'
+    for marker in ['SubmissionStatusLiveCard', 'submitter-status-live-refresh-pass']:
+        assert marker in status_page, f'missing status page client boundary marker {marker}'
+    for marker in ['/api/local-submissions/${encodeURIComponent(submissionId)}', 'refreshSubmissionStatus', 'statusData']:
+        assert marker in status_card, f'missing status card shared lookup marker {marker}'
     for marker in [
         'single-submission-status-api-pass',
         '/api/local-submissions/${encodeURIComponent(id)}',
@@ -1356,7 +1069,6 @@ def test_loop_local_published_status_preserves_review_history():
 def test_loop_local_submissions_have_review_history_timeline():
     store = read('lib/local-submissions-store.ts')
     status_card = read('components/submission-status-live-card.tsx')
-    shell = read('components/app-shell.tsx')
     api_smoke = read('scripts/local-submissions-api-smoke.mjs')
     mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
     for marker in [
@@ -1380,12 +1092,6 @@ def test_loop_local_submissions_have_review_history_timeline():
     ]:
         assert marker in status_card, f'missing status page timeline marker {marker}'
     for marker in [
-        'review-history-timeline-pass',
-        'Review timeline',
-        'statusHistory?.slice',
-    ]:
-        assert marker in shell, f'missing review queue timeline marker {marker}'
-    for marker in [
         'statusHistory',
         'submitted history entry',
         'needs_changes history entry',
@@ -1402,18 +1108,18 @@ def test_loop_local_submissions_have_review_history_timeline():
         assert marker in mobile_smoke, f'missing mobile history marker {marker}'
 
 def test_loop_local_review_queue_exposes_submitter_status_handoff_links():
-    shell = read('components/app-shell.tsx')
+    operator = read('components/operator-review-panel.tsx')
     mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
     for marker in [
         'operator-submitter-link-pass',
         'submitterStatusHref',
-        'copySubmitterStatusLink',
+        'copySubmitterLink',
         'Open status page',
         'Copy submitter link',
         'Submitter link copied',
         '/post-local/status/',
     ]:
-        assert marker in shell, f'missing review queue submitter link marker {marker}'
+        assert marker in operator, f'missing routed review queue submitter link marker {marker}'
     for marker in [
         'operator-submitter-link-pass',
         'Open status page',
@@ -1423,17 +1129,21 @@ def test_loop_local_review_queue_exposes_submitter_status_handoff_links():
         assert marker in mobile_smoke, f'missing mobile submitter link marker {marker}'
 
 def test_loop_local_needs_changes_requires_actionable_reviewer_note():
-    shell = read('components/app-shell.tsx')
+    operator = read('components/operator-review-panel.tsx')
     route = read('app/api/local-submissions/route.ts')
     api_smoke = read('scripts/local-submissions-api-smoke.mjs')
     for marker in [
+        'mutateReview',
+        "status: 'needs_changes'",
+        'reviewerNote: note',
+        'Required before requesting changes',
+    ]:
+        assert marker in operator, f'missing routed needs-changes review marker {marker}'
+    for marker in [
         'needs-changes-note-gate-pass',
-        'requestNeedsChanges',
-        'Add a reviewer note before requesting changes',
-        "reviewerNote: note",
         "reviewerNote is required to request changes",
     ]:
-        assert marker in shell + route, f'missing needs-changes note gate marker {marker}'
+        assert marker in route, f'missing server needs-changes note gate marker {marker}'
     for marker in [
         'needs-changes-note-gate-pass',
         'needs_changes without reviewerNote',
@@ -1829,6 +1539,86 @@ def test_loop_local_submission_mutations_are_transactional_and_idempotent():
         assert marker in api_smoke, f'missing submission integrity API assertion {marker}'
 
 
+def test_loop_local_status_capabilities_avoid_query_logs_and_public_caches():
+    config = read('next.config.mjs')
+    route = read('app/api/local-submissions/[id]/route.ts')
+    page = read('app/post-local/status/[id]/page.tsx')
+    card = read('components/submission-status-live-card.tsx')
+    wizard = read('components/post-local-wizard.tsx')
+    app_shell = read('components/app-shell.tsx')
+    operator = read('components/operator-review-panel.tsx')
+    api_smoke = read('scripts/local-submissions-api-smoke.mjs')
+    mobile_smoke = read('scripts/mobile-interaction-smoke.mjs')
+    for marker in ['/post-local/status/:path*', 'Referrer-Policy', 'no-referrer', 'private, no-store', 'X-Robots-Tag']:
+        assert marker in config, f'missing status response protection {marker}'
+    for marker in ['x-loop-local-status-token', 'statusResponseHeaders', 'private, no-store', 'no-referrer']:
+        assert marker in route, f'missing status API capability/header marker {marker}'
+    assert "searchParams.get('statusToken')" in route, 'legacy query capability links must remain readable during migration'
+    assert 'findLocalSubmissionStatus' not in page and 'notFound' not in page, 'fragment capability pages must hydrate status client-side'
+    assert 'redirect(' in page and '#statusToken=' in page and 'statusToken={' not in page, 'legacy page links must redirect to fragments without passing capabilities into the client shell'
+    assert 'robots:' in page and "referrer: 'no-referrer'" in page, 'status metadata must prevent indexing and referrer leakage'
+    for source, name in [(card, 'status card'), (wizard, 'wizard')]:
+        assert 'x-loop-local-status-token' in source, f'{name} must send capability in a request header'
+        assert 'window.history.replaceState' in source, f'{name} must scrub capability URLs after handoff'
+        assert 'normalizeStatusCapability' in source, f'{name} must normalize capability values before transport'
+    assert '?statusToken=' not in card, 'status polling/revision links must not put capabilities in queries'
+    assert '?statusToken=' not in wizard, 'wizard status/revision links must not put capabilities in queries'
+    assert '#statusToken=' in operator and '#statusToken=' in wizard, 'generated routed handoff links must use URL fragments'
+    for marker in ['status API must be private no-store', 'status page must not send referrers', 'legacy status query remains compatible']:
+        assert marker in api_smoke, f'missing status capability API regression {marker}'
+    for marker in ['status capability must use URL fragment', 'status capability URL must be scrubbed', 'revision capability URL must be scrubbed']:
+        assert marker in mobile_smoke, f'missing status capability browser regression {marker}'
+
+
+def test_release_baseline_keeps_operator_workflow_out_of_consumer_shell():
+    shell = read('components/app-shell.tsx')
+    operator = read('components/operator-review-panel.tsx')
+    api = read('app/api/local-submissions/route.ts')
+    for dead_marker in [
+        'showSubmissionPanel',
+        'pendingSubmissions',
+        'buildOperatorHandoffPayload',
+        'importOperatorHandoff',
+        'approveLocalSubmission',
+        'syncLocalSubmissionMutation',
+    ]:
+        assert dead_marker not in shell, f'consumer shell still contains dead operator workflow: {dead_marker}'
+    for routed_marker in [
+        'OperatorReviewPanel',
+        'x-loop-local-operator-token',
+        'loadReviews',
+        'mutateReview',
+        'removeReview',
+        'Publish locally',
+    ]:
+        assert routed_marker in operator, f'dedicated operator route missing {routed_marker}'
+    assert 'requireOperatorAccess(request)' in api, 'operator API must remain server-gated'
+    assert 'href="/operator/reviews"' in shell, 'consumer menu must retain routed operator navigation'
+
+
+def test_release_baseline_upload_limits_are_shared_with_the_api():
+    post = read('components/post-local-wizard.tsx')
+    limits = read('lib/local-submission-limits.ts')
+    schemas = read('lib/local-submissions/schemas.ts')
+    assert 'MAX_LOCAL_SUBMISSION_UPLOAD_BYTES' in post
+    assert 'MAX_LOCAL_SUBMISSION_UPLOAD_LABEL' in post
+    assert '5 * 1024 * 1024' not in post
+    assert '8 * 1024 * 1024' not in post
+    assert "from '@/lib/local-submission-limits'" in schemas
+    for marker in ['MAX_LOCAL_SUBMISSION_UPLOAD_BYTES', 'MAX_LOCAL_SUBMISSION_DATA_IMAGE_LENGTH', 'MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES']:
+        assert marker in limits, f'missing shared upload limit {marker}'
+
+
+def test_release_baseline_service_worker_never_freezes_dynamic_navigation():
+    sw = read('public/sw.js')
+    assert "const STATIC_ASSETS = ['/', '/post-local'" not in sw
+    assert "request.mode === 'navigate'" in sw
+    assert 'networkFirstNavigation' in sw
+    assert "url.pathname.startsWith('/api/')" in sw
+    assert "url.pathname.startsWith('/post-local/status/')" in sw
+    assert "url.pathname.startsWith('/operator/')" in sw
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1846,14 +1636,6 @@ if __name__ == '__main__':
     test_loop_local_navigation_interaction_polish_makes_tabs_and_internal_links_real()
     test_loop_local_saved_and_share_interactions_are_real_not_static_icons()
     test_loop_local_post_local_draft_validation_and_live_preview_are_real()
-    test_loop_local_pending_post_submissions_surface_in_discovery_review_panel()
-    test_loop_local_local_publish_workflow_approves_submissions_into_discovery_feed()
-    test_loop_local_operator_handoff_exports_local_review_queue_json()
-    test_loop_local_operator_handoff_import_restores_review_queue_json()
-    test_loop_local_review_queue_status_lifecycle_controls_are_local_and_exported()
-    test_loop_local_reviewer_notes_attach_to_local_submissions_and_handoff()
-    test_loop_local_review_queue_status_filters_scope_visible_submissions()
-    test_loop_local_review_queue_search_scopes_submissions_without_mutating_queue()
     test_loop_local_mobile_webview_layout_containment_prevents_desktop_overlap()
     test_loop_local_mobile_first_homepage_polish_feels_intentional_after_containment()
     test_loop_local_mobile_tap_reliability_makes_menu_and_buttons_clickable()
@@ -1883,4 +1665,8 @@ if __name__ == '__main__':
     test_loop_local_operator_taxonomy_remediation_is_explicit_and_reversible()
     test_loop_local_public_submission_api_minimizes_queue_exposure_and_rate_limits_abuse()
     test_loop_local_submission_mutations_are_transactional_and_idempotent()
+    test_loop_local_status_capabilities_avoid_query_logs_and_public_caches()
+    test_release_baseline_keeps_operator_workflow_out_of_consumer_shell()
+    test_release_baseline_upload_limits_are_shared_with_the_api()
+    test_release_baseline_service_worker_never_freezes_dynamic_navigation()
     print('loop_local_complete_frontend_rebuild_contract_ok')

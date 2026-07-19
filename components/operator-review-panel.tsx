@@ -15,7 +15,7 @@ type ReviewQueueState = {
 };
 
 function submitterStatusHref(submission: LocalSubmissionRecord) {
-  const token = submission.statusToken ? `?statusToken=${encodeURIComponent(submission.statusToken)}` : '';
+  const token = submission.statusToken ? `#statusToken=${encodeURIComponent(submission.statusToken)}` : '';
   return `/post-local/status/${encodeURIComponent(submission.id)}${token}`;
 }
 

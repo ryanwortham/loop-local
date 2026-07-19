@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { submissionPublicationQuality } from '../lib/local-submission-quality.ts';
+import {
+  MAX_LOCAL_SUBMISSION_DATA_IMAGE_LENGTH,
+  MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES,
+  MAX_LOCAL_SUBMISSION_UPLOAD_BYTES,
+} from '../lib/local-submission-limits.ts';
 import type { LocalSubmissionRecord } from '../lib/local-submissions-store.ts';
 
 function submission(overrides: Partial<LocalSubmissionRecord> = {}): LocalSubmissionRecord {
@@ -44,4 +49,10 @@ test('event imagery wins over a logo while a logo remains a visible secondary fa
   assert.equal(eventImage.mediaMode, 'event_image');
   assert.equal(eventImage.previewImageUrl, 'data:image/jpeg;base64,event');
   assert.equal(eventImage.mediaLabel, 'Custom event image');
+});
+
+test('browser upload limits fit both encoded images inside the API payload boundary', () => {
+  const encodedImageLength = Math.ceil(MAX_LOCAL_SUBMISSION_UPLOAD_BYTES / 3) * 4 + 64;
+  assert.ok(encodedImageLength <= MAX_LOCAL_SUBMISSION_DATA_IMAGE_LENGTH);
+  assert.ok((encodedImageLength * 2) + 100_000 <= MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES);
 });

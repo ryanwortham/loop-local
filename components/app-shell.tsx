@@ -6,46 +6,6 @@ import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fal
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
-type SubmissionStatus = 'pending_review' | 'needs_changes' | 'approved_local' | 'published_local';
-type ReviewQueueFilter = 'all' | 'pending_review' | 'needs_changes' | 'approved_local';
-
-const reviewQueueFilters: Array<{ id: ReviewQueueFilter; label: string }> = [
-  { id: 'all', label: 'All reviews' },
-  { id: 'pending_review', label: 'Pending' },
-  { id: 'needs_changes', label: 'Needs changes' },
-  { id: 'approved_local', label: 'Approved only' },
-];
-
-type LocalSubmissionHistoryEntry = {
-  action: string;
-  label?: string;
-  at?: string;
-  note?: string;
-};
-
-type LocalSubmission = {
-  id?: string;
-  entityName?: string;
-  eventTitle?: string;
-  eventDate?: string;
-  eventCategory?: string;
-  eventCity?: string;
-  eventState?: string;
-  eventZip?: string;
-  eventDescription?: string;
-  locationName?: string;
-  ticketUrl?: string;
-  postType?: string;
-  status?: SubmissionStatus | string;
-  submittedAt?: string;
-  approvedAt?: string;
-  statusUpdatedAt?: string;
-  reviewerNote?: string;
-  reviewerNoteUpdatedAt?: string;
-  statusHistory?: LocalSubmissionHistoryEntry[];
-  statusToken?: string;
-};
-
 const moments = ['All', 'Tonight', 'Weekend', 'Deals'];
 const tabs = ['Discover', 'Events', 'Map', 'Saved', 'Profile'];
 const tabToViewMode = (tab: string): ViewMode => {
@@ -109,22 +69,6 @@ function itemSearchText(item: LiveFeedItem): string {
     .toLowerCase();
 }
 
-function reviewSubmissionSearchText(submission: LocalSubmission): string {
-  return [
-    submission.eventTitle,
-    submission.entityName,
-    submission.eventCategory,
-    submission.eventCity,
-    submission.eventState,
-    submission.eventZip,
-    submission.locationName,
-    submission.postType,
-    submission.status,
-    submission.reviewerNote,
-    submission.eventDescription,
-  ].filter(Boolean).join(' ').toLowerCase();
-}
-
 function isWeekend(item: LiveFeedItem): boolean {
   const value = item.startsAt || item.date;
   if (!value) return false;
@@ -160,29 +104,6 @@ function dayBlock(item: LiveFeedItem) {
   return {
     month: date ? date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }) : 'Soon',
     day: date ? String(date.getUTCDate()) : '•',
-  };
-}
-
-function localSubmissionToFeedItem(submission: LocalSubmission, index: number): LiveFeedItem {
-  return {
-    id: `local-approved-${submission.submittedAt || index}`,
-    title: submission.eventTitle || 'Locally approved submission',
-    summary: submission.eventDescription || `${submission.entityName || 'A local contributor'} submitted this event through Post Local.`,
-    category: submission.eventCategory || submission.postType || 'Community',
-    type: submission.postType || 'Event',
-    business: submission.entityName || submission.locationName || 'Local contributor',
-    location: submission.locationName || submission.entityName || 'Local venue',
-    city: submission.eventCity || 'Nearby',
-    state: submission.eventState || 'MO',
-    zip: submission.eventZip,
-    date: submission.eventDate,
-    startsAt: submission.eventDate,
-    time: 'Time pending',
-    source: 'local_approved',
-    ticketUrl: submission.ticketUrl,
-    imageState: 'fallback',
-    visualKey: 'community',
-    fallbackLabel: 'Locally approved',
   };
 }
 
@@ -261,41 +182,14 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
     }
   });
   const [showSavedPanel, setShowSavedPanel] = useState(false);
-  const [showSubmissionPanel, setShowSubmissionPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [activeReviewFilter, setActiveReviewFilter] = useState<ReviewQueueFilter>('all');
-  const [reviewQueueSearch, setReviewQueueSearch] = useState('');
-  const [pendingSubmissions, setPendingSubmissions] = useState<LocalSubmission[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = JSON.parse(localStorage.getItem('looplocal:post-local-submissions') || '[]');
-      return Array.isArray(stored) ? stored.filter((item): item is LocalSubmission => item && typeof item === 'object') : [];
-    } catch {
-      return [];
-    }
-  });
-  const [approvedLocalItems, setApprovedLocalItems] = useState<LiveFeedItem[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = JSON.parse(localStorage.getItem('looplocal:approved-local-events') || '[]');
-      return Array.isArray(stored) ? stored.filter((item): item is LiveFeedItem => item && typeof item === 'object' && typeof item.id === 'string') : [];
-    } catch {
-      return [];
-    }
-  });
-  const [operatorExportStatus, setOperatorExportStatus] = useState('');
-  const [operatorImportText, setOperatorImportText] = useState('');
   const [shareStatus, setShareStatus] = useState('');
 
   useEffect(() => {
     localStorage.setItem('looplocal:saved-events', JSON.stringify(savedEventIds));
   }, [savedEventIds]);
 
-  useEffect(() => {
-    localStorage.setItem('looplocal:approved-local-events', JSON.stringify(approvedLocalItems));
-  }, [approvedLocalItems]);
-
-  const combinedFeedItems = useMemo(() => normalizeFeedItems([...approvedLocalItems, ...feedItems]), [approvedLocalItems, feedItems]);
+  const combinedFeedItems = useMemo(() => normalizeFeedItems(feedItems), [feedItems]);
 
   const categories = useMemo(
     () => ['All categories', ...Array.from(new Set(combinedFeedItems.map((item) => item.category).filter(Boolean) as string[])).sort()],
@@ -337,20 +231,6 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
   const savedItems = combinedFeedItems.filter((item) => savedEventIds.includes(item.id));
-  const reviewStatusCounts = useMemo(() => ({
-    pendingCount: pendingSubmissions.filter((item) => !item.status || item.status === 'pending_review').length,
-    needsChangesCount: pendingSubmissions.filter((item) => item.status === 'needs_changes').length,
-    approvedCount: pendingSubmissions.filter((item) => item.status === 'approved_local').length,
-    publishedCount: approvedLocalItems.length,
-  }), [approvedLocalItems.length, pendingSubmissions]);
-  const filteredPendingSubmissions = useMemo(() => {
-    const reviewSearchQuery = reviewQueueSearch.trim().toLowerCase();
-    return pendingSubmissions.filter((submission) => {
-      const matchesStatus = activeReviewFilter === 'all' || (!submission.status && activeReviewFilter === 'pending_review') || submission.status === activeReviewFilter;
-      const matchesSearch = !reviewSearchQuery || reviewSubmissionSearchText(submission).includes(reviewSearchQuery);
-      return matchesStatus && matchesSearch;
-    });
-  }, [activeReviewFilter, pendingSubmissions, reviewQueueSearch]);
 
   function isSavedEvent(item: LiveFeedItem): boolean {
     return savedEventIds.includes(item.id);
@@ -383,173 +263,6 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
     setSortBy('soonest');
   }
 
-  function applyApiBackedReviewQueue(data: { pendingSubmissions?: LocalSubmission[]; publishedLocalEvents?: LiveFeedItem[] }) {
-    // api-backed-local-submissions-pass: browser state mirrors /api/local-submissions.
-    const apiBackedReviewQueue = Array.isArray(data.pendingSubmissions) ? data.pendingSubmissions : [];
-    const publishedLocalEvents = Array.isArray(data.publishedLocalEvents) ? data.publishedLocalEvents : [];
-    setPendingSubmissions(apiBackedReviewQueue);
-    setApprovedLocalItems(publishedLocalEvents);
-    return { apiBackedReviewQueue, publishedLocalEvents };
-  }
-
-  // api-backed-local-submissions-pass legacy markers retained for migration docs:
-  // loadLocalSubmissionsFromApi · loadPendingSubmissions · fetch('/api/local-submissions' · apiBackedReviewQueue · publishedLocalEvents · setOperatorExportStatus('Review queue synced').
-
-  async function syncLocalSubmissionMutation(input: RequestInfo | URL, init?: RequestInit) {
-    const response = await fetch(input, init);
-    if (!response.ok) throw new Error('Review queue mutation failed');
-    const data = await response.json();
-    applyApiBackedReviewQueue(data);
-    return data;
-  }
-
-  async function clearPendingSubmissions() {
-    localStorage.setItem('looplocal:post-local-submissions', '[]');
-    await syncLocalSubmissionMutation('/api/local-submissions', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ action: 'replace', pendingSubmissions: [], publishedLocalEvents: approvedLocalItems }),
-    });
-    setOperatorExportStatus('Review queue cleared');
-  }
-
-  async function removeLocalSubmission(indexToRemove: number) {
-    const submission = pendingSubmissions[indexToRemove];
-    if (!submission?.id) return;
-    await syncLocalSubmissionMutation(`/api/local-submissions?id=${encodeURIComponent(submission.id)}`, { method: 'DELETE' });
-    setOperatorExportStatus('Removed from review queue');
-  }
-
-  async function requestNeedsChanges(indexToUpdate: number) {
-    // needs-changes-note-gate-pass: do not send vague change requests without reviewer feedback.
-    const submission = pendingSubmissions[indexToUpdate];
-    const note = submission?.reviewerNote?.trim();
-    if (!submission?.id) return;
-    if (!note) {
-      setOperatorExportStatus('Add a reviewer note before requesting changes');
-      return;
-    }
-    await syncLocalSubmissionMutation('/api/local-submissions', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: submission.id, status: 'needs_changes', reviewerNote: note, statusUpdatedAt: new Date().toISOString() }),
-    });
-    setOperatorExportStatus('Requested changes with reviewer note');
-  }
-
-  async function updateLocalSubmissionStatus(indexToUpdate: number, status: SubmissionStatus) {
-    const submission = pendingSubmissions[indexToUpdate];
-    if (!submission?.id) return;
-    await syncLocalSubmissionMutation('/api/local-submissions', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: submission.id, status, statusUpdatedAt: new Date().toISOString() }),
-    });
-    setOperatorExportStatus(`Marked ${status.replace('_', ' ')}`);
-  }
-
-  async function updateLocalSubmissionReviewerNote(indexToUpdate: number, reviewerNote: string) {
-    const submission = pendingSubmissions[indexToUpdate];
-    if (!submission?.id) return;
-    setPendingSubmissions((current) => current.map((item, index) => index === indexToUpdate ? { ...item, reviewerNote, reviewerNoteUpdatedAt: new Date().toISOString() } : item));
-    await syncLocalSubmissionMutation('/api/local-submissions', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: submission.id, reviewerNote, reviewerNoteUpdatedAt: new Date().toISOString() }),
-    });
-  }
-
-  function submitterStatusHref(submission: LocalSubmission) {
-    // operator-submitter-link-pass: every API-backed review card exposes /post-local/status/ for handoff.
-    const token = submission.statusToken ? `?statusToken=${encodeURIComponent(submission.statusToken)}` : '';
-    return submission.id ? `/post-local/status/${encodeURIComponent(submission.id)}${token}` : '/post-local';
-  }
-
-  async function copySubmitterStatusLink(submission: LocalSubmission) {
-    const path = submitterStatusHref(submission);
-    const url = typeof window === 'undefined' ? path : new URL(path, window.location.origin).toString();
-    try {
-      await navigator.clipboard.writeText(url);
-      setOperatorExportStatus('Submitter link copied');
-    } catch {
-      setOperatorExportStatus(`Copy unavailable — send ${path}`);
-    }
-  }
-
-  async function approveLocalSubmission(submission: LocalSubmission, indexToApprove: number) {
-    // local-publish-workflow-pass legacy action label: Approve to discovery; review-status-lifecycle-pass UI label: Publish locally
-    if (!submission.id) {
-      const approved = localSubmissionToFeedItem({ ...submission, status: 'published_local', approvedAt: new Date().toISOString(), statusUpdatedAt: new Date().toISOString() }, indexToApprove);
-      setApprovedLocalItems((current) => current.some((item) => item.id === approved.id) ? current : [approved, ...current]);
-      return;
-    }
-    await syncLocalSubmissionMutation('/api/local-submissions', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id: submission.id, action: 'publish' }),
-    });
-    setShareStatus('Locally approved');
-  }
-
-  function buildOperatorHandoffPayload() {
-    return {
-      exportedAt: new Date().toISOString(),
-      source: 'loop-local-browser-review-queue',
-      pendingCount: pendingSubmissions.length,
-      approvedCount: approvedLocalItems.length,
-      pendingSubmissions,
-      approvedLocalEvents: approvedLocalItems,
-    };
-  }
-
-  async function copyOperatorHandoff() {
-    const payload = JSON.stringify(buildOperatorHandoffPayload(), null, 2);
-    try {
-      await navigator.clipboard.writeText(payload);
-      setOperatorExportStatus('Operator handoff JSON copied');
-    } catch {
-      setOperatorExportStatus('Copy unavailable — use Download JSON');
-    }
-  }
-
-  function downloadOperatorHandoff() {
-    const payload = JSON.stringify(buildOperatorHandoffPayload(), null, 2);
-    const blob = new Blob([payload], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = 'loop-local-review-queue.json';
-    anchor.click();
-    URL.revokeObjectURL(url);
-    setOperatorExportStatus('Downloaded loop-local-review-queue.json');
-  }
-
-  function parseOperatorHandoffPayload(raw: string) {
-    const parsed = JSON.parse(raw) as { pendingSubmissions?: unknown; approvedLocalEvents?: unknown };
-    return {
-      pendingSubmissions: Array.isArray(parsed.pendingSubmissions) ? parsed.pendingSubmissions.filter((item): item is LocalSubmission => item && typeof item === 'object') : [],
-      approvedLocalEvents: Array.isArray(parsed.approvedLocalEvents) ? parsed.approvedLocalEvents.filter((item): item is LiveFeedItem => item && typeof item === 'object' && typeof (item as LiveFeedItem).id === 'string') : [],
-    };
-  }
-
-  async function importOperatorHandoff() {
-    try {
-      const parsed = parseOperatorHandoffPayload(operatorImportText);
-      // operator-handoff-import-pass payload shape: pendingSubmissions: parsed.pendingSubmissions, approvedLocalEvents: parsed.approvedLocalEvents
-      localStorage.setItem('looplocal:post-local-submissions', JSON.stringify(parsed.pendingSubmissions));
-      localStorage.setItem('looplocal:approved-local-events', JSON.stringify(parsed.approvedLocalEvents));
-      await syncLocalSubmissionMutation('/api/local-submissions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'replace', pendingSubmissions: parsed.pendingSubmissions, publishedLocalEvents: parsed.approvedLocalEvents }),
-      });
-      setOperatorExportStatus(`Imported ${parsed.pendingSubmissions.length} pending · ${parsed.approvedLocalEvents.length} approved`);
-      setOperatorImportText('');
-    } catch {
-      setOperatorExportStatus('Import failed — paste valid loop-local-review-queue.json');
-    }
-  }
-
   function toggleMobileMenu() {
     setShowMobileMenu((current) => !current);
   }
@@ -568,13 +281,12 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
       return;
     }
     setShowSavedPanel(false);
-    setShowSubmissionPanel(false);
     setViewMode(tabToViewMode(tab));
     document.getElementById(tab === 'Map' ? 'map' : 'events')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   return (
-    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass local-publish-workflow-pass review-status-lifecycle-pass reviewer-notes-pass review-queue-filter-pass review-queue-search-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass mobile-interaction-qa-pass mobile-shell-active-tab-pass" id="discover">
+    <main className="complete-frontend-rebuild app-reference-shell ux-polish-pass navigation-interaction-polish saved-share-interaction-pass mobile-webview-layout-containment-pass mobile-first-homepage-polish-pass mobile-tap-reliability-pass mobile-interaction-qa-pass mobile-shell-active-tab-pass" id="discover">
       <aside className="local-hero-panel" aria-label="Loop Local overview">
         <Link className="hero-logo-lockup" href="/">
           <span className="brand-mark brand-mark-image"><span className="brand-logo-image" aria-label="Loop Local" /></span>
@@ -706,53 +418,6 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
             <div className="popular-list polished-list-density">
               {(savedItems.length ? savedItems : featuredItems.slice(0, 3)).map((item) => <PopularRow isSaved={isSavedEvent(item)} item={item} key={item.id} onSave={toggleSavedEvent} />)}
             </div>
-          </section>
-        ) : null}
-        {showSubmissionPanel ? (
-          <section className="pending-submissions-panel post-submission-review-panel-pass" aria-label="Pending local submissions">
-            <header className="section-title-row">
-              <div><h2>Review queue</h2><p>{pendingSubmissions.length ? `${pendingSubmissions.length} pending local submissions` : 'Pending local submissions will appear here after Post Local submit.'}</p></div>
-              <div className="pending-submission-actions"><Link href="/post-local">Open Post Local</Link><button type="button" onClick={clearPendingSubmissions}>Clear local queue</button><button type="button" onClick={() => setShowSubmissionPanel(false)}>Close</button></div>
-            </header>
-            <div className="review-status-summary" aria-label="Review status summary"><span>{reviewStatusCounts.pendingCount} pending</span><span>{reviewStatusCounts.needsChangesCount} needs changes</span><span>{reviewStatusCounts.approvedCount} approved only</span><span>{reviewStatusCounts.publishedCount} published locally</span></div>
-            <label className="review-queue-search-field"><span>Search review queue</span><input type="search" value={reviewQueueSearch} onChange={(event) => setReviewQueueSearch(event.target.value)} placeholder="Title, entity, status, note…" /></label>
-            <div className="review-queue-filter-row" aria-label="Review queue filters">
-              {/* review-queue-filter-pass marker: showing ${filteredPendingSubmissions.length} */}
-              {reviewQueueFilters.map((filter) => <button className={activeReviewFilter === filter.id ? 'active' : ''} key={filter.id} type="button" onClick={() => setActiveReviewFilter(filter.id)}>{filter.label}</button>)}
-              <small>showing {filteredPendingSubmissions.length} of {pendingSubmissions.length}</small>
-            </div>
-            <section className="operator-handoff-card operator-handoff-export-pass operator-handoff-import-pass" aria-label="Operator handoff">
-              <div><strong>Operator handoff</strong><p>{pendingSubmissions.length} pending · {approvedLocalItems.length} locally approved</p></div>
-              <div className="operator-handoff-actions"><button type="button" onClick={copyOperatorHandoff}>Copy queue JSON</button><button type="button" onClick={downloadOperatorHandoff}>Download JSON</button></div>
-              <label className="operator-import-area"><span>Paste exported review queue JSON</span><textarea value={operatorImportText} onChange={(event) => setOperatorImportText(event.target.value)} placeholder="Paste loop-local-review-queue.json here" rows={3} /></label>
-              <div className="operator-handoff-actions"><button type="button" onClick={importOperatorHandoff}>Import queue JSON</button></div>
-              {operatorExportStatus ? <small className="operator-export-status" role="status">{operatorExportStatus}</small> : null}
-            </section>
-            {filteredPendingSubmissions.length ? (
-              <div className="pending-submission-grid">
-                {filteredPendingSubmissions.slice(0, 6).map((submission) => {
-                  const index = pendingSubmissions.indexOf(submission);
-                  return <article className="pending-submission-card" key={`${submission.submittedAt || submission.eventTitle || 'submission'}-${index}`}>
-                    <span>{submission.status || 'pending_review'}</span>
-                    <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
-                    <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
-                    <small>{submission.entityName || 'Local contributor'}{submission.submittedAt ? ` · ${new Date(submission.submittedAt).toLocaleDateString()}` : ''}</small>
-                    <section className="review-history-timeline-pass review-history-mini" aria-label="Review timeline">
-                      <strong>Review timeline</strong>
-                      {(submission.statusHistory?.slice(-3) || [{ action: 'submitted', label: 'Submitted for review', at: submission.submittedAt }]).map((entry, historyIndex) => (
-                        <span key={`${entry.action}-${entry.at || historyIndex}`}>{entry.label || entry.action}{entry.at ? ` · ${new Date(entry.at).toLocaleDateString()}` : ''}</span>
-                      ))}
-                    </section>
-                    <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={submission.reviewerNote || ''} onChange={(event) => updateLocalSubmissionReviewerNote(index, event.target.value)} placeholder="Internal note for changes, approval context, or publish handoff" rows={2} /></label>
-                    <div className="operator-submitter-link-pass pending-submitter-link-row">
-                      <Link href={submitterStatusHref(submission)}>Open status page</Link>
-                      <button type="button" onClick={() => copySubmitterStatusLink(submission)}>Copy submitter link</button>
-                    </div>
-                    <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => requestNeedsChanges(index)}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => updateLocalSubmissionStatus(index, 'approved_local')}>Approve only</button><button className="publish-local" type="button" onClick={() => approveLocalSubmission(submission, index)}>Publish locally</button><button className="remove-local" type="button" onClick={() => removeLocalSubmission(index)}>Remove</button></div>
-                  </article>;
-                })}
-              </div>
-            ) : <p className="pending-submission-empty">No pending local submissions yet. Submit a valid Post Local draft to seed the queue.</p>}
           </section>
         ) : null}
         {shareStatus ? <p className="share-status" role="status">{shareStatus}</p> : null}

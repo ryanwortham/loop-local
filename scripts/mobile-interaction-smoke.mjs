@@ -141,13 +141,17 @@ async function main() {
   const lookupSubmissionId = (await page.locator('.post-submit-success code').first().textContent())?.trim();
   if (!lookupSubmissionId) fail('submitter-status-lookup-pass: missing lookupSubmissionId after submit');
   const lookupStatusHref = await page.getByRole('link', { name: 'Check submission status' }).getAttribute('href');
-  const lookupStatusToken = new URL(lookupStatusHref, baseURL).searchParams.get('statusToken') || '';
-  if (!lookupStatusToken) fail('poster-status-token-pass: missing lookup statusToken after submit');
+  const lookupStatusUrl = new URL(lookupStatusHref, baseURL);
+  const lookupStatusToken = new URLSearchParams(lookupStatusUrl.hash.slice(1)).get('statusToken') || '';
+  if (!lookupStatusToken) fail('status capability must use URL fragment');
+  if (lookupStatusUrl.searchParams.has('statusToken')) fail('status capability must not use query string');
   await Promise.all([
     page.waitForURL(/\/post-local\/status\//, { timeout }),
     page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
   ]);
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
+  const scrubbedStatusUrl = new URL(page.url());
+  if (scrubbedStatusUrl.search.includes('statusToken') || scrubbedStatusUrl.hash.includes('statusToken')) fail('status capability URL must be scrubbed');
   // review-history-timeline-pass: mobile status page exposes Submitted/Changes requested/Resubmitted history.
   await page.getByText('Review timeline').first().waitFor({ timeout });
   await page.getByText('Submitted for review').first().waitFor({ timeout });
@@ -172,11 +176,16 @@ async function main() {
   ]);
   await page.getByText('Needs changes', { exact: true }).first().waitFor({ timeout });
   // submitter-revision-flow-pass: submitter can revise a needs_changes submission and resubmit the same ID.
+  const reviseHref = await page.getByRole('link', { name: 'Revise submission' }).getAttribute('href');
+  const reviseUrl = new URL(reviseHref, baseURL);
+  if (!new URLSearchParams(reviseUrl.hash.slice(1)).get('statusToken') || reviseUrl.searchParams.has('statusToken')) fail('revision capability must use URL fragment');
   await Promise.all([
     page.waitForURL(/\/post-local\?revisionId=/, { timeout }),
     page.getByRole('link', { name: 'Revise submission' }).click({ timeout }),
   ]);
   await page.getByText('Requested changes are loaded').waitFor({ timeout });
+  const scrubbedRevisionUrl = new URL(page.url());
+  if (scrubbedRevisionUrl.searchParams.has('statusToken') || scrubbedRevisionUrl.hash.includes('statusToken')) fail('revision capability URL must be scrubbed');
   await page.getByRole('button', { name: 'Next: event details' }).click({ timeout });
   await page.locator('input[name="eventTitle"]').fill('API Smoke Market Night Revised');
   await page.getByRole('button', { name: 'Next: preview' }).click({ timeout });
@@ -184,6 +193,10 @@ async function main() {
   await page.getByRole('button', { name: 'Resubmit for Review' }).waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Resubmit for Review' }), 'Resubmit for Review');
   await page.getByText('Updated submission returned to review queue', { exact: true }).waitFor({ timeout });
+  const resubmittedStatusHref = await page.getByRole('link', { name: 'Check submission status' }).getAttribute('href');
+  const resubmittedStatusUrl = new URL(resubmittedStatusHref, baseURL);
+  const resubmittedStatusToken = new URLSearchParams(resubmittedStatusUrl.hash.slice(1)).get('statusToken') || '';
+  if (resubmittedStatusToken !== lookupStatusToken || resubmittedStatusUrl.searchParams.has('statusToken')) fail('resubmitted status capability must remain stable in the URL fragment');
   await Promise.all([
     page.waitForURL(/\/post-local\/status\//, { timeout }),
     page.getByRole('link', { name: 'Check submission status' }).click({ timeout }),
@@ -201,6 +214,8 @@ async function main() {
   const operatorStatusLink = page.getByRole('link', { name: 'Open status page' }).first();
   const statusHref = await operatorStatusLink.getAttribute('href');
   if (!statusHref || !statusHref.includes('/post-local/status/')) fail('operator-submitter-link-pass: missing /post-local/status/ href');
+  const operatorStatusUrl = new URL(statusHref, baseURL);
+  if (!new URLSearchParams(operatorStatusUrl.hash.slice(1)).get('statusToken') || operatorStatusUrl.searchParams.has('statusToken')) fail('operator status capability must use URL fragment');
   await Promise.all([
     page.waitForURL(/\/post-local\/status\//, { timeout }),
     operatorStatusLink.click({ timeout }),
@@ -213,7 +228,7 @@ async function main() {
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
   await page.getByText('Published locally').first().waitFor({ timeout });
   // published-status-history-pass: published status retains Resubmitted for review after pending queue removal.
-  await page.goto(`${baseURL}/post-local/status/${encodeURIComponent(lookupSubmissionId)}?statusToken=${encodeURIComponent(lookupStatusToken)}`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${baseURL}/post-local/status/${encodeURIComponent(lookupSubmissionId)}#statusToken=${encodeURIComponent(lookupStatusToken)}`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Published locally', { exact: true }).first().waitFor({ timeout });
   await page.getByText('Resubmitted for review').first().waitFor({ timeout });
   // local-published-detail-pages-pass: API Smoke Market Night detail page legacy marker; API Smoke Market Night Revised detail page opens from status handoff.

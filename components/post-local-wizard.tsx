@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { FileDropInput } from '@/components/file-drop-input';
 import { SUBMISSION_EVENT_CATEGORIES } from '@/lib/event-taxonomy';
+import {
+  MAX_LOCAL_SUBMISSION_UPLOAD_BYTES,
+  MAX_LOCAL_SUBMISSION_UPLOAD_LABEL,
+} from '@/lib/local-submission-limits';
 
 const entityTypes = [
   'Business',
@@ -188,6 +192,32 @@ function clearStoredSubmissionRequestId(key: string) {
   }
 }
 
+function normalizeStatusCapability(value?: string | null): string {
+  return value?.match(/[a-f0-9]{32}/i)?.[0] || '';
+}
+
+function statusCapabilityStorageKey(submissionId: string): string {
+  return `looplocal:status-token:${submissionId}`;
+}
+
+function readStoredStatusCapability(submissionId: string): string {
+  try {
+    return sessionStorage.getItem(statusCapabilityStorageKey(submissionId)) || '';
+  } catch {
+    return '';
+  }
+}
+
+function storeStatusCapability(submissionId: string, statusToken: string) {
+  const normalizedToken = normalizeStatusCapability(statusToken);
+  if (!submissionId || !normalizedToken) return;
+  try {
+    sessionStorage.setItem(statusCapabilityStorageKey(submissionId), normalizedToken);
+  } catch {
+    // URL-fragment handoff still works when session storage is unavailable.
+  }
+}
+
 export function PostLocalWizard() {
   const [draft, setDraft] = useState<PostLocalDraft>(readInitialDraft);
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
@@ -209,15 +239,22 @@ export function PostLocalWizard() {
     async function loadRevisionSubmission() {
       const params = new URLSearchParams(window.location.search);
       const nextRevisionId = params.get('revisionId')?.trim() || '';
-      const nextRevisionToken = params.get('statusToken')?.trim() || '';
       if (!nextRevisionId) return;
+      const legacyQueryToken = normalizeStatusCapability(params.get('statusToken'));
+      const hashToken = normalizeStatusCapability(new URLSearchParams(window.location.hash.slice(1)).get('statusToken'));
+      const nextRevisionToken = hashToken || legacyQueryToken || normalizeStatusCapability(readStoredStatusCapability(nextRevisionId));
+      storeStatusCapability(nextRevisionId, nextRevisionToken);
+      window.history.replaceState(null, '', `/post-local?revisionId=${encodeURIComponent(nextRevisionId)}`);
       setRevisionId(nextRevisionId);
       setSubmittedSubmissionId(nextRevisionId);
       setSubmittedStatusToken(nextRevisionToken);
       setDraftStatus('Loading requested changes');
       try {
-        const revisionUrl = `/api/local-submissions/${encodeURIComponent(nextRevisionId)}${nextRevisionToken ? `?statusToken=${encodeURIComponent(nextRevisionToken)}` : ''}`;
-        const response = await fetch(revisionUrl, { cache: 'no-store' });
+        const revisionUrl = `/api/local-submissions/${encodeURIComponent(nextRevisionId)}`;
+        const response = await fetch(revisionUrl, {
+          cache: 'no-store',
+          headers: nextRevisionToken ? { 'x-loop-local-status-token': nextRevisionToken } : undefined,
+        });
         const data = await response.json();
         if (!response.ok || !data.submission) throw new Error(data.error || 'Revision not found');
         setDraft((current) => ({ ...current, ...data.submission }));
@@ -237,7 +274,7 @@ export function PostLocalWizard() {
     draft.eventDate || 'Date',
     draft.locationName || draft.eventCity || draft.city || 'Location',
   ].join(' · '), [draft.category, draft.city, draft.eventCategory, draft.eventCity, draft.eventDate, draft.locationName]);
-  const submittedStatusHref = submittedSubmissionId ? `/post-local/status/${encodeURIComponent(submittedSubmissionId)}${submittedStatusToken ? `?statusToken=${encodeURIComponent(submittedStatusToken)}` : ''}` : '';
+  const submittedStatusHref = submittedSubmissionId ? `/post-local/status/${encodeURIComponent(submittedSubmissionId)}${submittedStatusToken ? `#statusToken=${encodeURIComponent(submittedStatusToken)}` : ''}` : '';
 
   function updateDraft(name: keyof PostLocalDraft, value: string) {
     setDraft((current) => ({ ...current, [name]: value }));
@@ -309,6 +346,7 @@ export function PostLocalWizard() {
     });
     if (!response.ok) throw new Error('Failed to submit Post Local draft');
     const data = await response.json();
+    storeStatusCapability(data.submission?.id || '', data.submission?.statusToken || '');
     clearStoredSubmissionRequestId(requestStorageKey);
     submissionRequestId.current = '';
     return data;
@@ -322,7 +360,7 @@ export function PostLocalWizard() {
     try {
       const parsed = new URL(rawLookup, window.location.origin);
       if (parsed.pathname.includes('/post-local/status/')) {
-        window.location.href = `${parsed.pathname}${parsed.search}`;
+        window.location.href = `${parsed.pathname}${parsed.search}${parsed.hash}`;
         return;
       }
     } catch {
@@ -337,8 +375,8 @@ export function PostLocalWizard() {
     const logo = form.querySelector<HTMLInputElement>('input[name="logo"]')?.files?.[0];
     const eventImage = form.querySelector<HTMLInputElement>('input[name="event_image"]')?.files?.[0];
     if (!revisionId && !logo) errors.entityName = 'logo upload is required before review.';
-    if (logo && logo.size > 5 * 1024 * 1024) errors.entityName = 'File is larger than 5 MB.';
-    if (eventImage && eventImage.size > 8 * 1024 * 1024) errors.eventTitle = 'File is larger than 8 MB.';
+    if (logo && logo.size > MAX_LOCAL_SUBMISSION_UPLOAD_BYTES) errors.entityName = `File is larger than ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}.`;
+    if (eventImage && eventImage.size > MAX_LOCAL_SUBMISSION_UPLOAD_BYTES) errors.eventTitle = `File is larger than ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}.`;
     return errors;
   }
 
@@ -466,7 +504,7 @@ export function PostLocalWizard() {
             required={false}
             accept="image/png,image/jpeg,image/webp"
             helperText="Browse computer or drag and drop a logo here. PNG, JPG, or WebP."
-            maxSizeLabel="Maximum file size: 5 MB"
+            maxSizeLabel={`Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
           />
           <div className="ll-grid">
             <TextField label="Business/community/entity name" name="entityName" value={draft.entityName} onChange={updateDraft} error={validationErrors.entityName} />
@@ -504,7 +542,7 @@ export function PostLocalWizard() {
             label="Event image"
             accept="image/png,image/jpeg,image/webp"
             helperText="Browse computer or drag and drop the event image."
-            maxSizeLabel="Maximum file size: 8 MB"
+            maxSizeLabel={`Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
           />
           <div className="ll-mobile-contract" aria-hidden="true">
             <input name="mobile_date_picker_contract" type="date" />

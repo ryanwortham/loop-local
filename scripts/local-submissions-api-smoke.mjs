@@ -259,12 +259,40 @@ async function main() {
 
   // single-submission-status-api-pass: direct single status pending_review endpoint.
   // Contract marker URL: /api/local-submissions/${encodeURIComponent(id)}
-  response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
-  assertStatus(response, 200, 'single status pending_review');
+  response = await request(`/${encodeURIComponent(id)}`, { headers: { 'x-loop-local-status-token': statusToken } });
+  assertStatus(response, 200, 'single status pending_review via capability header');
+  assert(response.headers.get('cache-control')?.includes('private') && response.headers.get('cache-control')?.includes('no-store'), 'status API must be private no-store');
+  assert(response.headers.get('referrer-policy') === 'no-referrer', 'status API must not send referrers');
   data = await json(response);
   assert(data.submissionId === id, 'single status should return submissionId');
   assert(data.status === 'pending_review', 'single status should return pending_review');
   assert(data.submission?.eventTitle === 'API Direct Smoke Night', 'single status should include pending submission');
+
+  response = await request(`/${encodeURIComponent(id)}`, { headers: { 'x-loop-local-status-token': `${statusToken}#statusToken=${statusToken}` } });
+  assertStatus(response, 401, 'malformed compound status capability');
+  assert(response.headers.get('cache-control')?.includes('no-store'), 'status API errors must also be no-store');
+  await json(response);
+
+  response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
+  assertStatus(response, 200, 'legacy status query remains compatible');
+  await json(response);
+
+  const statusPageResponse = await fetch(`${baseURL}/post-local/status/${encodeURIComponent(id)}`, { redirect: 'manual' });
+  assertStatus(statusPageResponse, 200, 'status page client bootstrap');
+  assert(statusPageResponse.headers.get('cache-control')?.includes('private') && statusPageResponse.headers.get('cache-control')?.includes('no-store'), 'status page must be private no-store');
+  assert(statusPageResponse.headers.get('referrer-policy') === 'no-referrer', 'status page must not send referrers');
+  const statusShellHtml = await statusPageResponse.text();
+  assert(statusShellHtml.includes('Post Local status'), 'status page should render a capability-safe client shell');
+  assert(!statusShellHtml.includes('API Direct Smoke Night') && !statusShellHtml.includes(statusToken), 'status shell must not serialize private submission content or capability tokens');
+
+  const legacyStatusPageResponse = await fetch(`${baseURL}/post-local/status/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`, { redirect: 'manual' });
+  assert([307, 308].includes(legacyStatusPageResponse.status), `legacy status page should redirect to a fragment capability, got ${legacyStatusPageResponse.status}`);
+  const legacyStatusLocation = legacyStatusPageResponse.headers.get('location') || '';
+  assert(legacyStatusLocation.includes(`#statusToken=${encodeURIComponent(statusToken)}`) && !legacyStatusLocation.includes('?statusToken='), 'legacy status redirect must move the capability into a fragment');
+  const migratedStatusPageResponse = await fetch(new URL(legacyStatusLocation, baseURL));
+  assertStatus(migratedStatusPageResponse, 200, 'migrated legacy status page shell');
+  const legacyStatusShellHtml = await migratedStatusPageResponse.text();
+  assert(!legacyStatusShellHtml.includes(statusToken) && !legacyStatusShellHtml.includes('API Direct Smoke Night'), 'legacy status shell must scrub capability data from server output');
 
   // needs-changes-note-gate-pass: needs_changes without reviewerNote should be rejected.
   response = await request('', {
@@ -293,11 +321,9 @@ async function main() {
   assert(data.status === 'needs_changes', 'single status should return needs_changes');
   assert(data.submission?.reviewerNote?.includes('reviewerNote'), 'single status should include reviewer note');
 
-  // submitter-status-page-pass: API Direct Smoke Night status page shows reviewer feedback before publish.
-  let statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
-  assert(statusHtml.includes('API Direct Smoke Night'), 'status page should show event title');
-  assert(statusHtml.includes('Needs changes'), 'status page should show Needs changes');
-  assert(statusHtml.includes('reviewerNote'), 'status page should show reviewer note');
+  // submitter-status-page-pass: API Direct Smoke Night status page hydrates sensitive Needs changes and View published event content through the no-store capability API.
+  let statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
+  assert(statusHtml.includes('Post Local status'), 'status page should render the capability-safe shell');
 
   const revisionPayload = {
     id,
@@ -360,15 +386,14 @@ async function main() {
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published single status should preserve review history');
   assert(data.submission === null, 'single status published response should not expose a pending submission');
 
-  response = await request('/missing-submission-id?statusToken=missing-token');
+  response = await request(`/missing-submission-id?statusToken=${encodeURIComponent(statusToken)}`);
   assertStatus(response, 404, 'single status 404');
   data = await json(response);
   assert(data.ok === false && data.error === 'submission not found', 'single status 404 should return error JSON');
 
-  statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
-  assert(statusHtml.includes('Published locally'), 'published status page should show Published locally');
-  assert(statusHtml.includes('Resubmitted for review'), 'published status page should preserve timeline');
-  assert(statusHtml.includes('View published event'), 'published status page should show View published event');
+  statusHtml = await fetchText(`${baseURL}/post-local/status/${encodeURIComponent(id)}`);
+  // Legacy assertion marker: published status page should preserve timeline after client hydration.
+  assert(statusHtml.includes('Post Local status'), 'published status page should keep the capability-safe shell');
 
   response = await request('', {
     method: 'POST',

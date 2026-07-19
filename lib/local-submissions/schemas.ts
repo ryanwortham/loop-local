@@ -1,11 +1,14 @@
 import { isEventCategory, normalizeEventCategory } from '@/lib/event-taxonomy';
+import {
+  MAX_LOCAL_SUBMISSION_DATA_IMAGE_LENGTH,
+  MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES,
+} from '@/lib/local-submission-limits';
 import { safeExternalUrl } from '@/lib/live-feed';
 import type { LocalSubmissionRecord, LocalSubmissionStatus, LocalSubmissionsStore } from '@/lib/local-submissions-store';
 
-export const MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES = 2_500_000;
+export { MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES };
 const MAX_TEXT_FIELD_LENGTH = 2_000;
 const MAX_SHORT_FIELD_LENGTH = 240;
-const MAX_DATA_IMAGE_LENGTH = 1_000_000;
 
 // local-submission-runtime-schema-pass: lightweight runtime validation at API boundary without adding deps.
 export const allowedLocalSubmissionStatuses: LocalSubmissionStatus[] = ['pending_review', 'needs_changes', 'approved_local', 'published_local'];
@@ -47,7 +50,7 @@ export function sanitizeLocalSubmissionMedia(input: Partial<LocalSubmissionRecor
     if (!mime || !allowedDataImageMimeTypes.includes(mime as (typeof allowedDataImageMimeTypes)[number])) {
       return { ok: false, error: 'unsupported image type' };
     }
-    if (value.length > MAX_DATA_IMAGE_LENGTH) return { ok: false, error: `${key} is too large` };
+    if (value.length > MAX_LOCAL_SUBMISSION_DATA_IMAGE_LENGTH) return { ok: false, error: `${key} is too large` };
   }
   return { ok: true, value: next };
 }

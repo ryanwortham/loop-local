@@ -82,6 +82,8 @@ test('fetchFeedWithReliability retries a transient failure and reports a fresh n
   assert.equal(feed.count, 1);
   assert.equal(feed.items[0]?.summary, 'A neighborhood market.');
   assert.equal(feed.items[0]?.location, 'Market Hall');
+  assert.equal(feed.items[0]?.date, '2026-07-20');
+  assert.equal(feed.items[0]?.time, '11:00 PM UTC');
   assert.equal(feed.items[0]?.source, 'live_supabase');
   assert.ok(cache.value, 'fresh feed should populate the stale fallback cache');
 });
