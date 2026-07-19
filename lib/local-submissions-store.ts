@@ -14,12 +14,28 @@ import { sanitizeLocalSubmissionMedia } from '@/lib/local-submissions/schemas';
 
 export type LocalSubmissionStatus = 'pending_review' | 'needs_changes' | 'approved_local' | 'published_local';
 
+export type OperatorMutationActor = {
+  actorUserId: string;
+  authMethod: 'supabase' | 'token_fallback';
+};
+
 export type LocalSubmissionHistoryEntry = {
   // review-history-timeline-pass: chronological review actions for submitters and operators.
   action: 'submitted' | 'needs_changes' | 'approved_local' | 'resubmitted' | 'published_local' | 'updated';
   label: string;
   at: string;
   note?: string;
+  actorUserId?: string;
+  authMethod?: OperatorMutationActor['authMethod'];
+};
+
+export type OperatorAuditEntry = OperatorMutationActor & {
+  id: string;
+  action: 'replace_queues' | 'update_submission' | 'publish_submission' | 'delete_submission' | 'set_category_override' | 'clear_category_override';
+  targetType: 'submission_queue' | 'local_submission' | 'event_category_override';
+  targetId: string;
+  at: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type LocalSubmissionRecord = {
@@ -77,6 +93,7 @@ export type LocalSubmissionsStore = {
   pendingSubmissions: LocalSubmissionRecord[];
   publishedLocalEvents: LiveFeedItem[];
   eventCategoryOverrides: EventCategoryOverrideMap;
+  operatorAuditLog: OperatorAuditEntry[];
 };
 
 export type LocalSubmissionStatusResult = {
@@ -91,6 +108,7 @@ const emptyStore: LocalSubmissionsStore = {
   pendingSubmissions: [],
   publishedLocalEvents: [],
   eventCategoryOverrides: REVIEWED_EVENT_CATEGORY_OVERRIDES,
+  operatorAuditLog: [],
 };
 
 function safeIdPrefix(value?: string): string {
@@ -122,10 +140,37 @@ function appendSubmissionHistory(
   action: LocalSubmissionHistoryEntry['action'],
   note?: string,
   at = nowIso(),
+  actor?: OperatorMutationActor,
 ): LocalSubmissionRecord {
   // review-history-timeline-pass: appendSubmissionHistory keeps immutable statusHistory audit entries.
-  const entry: LocalSubmissionHistoryEntry = { action, label: historyLabel(action), at, ...(note ? { note } : {}) };
+  const entry: LocalSubmissionHistoryEntry = {
+    action,
+    label: historyLabel(action),
+    at,
+    ...(note ? { note } : {}),
+    ...(actor ? { actorUserId: actor.actorUserId, authMethod: actor.authMethod } : {}),
+  };
   return { ...submission, statusHistory: [...(submission.statusHistory || []), entry] };
+}
+
+function appendOperatorAudit(
+  store: LocalSubmissionsStore,
+  actor: OperatorMutationActor,
+  action: OperatorAuditEntry['action'],
+  targetType: OperatorAuditEntry['targetType'],
+  targetId: string,
+  metadata?: Record<string, unknown>,
+): LocalSubmissionsStore {
+  const entry: OperatorAuditEntry = {
+    id: randomUUID(),
+    ...actor,
+    action,
+    targetType,
+    targetId,
+    at: nowIso(),
+    ...(metadata ? { metadata } : {}),
+  };
+  return { ...store, operatorAuditLog: [...store.operatorAuditLog, entry] };
 }
 
 function newStatusToken(): string {
@@ -159,6 +204,11 @@ function normalizeStore(value: unknown): LocalSubmissionsStore {
     eventCategoryOverrides: Object.prototype.hasOwnProperty.call(maybe, 'eventCategoryOverrides')
       ? normalizeEventCategoryOverrides(maybe.eventCategoryOverrides)
       : REVIEWED_EVENT_CATEGORY_OVERRIDES,
+    operatorAuditLog: Array.isArray(maybe.operatorAuditLog)
+      ? maybe.operatorAuditLog.filter((entry): entry is OperatorAuditEntry => Boolean(
+        entry && typeof entry === 'object' && 'actorUserId' in entry && 'action' in entry && 'targetId' in entry,
+      ))
+      : [],
   };
 }
 
@@ -190,10 +240,19 @@ export async function writeLocalSubmissionsStore(store: LocalSubmissionsStore): 
 export async function replaceLocalSubmissionQueues(
   pendingSubmissions: LocalSubmissionRecord[],
   publishedLocalEvents: LiveFeedItem[],
+  actor: OperatorMutationActor,
 ): Promise<LocalSubmissionsStore> {
   return withSubmissionMutationLock(async () => {
     const current = await readLocalSubmissionsStore();
-    return persistLocalSubmissionsStore({ ...current, pendingSubmissions, publishedLocalEvents });
+    const replaced = { ...current, pendingSubmissions, publishedLocalEvents };
+    return persistLocalSubmissionsStore(appendOperatorAudit(
+      replaced,
+      actor,
+      'replace_queues',
+      'submission_queue',
+      'local-submissions',
+      { pendingCount: pendingSubmissions.length, publishedCount: publishedLocalEvents.length },
+    ));
   });
 }
 
@@ -268,7 +327,11 @@ export async function createLocalSubmission(input: Partial<LocalSubmissionRecord
   });
 }
 
-export async function updateLocalSubmission(id: string, patch: Partial<LocalSubmissionRecord>) {
+export async function updateLocalSubmission(
+  id: string,
+  patch: Partial<LocalSubmissionRecord>,
+  actor: OperatorMutationActor,
+) {
   return withSubmissionMutationLock(async () => {
     const store = await readLocalSubmissionsStore();
     const nextPending = store.pendingSubmissions.map((item) => {
@@ -277,30 +340,45 @@ export async function updateLocalSubmission(id: string, patch: Partial<LocalSubm
       if (patch.status && patch.status !== item.status) {
         const action = patch.status === 'needs_changes' ? 'needs_changes' : patch.status === 'approved_local' ? 'approved_local' : 'updated';
         // review-history-timeline-pass markers: action: 'needs_changes' action: 'approved_local'
-        return appendSubmissionHistory(updated, action, patch.reviewerNote || item.reviewerNote);
+        return appendSubmissionHistory(updated, action, patch.reviewerNote || item.reviewerNote, undefined, actor);
       }
-      if (patch.reviewerNote && patch.reviewerNote !== item.reviewerNote) return appendSubmissionHistory(updated, 'updated', patch.reviewerNote);
+      if (patch.reviewerNote && patch.reviewerNote !== item.reviewerNote) {
+        return appendSubmissionHistory(updated, 'updated', patch.reviewerNote, undefined, actor);
+      }
       return updated;
     });
     const updated = nextPending.find((item) => item.id === id);
     if (!updated) return { store, submission: null };
-    const nextStore: LocalSubmissionsStore = { ...store, pendingSubmissions: nextPending };
+    const nextStore: LocalSubmissionsStore = appendOperatorAudit(
+      { ...store, pendingSubmissions: nextPending },
+      actor,
+      'update_submission',
+      'local_submission',
+      id,
+      { status: patch.status || updated.status, reviewerNoteChanged: Boolean(patch.reviewerNote) },
+    );
     return { store: await persistLocalSubmissionsStore(nextStore), submission: updated };
   });
 }
 
-export async function deleteLocalSubmission(id: string) {
+export async function deleteLocalSubmission(id: string, actor: OperatorMutationActor) {
   return withSubmissionMutationLock(async () => {
     const store = await readLocalSubmissionsStore();
-    const nextStore = {
-      ...store,
-      pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
-    };
+    const nextStore = appendOperatorAudit(
+      {
+        ...store,
+        pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
+      },
+      actor,
+      'delete_submission',
+      'local_submission',
+      id,
+    );
     return { store: await persistLocalSubmissionsStore(nextStore) };
   });
 }
 
-export async function publishLocalSubmission(id: string) {
+export async function publishLocalSubmission(id: string, actor: OperatorMutationActor) {
   return withSubmissionMutationLock(async () => {
     const store = await readLocalSubmissionsStore();
     const submission = store.pendingSubmissions.find((item) => item.id === id);
@@ -314,14 +392,27 @@ export async function publishLocalSubmission(id: string) {
         error: `submission is not publish-ready: ${quality.missingFields.join(', ')}`,
       };
     }
-    const publishedSubmission = appendSubmissionHistory({ ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() }, 'published_local');
+    const publishedSubmission = appendSubmissionHistory(
+      { ...submission, status: 'published_local' as const, publishedAt: nowIso(), approvedAt: submission.approvedAt || nowIso(), statusUpdatedAt: nowIso() },
+      'published_local',
+      undefined,
+      undefined,
+      actor,
+    );
     // review-history-timeline-pass marker: action: 'published_local'
     const published = submissionToFeedItem(publishedSubmission);
-    const nextStore: LocalSubmissionsStore = {
-      ...store,
-      pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
-      publishedLocalEvents: [published, ...store.publishedLocalEvents.filter((item) => item.id !== published.id)],
-    };
+    const nextStore: LocalSubmissionsStore = appendOperatorAudit(
+      {
+        ...store,
+        pendingSubmissions: store.pendingSubmissions.filter((item) => item.id !== id),
+        publishedLocalEvents: [published, ...store.publishedLocalEvents.filter((item) => item.id !== published.id)],
+      },
+      actor,
+      'publish_submission',
+      'local_submission',
+      id,
+      { publishedEventId: published.id },
+    );
     return { store: await persistLocalSubmissionsStore(nextStore), submission: publishedSubmission, published };
   });
 }
@@ -357,7 +448,8 @@ export async function resubmitLocalSubmission(id: string, patch: Partial<LocalSu
 
 export async function setEventCategoryOverride(
   event: Pick<LiveFeedItem, 'id' | 'title' | 'category' | 'sourceCategory'>,
-  category?: string,
+  category: string | undefined,
+  actor: OperatorMutationActor,
 ) {
   return withSubmissionMutationLock(async () => {
     const store = await readLocalSubmissionsStore();
@@ -376,7 +468,14 @@ export async function setEventCategoryOverride(
       if (!candidate[event.id]) return { store, override: null, error: 'invalid event category override' };
       nextOverrides[event.id] = candidate[event.id];
     }
-    const nextStore: LocalSubmissionsStore = { ...store, eventCategoryOverrides: nextOverrides };
+    const nextStore: LocalSubmissionsStore = appendOperatorAudit(
+      { ...store, eventCategoryOverrides: nextOverrides },
+      actor,
+      category ? 'set_category_override' : 'clear_category_override',
+      'event_category_override',
+      event.id,
+      { category: category || null, sourceCategory: event.sourceCategory || event.category || 'Local' },
+    );
     const written = await persistLocalSubmissionsStore(nextStore);
     return { store: written, override: written.eventCategoryOverrides[event.id] || null };
   });

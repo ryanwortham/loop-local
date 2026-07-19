@@ -276,8 +276,7 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
       return;
     }
     if (['Profile'].includes(tab)) {
-      setActiveAppTab('Profile');
-      document.getElementById('discover')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.location.assign('/account');
       return;
     }
     setShowSavedPanel(false);
@@ -319,6 +318,7 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
           <section className="mobile-menu-panel mobile-qa-home-menu" aria-label="Mobile menu">
             <button className="mobile-qa-target" type="button" onClick={() => { setShowMobileMenu(false); document.getElementById('events')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>Explore nearby</button>
             <Link className="mobile-qa-target" href="/post-local" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
+            <Link className="mobile-qa-target" href="/account" onClick={() => setShowMobileMenu(false)}>Account</Link>
             <Link className="mobile-qa-target" href="/operator/reviews" onClick={() => setShowMobileMenu(false)}>Operator reviews</Link>
             <button className="mobile-qa-target" type="button" onClick={() => { setShowSavedPanel(true); setActiveAppTab('Saved'); setShowMobileMenu(false); }}>Saved events</button>
           </section>

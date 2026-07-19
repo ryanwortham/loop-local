@@ -7,7 +7,6 @@ export const metadata: Metadata = {
 };
 
 export default function OperatorReviewsPage() {
-  // operator-review-route-pass: OperatorReviewPanel lives at /operator/reviews and asks for operatorToken.
-  // Operator token marker: /operator/reviews · operatorToken · OperatorReviewPanel.
+  // operator-review-route-pass: OperatorReviewPanel lives at /operator/reviews and verifies a Supabase operator session.
   return <OperatorReviewPanel />;
 }

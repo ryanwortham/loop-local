@@ -1210,20 +1210,24 @@ def test_loop_local_submitters_can_revise_needs_changes_submissions():
 def test_loop_local_operator_review_system_is_separated_and_token_gated():
     api = read('app/api/local-submissions/route.ts')
     single = read('app/api/local-submissions/[id]/route.ts')
-    operator = read('app/operator/reviews/page.tsx') if (ROOT / 'app/operator/reviews/page.tsx').exists() else ''
+    operator_page = read('app/operator/reviews/page.tsx') if (ROOT / 'app/operator/reviews/page.tsx').exists() else ''
+    operator_panel = read('components/operator-review-panel.tsx')
+    auth = read('lib/operator-auth.ts')
+    auth_config = read('lib/operator-auth-config.ts')
     shell = read('components/app-shell.tsx')
     smoke = read('scripts/local-submissions-api-smoke.mjs')
     mobile = read('scripts/mobile-interaction-smoke.mjs')
     for marker in [
-        'operator-review-token-gate-pass',
+        'operator-supabase-auth-pass',
         'requireOperatorAccess',
-        'LOOP_LOCAL_OPERATOR_TOKEN',
-        'x-loop-local-operator-token',
-        "operator token required",
+        'resolveOperatorAccess',
+        'access.actorUserId',
         "body.action === 'replace'",
         "body.action === 'publish'",
     ]:
-        assert marker in api, f'missing operator token gate API marker {marker}'
+        assert marker in api, f'missing operator auth API marker {marker}'
+    for marker in ['auth.getUser', "from('profiles')", 'LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED']:
+        assert marker in auth + auth_config, f'missing Supabase operator verification marker {marker}'
     for marker in [
         'poster-status-token-pass',
         'statusToken',
@@ -1234,21 +1238,21 @@ def test_loop_local_operator_review_system_is_separated_and_token_gated():
     for marker in [
         'operator-review-route-pass',
         'OperatorReviewPanel',
-        'Operator token',
         '/operator/reviews',
-        'operatorToken',
+        'getSession',
+        'Authorization',
     ]:
-        assert marker in operator, f'missing operator review route marker {marker}'
+        assert marker in operator_page + operator_panel, f'missing operator review route marker {marker}'
     assert 'Open Review Queue' not in shell, 'consumer mobile menu should not expose review queue'
     assert "tab === 'Profile'" not in shell, 'consumer Profile tab should not open review queue'
     for marker in [
-        'operator-review-token-gate-pass',
-        'protected GET without token',
-        'protected PATCH without token',
-        'LOOP_LOCAL_OPERATOR_TOKEN',
+        'operator-supabase-auth-pass',
+        'protected GET without authentication',
+        'operator authentication required',
+        'fallbackActorUserId',
         'operatorHeaders',
     ]:
-        assert marker in smoke + mobile, f'missing smoke token gate marker {marker}'
+        assert marker in smoke + mobile, f'missing smoke auth gate marker {marker}'
 
 
 def test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup():
@@ -1350,7 +1354,7 @@ def test_loop_local_mobile_shell_and_post_local_true_wizard_are_corrected():
         "aria-pressed={activeAppTab === tab}",
         "className={activeAppTab === tab ? 'active' : ''}",
         'setShowSavedPanel(true); setActiveAppTab(\'Saved\')',
-        'setActiveAppTab(\'Profile\')',
+        "window.location.assign('/account')",
     ]:
         assert marker in shell, f'missing mobile shell active tab marker {marker}'
     for marker in [
@@ -1619,6 +1623,28 @@ def test_release_baseline_service_worker_never_freezes_dynamic_navigation():
     assert "url.pathname.startsWith('/operator/')" in sw
 
 
+def test_phase2b_supabase_auth_protects_operator_identity_and_keeps_fallback_disabled():
+    account = read('components/account-panel.tsx')
+    account_page = read('app/account/page.tsx')
+    operator = read('components/operator-review-panel.tsx')
+    auth = read('lib/operator-auth.ts')
+    auth_config = read('lib/operator-auth-config.ts')
+    route = read('app/api/local-submissions/route.ts')
+    store = read('lib/local-submissions-store.ts')
+    session_route = read('app/api/auth/operator-session/route.ts')
+    for marker in ['signInWithPassword', 'signUp', 'signOut', 'onAuthStateChange', "from('profiles')"]:
+        assert marker in account, f'missing Supabase account behavior {marker}'
+    assert 'AccountPanel' in account_page
+    for marker in ['authorizationBearerToken', 'auth.getUser', "from('profiles')", "app_role", 'LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED']:
+        assert marker in auth + auth_config, f'missing operator auth marker {marker}'
+    assert "=== 'true'" in auth_config, 'operator fallback must require explicit enablement'
+    assert 'actorUserId' in route and 'access.actorUserId' in route
+    assert 'operatorAuditLog' in store and 'actorUserId' in store and 'authMethod' in store
+    assert 'fallbackEnabled' in session_route
+    assert 'Authorization' in operator and 'getSession' in operator
+    assert 'Operator token' not in operator, 'normal operator UI must not ask for a shared token'
+
+
 if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
@@ -1669,4 +1695,5 @@ if __name__ == '__main__':
     test_release_baseline_keeps_operator_workflow_out_of_consumer_shell()
     test_release_baseline_upload_limits_are_shared_with_the_api()
     test_release_baseline_service_worker_never_freezes_dynamic_navigation()
+    test_phase2b_supabase_auth_protects_operator_identity_and_keeps_fallback_disabled()
     print('loop_local_complete_frontend_rebuild_contract_ok')

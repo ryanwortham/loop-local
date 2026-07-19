@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { LiveFeedItem } from '@/lib/live-feed';
+import { supabase } from '@/lib/supabase/client';
 import { submissionPublicationQuality } from '@/lib/local-submission-quality';
 import { SUBMISSION_EVENT_CATEGORIES } from '@/lib/event-taxonomy';
 import type { LocalSubmissionRecord } from '@/lib/local-submissions-store';
@@ -21,16 +22,41 @@ function submitterStatusHref(submission: LocalSubmissionRecord) {
 
 export function OperatorReviewPanel() {
   // operator-review-route-pass: /operator/reviews owns Review queue instead of consumer Profile.
-  const [operatorToken, setOperatorToken] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [isOperator, setIsOperator] = useState(false);
+  const [fallbackEnabled, setFallbackEnabled] = useState(false);
+  const [emergencyKey, setEmergencyKey] = useState('');
   const [queue, setQueue] = useState<ReviewQueueState>({ pendingSubmissions: [], publishedLocalEvents: [], taxonomyReviewItems: [] });
-  const [status, setStatus] = useState('Enter the operator token to load reviews.');
+  const [status, setStatus] = useState('Checking your Supabase operator session…');
   const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
   const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
 
-  const operatorHeaders = useMemo(() => ({
+  const operatorHeaders = useMemo<Record<string, string>>(() => ({
     'content-type': 'application/json',
-    'x-loop-local-operator-token': operatorToken,
-  }), [operatorToken]);
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+    ...(fallbackEnabled && emergencyKey ? { 'x-loop-local-operator-token': emergencyKey } : {}),
+  }), [accessToken, emergencyKey, fallbackEnabled]);
+
+  useEffect(() => {
+    async function refreshSession(token = '') {
+      setAccessToken(token);
+      const response = await fetch('/api/auth/operator-session', {
+        cache: 'no-store',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await response.json();
+      setIsOperator(Boolean(data.operator));
+      setFallbackEnabled(Boolean(data.fallbackEnabled));
+      if (data.operator) setStatus(`Verified operator${data.email ? ` · ${data.email}` : ''}. Load the review queue when ready.`);
+      else if (data.authenticated) setStatus('This account is signed in but does not have the operator role.');
+      else setStatus(data.fallbackEnabled ? 'Sign in with an operator account, or use the enabled emergency fallback.' : 'Sign in with an operator account to continue.');
+    }
+    void supabase.auth.getSession().then(({ data }) => refreshSession(data.session?.access_token || ''));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => void refreshSession(session?.access_token || ''), 0);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   async function loadReviews() {
     const response = await fetch('/api/local-submissions', { cache: 'no-store', headers: operatorHeaders });
@@ -93,14 +119,15 @@ export function OperatorReviewPanel() {
     <main className="post-local-shell complete-frontend-rebuild operator-review-route-pass">
       <header className="ll-nav post-app-topbar post-local-command-center">
         <Link className="ll-brand" href="/">Loop Local</Link>
-        <nav aria-label="Operator navigation"><Link href="/">Discover</Link><Link href="/post-local">Post Local</Link></nav>
+        <nav aria-label="Operator navigation"><Link href="/">Discover</Link><Link href="/post-local">Post Local</Link><Link href="/account">Account</Link></nav>
       </header>
       <section className="ll-card post-flow-card operator-review-card">
         <p className="ll-kicker">Operator reviews</p>
         <h1>Review queue</h1>
-        <p>Protected local operator desk for pending Post Local submissions.</p>
-        <label className="ll-field"><span>Operator token</span><input value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} placeholder="LOOP_LOCAL_OPERATOR_TOKEN" type="password" /></label>
-        <div className="ll-submit-actions"><button type="button" onClick={loadReviews}>Load review queue</button><Link href="/post-local">Open Post Local</Link></div>
+        <p>Protected operator desk. Supabase verifies both the signed-in user and the assigned operator role.</p>
+        {!isOperator ? <p><Link href="/account">Sign in or review your account</Link></p> : null}
+        {fallbackEnabled && !isOperator ? <label className="ll-field"><span>Emergency fallback key</span><input value={emergencyKey} onChange={(event) => setEmergencyKey(event.target.value)} autoComplete="off" type="password" /></label> : null}
+        <div className="ll-submit-actions"><button type="button" disabled={!isOperator && !emergencyKey} onClick={loadReviews}>Load review queue</button><Link href="/post-local">Open Post Local</Link></div>
         <p role="status" className="operator-export-status">{status}</p>
       </section>
       <section className="pending-submissions-panel post-submission-review-panel-pass" aria-label="Pending local submissions">

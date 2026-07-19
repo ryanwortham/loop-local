@@ -114,8 +114,8 @@ async function main() {
   await page.getByRole('heading', { name: 'Saved events' }).waitFor({ timeout });
   await assertSingleActiveAppTab(page);
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'bottom Profile tab', { force: true });
-  await page.locator('.discovery-phone').waitFor({ timeout });
-  await assertSingleActiveAppTab(page);
+  await page.waitForURL(/\/account$/, { timeout });
+  await page.getByRole('heading', { name: 'Your Loop Local account' }).waitFor({ timeout });
 
   // smoke-runtime-cleanup-pass: isolated LOOP_LOCAL_SUBMISSIONS_STORE_PATH plus final reset keeps test data out of the real feed.
   await page.request.post(`${baseURL}/api/local-submissions`, {
@@ -229,7 +229,7 @@ async function main() {
   await page.getByText('Resubmitted for review').first().waitFor({ timeout });
 
   await page.goto(`${baseURL}/operator/reviews`, { waitUntil: 'domcontentloaded' });
-  await page.getByLabel('Operator token').fill(operatorToken);
+  await page.getByLabel('Emergency fallback key').fill(operatorToken);
   await page.getByRole('button', { name: 'Load review queue' }).click({ timeout });
   await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   // operator-submitter-link-pass: operators can copy/open the submitter status handoff URL from the review queue.
@@ -246,7 +246,7 @@ async function main() {
   ]);
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
   await page.goto(`${baseURL}/operator/reviews`, { waitUntil: 'domcontentloaded' });
-  await page.getByLabel('Operator token').fill(operatorToken);
+  await page.getByLabel('Emergency fallback key').fill(operatorToken);
   await page.getByRole('button', { name: 'Load review queue' }).click({ timeout });
   await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');

@@ -4,6 +4,7 @@
 
 const baseURL = process.env.LOOP_LOCAL_API_SMOKE_URL || 'http://127.0.0.1:3002';
 const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
+const fallbackActorUserId = process.env.LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID || 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const endpoint = `${baseURL}/api/local-submissions`;
 
 function operatorHeaders(extra = {}) {
@@ -53,11 +54,20 @@ async function main() {
   const svgMediaDataUrl = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64')}`;
   // post-local-media-persistence-pass: API Direct Smoke Media verifies eventImageDataUrl/logoDataUrl survives publish.
   // media-sanitization-boundary-pass: image/png;base64 is allowed, SVG media should be rejected, oversized payload should be rejected, invalid URL should be rejected.
-  // operator-review-token-gate-pass: protected GET without token and protected PATCH without token are rejected.
+  // operator-supabase-auth-pass: protected requests require a verified operator session unless the disabled-by-default fallback is explicitly enabled.
   let response = await request('');
-  assertStatus(response, 401, 'protected GET without token');
+  assertStatus(response, 401, 'protected GET without authentication');
   let data = await json(response);
-  assert(data.error === 'operator token required', 'protected GET should require operator token');
+  assert(data.error === 'operator authentication required', 'protected GET should require operator authentication');
+
+  response = await fetch(`${baseURL}/api/auth/operator-session`, { headers: { accept: 'application/json' } });
+  assertStatus(response, 200, 'operator session discovery');
+  data = await json(response);
+  assert(data.authenticated === false && data.operator === false, 'anonymous session must not be an operator');
+  assert(data.fallbackEnabled === true, 'smoke explicitly enables emergency token fallback');
+
+  const accountHtml = await fetchText(`${baseURL}/account`);
+  assert(accountHtml.includes('Your Loop Local account'), 'account page should render the account experience');
 
   response = await request('', {
     method: 'PATCH',
@@ -313,6 +323,7 @@ async function main() {
   data = await json(response);
   assert(data.submission.status === 'needs_changes', 'patched status should be needs_changes');
   assert(data.submission.statusHistory?.some((entry) => entry.action === 'needs_changes'), 'needs_changes history entry should persist');
+  assert(data.submission.statusHistory?.some((entry) => entry.action === 'needs_changes' && entry.actorUserId === fallbackActorUserId && entry.authMethod === 'token_fallback'), 'review history must attribute the emergency fallback actor');
   assert(data.submission.reviewerNote?.includes('reviewerNote'), 'patched reviewer note should persist');
 
   response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
@@ -372,6 +383,7 @@ async function main() {
   assert(data.published?.title === 'API Direct Smoke Night Revised', 'published feed item should use event title');
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published response should preserve review history');
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local'), 'published response should include published_local history');
+  assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local' && entry.actorUserId === fallbackActorUserId), 'published history must identify the operator actor');
   // Contract markers: published.image_url?.startsWith('data:image/png;base64,') and published.imageState === 'photo'
   assert(data.published.image_url?.startsWith('data:image/png;base64,'), 'published image_url should preserve event media data URL');
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
@@ -414,6 +426,9 @@ async function main() {
   data = await json(response);
   assert(data.ok === true, 'GET should be ok');
   assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night Revised'), 'publishedLocalEvents should include published event');
+  assert(Array.isArray(data.operatorAuditLog) && data.operatorAuditLog.length >= 4, 'operator mutations must append durable audit entries');
+  assert(data.operatorAuditLog.every((entry) => entry.actorUserId === fallbackActorUserId), 'every operator audit entry must identify its actor');
+  assert(data.operatorAuditLog.every((entry) => entry.authMethod === 'token_fallback'), 'fallback audit entries must identify the emergency auth method');
 
   response = await request('', {
     method: 'POST',

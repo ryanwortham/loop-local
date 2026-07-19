@@ -6,6 +6,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 const port = Number(process.env.LOOP_LOCAL_API_SMOKE_PORT || 3013);
 const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
+const fallbackActorUserId = process.env.LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID || 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const smokeStorePath = process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH || `/tmp/loop-local-api-smoke-${process.pid}.json`;
 const baseURL = `http://127.0.0.1:${port}`;
 let server;
@@ -38,7 +39,7 @@ async function waitForServer() {
 
 async function startServer() {
   console.log(`npm run start -- -p ${port}`);
-  server = spawn('npm', ['run', 'start', '--', '-p', String(port)], { stdio: 'inherit', env: { ...process.env, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath } });
+  server = spawn('npm', ['run', 'start', '--', '-p', String(port)], { stdio: 'inherit', env: { ...process.env, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath } });
   server.on('exit', (code, signal) => {
     if (!server.killed && code !== 0) console.error(`API smoke server exited with ${signal || code}`);
   });
@@ -56,7 +57,7 @@ async function main() {
     await run('npm', ['run', 'build']);
     await startServer();
     await run('npm', ['run', 'test:api:local'], {
-      env: { ...process.env, LOOP_LOCAL_API_SMOKE_URL: baseURL, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
+      env: { ...process.env, LOOP_LOCAL_API_SMOKE_URL: baseURL, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
     });
     console.log('loop_local_local_submissions_api_full_runner_ok');
   } finally {

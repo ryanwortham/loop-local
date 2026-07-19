@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hasOperatorAccess, requireOperatorAccess } from '@/lib/operator-auth';
+import { operatorAccessError, requireOperatorAccess, resolveOperatorAccess, type OperatorAccess } from '@/lib/operator-auth';
 import {
   createLocalSubmission,
   deleteLocalSubmission,
@@ -11,6 +11,7 @@ import {
   setEventCategoryOverride,
   updateLocalSubmission,
   type LocalSubmissionRecord,
+  type OperatorMutationActor,
 } from '@/lib/local-submissions-store';
 import {
   MAX_LOCAL_SUBMISSION_PAYLOAD_BYTES,
@@ -23,7 +24,7 @@ import { getLiveFeed } from '@/lib/live-feed-server';
 import { publicSubmissionRateLimit, type PublicSubmissionScope } from '@/lib/public-submission-rate-limit';
 
 // api-backed-local-submissions-pass: /api/local-submissions is the app-backed review queue boundary.
-// operator-review-token-gate-pass marker: requireOperatorAccess rejects with "operator token required" using LOOP_LOCAL_OPERATOR_TOKEN and x-loop-local-operator-token.
+// operator-supabase-auth-pass: verified Supabase sessions and profiles.app_role protect review access; shared-token fallback is opt-in only.
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,13 @@ type MutationBody = Partial<LocalSubmissionRecord> & {
 
 function error(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
+}
+
+function mutationActor(access: OperatorAccess): OperatorMutationActor {
+  if (!access.authorized || !access.actorUserId || !access.authMethod) {
+    throw new Error('authorized operator actor is required');
+  }
+  return { actorUserId: access.actorUserId, authMethod: access.authMethod };
 }
 
 function publicSubmissionResponse(submission: LocalSubmissionRecord | null, status = 200) {
@@ -87,9 +95,9 @@ function taxonomyReviewItems(items: LiveFeedItem[]): LiveFeedItem[] {
 }
 
 export async function GET(request: NextRequest) {
-  // operator-review-token-gate-pass: LOOP_LOCAL_OPERATOR_TOKEN + x-loop-local-operator-token protect review queue reads.
-  const unauthorized = requireOperatorAccess(request);
-  if (unauthorized) return unauthorized;
+  // operator-supabase-auth-pass: a verified Supabase operator role protects review queue reads.
+  const { response } = await requireOperatorAccess(request);
+  if (response) return response;
   const [store, feed] = await Promise.all([readLocalSubmissionsStore(), getLiveFeed(160)]);
   return NextResponse.json({
     ok: true,
@@ -101,20 +109,21 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  if (!hasOperatorAccess(request)) {
+  const access = await resolveOperatorAccess(request);
+  if (!access.authorized) {
     const limited = submissionRateLimit(request, 'create');
     if (limited) return limited;
   }
   const body = await readBody(request);
   if (payloadTooLarge(body)) return error('payload too large', 413);
   if (body.action === 'replace') {
-    const unauthorized = requireOperatorAccess(request);
-    if (unauthorized) return unauthorized;
+    if (!access.authorized) return operatorAccessError(access);
     const replacement = validateReplaceStoreInput(body);
     if (!replacement.ok) return error(replacement.error, replacement.status || 400);
     const store = await replaceLocalSubmissionQueues(
       replacement.value.pendingSubmissions,
       replacement.value.publishedLocalEvents.filter(isLiveFeedItem),
+      mutationActor(access),
     );
     return NextResponse.json({ ok: true, api: '/api/local-submissions', ...store });
   }
@@ -125,7 +134,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!hasOperatorAccess(request)) {
+  const access = await resolveOperatorAccess(request);
+  if (!access.authorized) {
     const limited = submissionRateLimit(request, 'resubmit');
     if (limited) return limited;
   }
@@ -147,13 +157,13 @@ export async function PATCH(request: NextRequest) {
     if (!result.submission) return error('submission not found', 404);
     return publicSubmissionResponse(result.submission);
   }
-  const unauthorized = requireOperatorAccess(request);
-  if (unauthorized) return unauthorized;
+  if (!access.authorized) return operatorAccessError(access);
+  const actor = mutationActor(access);
   if (cleanBody.action === 'set_category_override') {
     const feed = await getLiveFeed(160);
     const event = feed.items.find((item) => item.id === cleanBody.id);
     if (!event) return error('event not found', 404);
-    const result = await setEventCategoryOverride(event, cleanBody.eventCategory);
+    const result = await setEventCategoryOverride(event, cleanBody.eventCategory, actor);
     if ('error' in result && result.error) return error(result.error);
     const updatedFeed = await getLiveFeed(160);
     return NextResponse.json({
@@ -167,7 +177,7 @@ export async function PATCH(request: NextRequest) {
   }
   if (cleanBody.action === 'publish') {
     // Legacy operator contract marker: body.action === 'publish'.
-    const result = await publishLocalSubmission(cleanBody.id);
+    const result = await publishLocalSubmission(cleanBody.id, actor);
     if ('error' in result && result.error) return error(result.error);
     if (!result.submission) return error('submission not found', 404);
     return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, published: result.published, ...result.store });
@@ -181,17 +191,17 @@ export async function PATCH(request: NextRequest) {
     cleanBody.reviewerNote = note;
   }
   const { id, ...patch } = cleanBody;
-  const result = await updateLocalSubmission(id, patch);
+  const result = await updateLocalSubmission(id, patch, actor);
   if (!result.submission) return error('submission not found', 404);
   return NextResponse.json({ ok: true, api: '/api/local-submissions', submission: result.submission, ...result.store });
 }
 
 export async function DELETE(request: NextRequest) {
-  const unauthorized = requireOperatorAccess(request);
-  if (unauthorized) return unauthorized;
+  const { access, response } = await requireOperatorAccess(request);
+  if (response) return response;
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   if (!id) return error('id is required');
-  const { store } = await deleteLocalSubmission(id);
+  const { store } = await deleteLocalSubmission(id, mutationActor(access));
   return NextResponse.json({ ok: true, api: '/api/local-submissions', ...store });
 }

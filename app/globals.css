@@ -2927,3 +2927,51 @@ body {
     cursor: pointer;
   }
 }
+
+/* phase2b-account-auth-pass: premium, mobile-first Supabase account and operator identity surface. */
+.account-page-shell {
+  min-height: 100vh;
+  padding: clamp(18px, 4vw, 48px);
+  background: radial-gradient(circle at top left, #dbeafe 0, transparent 42%), linear-gradient(145deg, #f8fafc, #eff6ff);
+}
+.account-page-header {
+  width: min(720px, 100%);
+  margin: 0 auto 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.account-page-header > a:last-child { color: var(--ll-rebuild-blue); font-weight: 850; }
+.account-card {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  border: 1px solid rgba(37,99,235,.14);
+  border-radius: 30px;
+  padding: clamp(24px, 6vw, 48px);
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 30px 80px rgba(15,23,42,.12);
+}
+.account-card h1 { margin: 6px 0 12px; color: var(--ll-rebuild-slate); font-size: clamp(2rem, 7vw, 3.5rem); line-height: 1; }
+.account-status { min-height: 24px; color: var(--ll-rebuild-muted); font-weight: 750; }
+.account-form { display: grid; gap: 16px; margin-top: 22px; }
+.account-form label { display: grid; gap: 7px; color: var(--ll-rebuild-slate); font-weight: 850; }
+.account-form input {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgba(37,99,235,.2);
+  border-radius: 15px;
+  padding: 0 14px;
+  background: #fff;
+  color: var(--ll-rebuild-slate);
+  font: inherit;
+}
+.account-form input:focus { outline: 3px solid rgba(37,99,235,.16); border-color: var(--ll-rebuild-blue); }
+.account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.account-actions button, .account-actions a { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0 18px; font: inherit; font-weight: 900; cursor: pointer; }
+.account-role { margin: 0; color: var(--ll-rebuild-muted); }
+@media (max-width: 640px) {
+  .account-page-shell { padding: 14px; }
+  .account-card { border-radius: 24px; padding: 24px 18px; }
+  .account-actions > * { width: 100%; }
+}
