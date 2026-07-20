@@ -1,58 +1,29 @@
 #!/usr/bin/env node
-import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
-import { SupabaseLocalSubmissionsRepository } from '../lib/local-submissions/supabase-repository.ts';
+import {
+  resolveSupabaseRepositoryConfig,
+  SupabaseLocalSubmissionsRepository,
+} from '../lib/local-submissions/supabase-repository.ts';
+import {
+  runLocalSubmissionsRepositoryContract,
+} from './local-submissions-repository-contract.shared.ts';
 
-const repositoryA = new SupabaseLocalSubmissionsRepository();
-const repositoryB = new SupabaseLocalSubmissionsRepository();
-const baseline = await repositoryA.read();
-const firstId = randomUUID();
-const secondId = randomUUID();
-const firstToken = randomUUID().replaceAll('-', '');
-const secondToken = randomUUID().replaceAll('-', '');
-const submittedAt = new Date().toISOString();
+const actorUserId = process.env.LOOP_LOCAL_REPOSITORY_CONTRACT_ACTOR_ID;
+if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-8[0-9a-f]{3}-[0-9a-f]{12}$/i.test(actorUserId || '')) {
+  throw new Error('LOOP_LOCAL_REPOSITORY_CONTRACT_ACTOR_ID must be a canonical test UUID');
+}
 
-const pending = (id, token, title) => ({
-  id,
-  eventTitle: title,
-  status: 'pending_review',
-  statusToken: token,
-  submittedAt,
-  statusHistory: [{ action: 'submitted', label: 'Submitted for review', at: submittedAt }],
-});
+const config = resolveSupabaseRepositoryConfig();
+const primary = new SupabaseLocalSubmissionsRepository(config);
+const secondary = new SupabaseLocalSubmissionsRepository(config);
+const baseline = await primary.read();
 
 try {
-  await Promise.all([
-    repositoryA.mutate((store) => ({
-      store: { ...store, pendingSubmissions: [...store.pendingSubmissions, pending(firstId, firstToken, 'Repository instance A')] },
-      result: undefined,
-    })),
-    repositoryB.mutate((store) => ({
-      store: { ...store, pendingSubmissions: [...store.pendingSubmissions, pending(secondId, secondToken, 'Repository instance B')] },
-      result: undefined,
-    })),
-  ]);
-
-  let stored = await repositoryA.read();
-  assert(stored.pendingSubmissions.some((item) => item?.id === firstId), 'instance A mutation was dropped');
-  assert(stored.pendingSubmissions.some((item) => item?.id === secondId), 'instance B mutation was dropped');
-  assert.equal(await repositoryA.authorizeStatusCapability(firstId, firstToken), true);
-  assert.equal(await repositoryA.authorizeStatusCapability(firstId, 'wrong-token'), false);
-  assert.equal(JSON.stringify(stored).includes(firstToken), false, 'plaintext capability leaked from normalized database state');
-
-  await repositoryA.mutate((store) => ({
-    store: {
-      ...store,
-      pendingSubmissions: store.pendingSubmissions.filter((item) => item?.id !== firstId),
-      publishedLocalEvents: [...store.publishedLocalEvents, { id: `local-approved-${firstId}`, title: 'Repository published event', startsAt: submittedAt, city: 'Granite City' }],
-    },
-    result: undefined,
-  }));
-  stored = await repositoryB.read();
-  assert(stored.publishedLocalEvents.some((item) => item?.id === `local-approved-${firstId}`), 'published mapping did not survive a second adapter instance');
-  assert.equal(await repositoryB.authorizeStatusCapability(firstId, firstToken), true, 'publication discarded the capability hash');
-
+  await runLocalSubmissionsRepositoryContract({
+    primary,
+    secondary,
+    operatorActorUserId: actorUserId,
+  });
   console.log('loop_local_supabase_repository_local_contract_ok');
 } finally {
-  await repositoryA.write(baseline);
+  await primary.write(baseline);
 }

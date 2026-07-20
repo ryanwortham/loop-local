@@ -50,6 +50,17 @@ Success requires:
 - successful capability-hash authorization checks;
 - a second identical import reports `alreadyReconciled: true` and `applied: false`.
 
+## Shared repository contract
+
+Before applying or cutting over, run both adapters through the same behavior harness:
+
+```bash
+npm run test:repository
+npm run test:repository:local-db
+```
+
+The file and local Supabase entry points both invoke `runLocalSubmissionsRepositoryContract` from `scripts/local-submissions-repository-contract.shared.ts`. The shared harness covers empty reads, capability authorization, review history, publication mappings, category overrides, idempotent replay, deletion, and 12 concurrent mutations. Adapter-specific tests remain separate only for file corruption/legacy JSON behavior and Supabase transport/media behavior. Local Supabase fixtures use deterministic IDs and must report zero residual rows after cleanup.
+
 ## Preview cutover
 
 Only after the import succeeds:

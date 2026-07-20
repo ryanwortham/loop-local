@@ -10,6 +10,8 @@ import type {
 type FileRepositoryOptions = { runtimePath?: string };
 type UnknownRecord = Record<string, unknown>;
 
+const mutationQueues = new Map<string, Promise<void>>();
+
 const EMPTY_STORE: RepositoryStoreShape = {
   version: 1,
   pendingSubmissions: [],
@@ -76,13 +78,12 @@ function withCapabilityHashes(previous: RepositoryStoreShape, next: RepositorySt
 export class FileLocalSubmissionsRepository implements LocalSubmissionsRepository {
   // local-submissions-repository-boundary-pass: file adapter is isolated and replaceable by Supabase.
   private readonly runtimePath: string;
-  private mutationQueue: Promise<void> = Promise.resolve();
 
   constructor(options: FileRepositoryOptions = {}) {
-    this.runtimePath = options.runtimePath
+    this.runtimePath = path.resolve(options.runtimePath
       || process.env.LOCAL_SUBMISSIONS_FILE
       || process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH
-      || path.join(process.cwd(), 'runtime-data', 'local-submissions.json');
+      || path.join(process.cwd(), 'runtime-data', 'local-submissions.json'));
   }
 
   private async readUnlocked(): Promise<RepositoryStoreShape> {
@@ -107,13 +108,20 @@ export class FileLocalSubmissionsRepository implements LocalSubmissionsRepositor
   }
 
   private withLock<T>(operation: () => Promise<T>): Promise<T> {
-    const running = this.mutationQueue.then(operation, operation);
-    this.mutationQueue = running.then(() => undefined, () => undefined);
+    const previous = mutationQueues.get(this.runtimePath) || Promise.resolve();
+    const running = previous.then(operation, operation);
+    const settled = running.then(() => undefined, () => undefined);
+    mutationQueues.set(this.runtimePath, settled);
+    void settled.then(() => {
+      if (mutationQueues.get(this.runtimePath) === settled) {
+        mutationQueues.delete(this.runtimePath);
+      }
+    });
     return running;
   }
 
   async read(): Promise<RepositoryStoreShape> {
-    await this.mutationQueue;
+    await mutationQueues.get(this.runtimePath);
     return this.readUnlocked();
   }
 

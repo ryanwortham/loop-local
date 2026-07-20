@@ -45,6 +45,16 @@ function submissionMedia(record: UnknownRecord): StoredMediaReference[] {
     .filter((item): item is StoredMediaReference => Boolean(item));
 }
 
+function storeContainsActiveSubmission(store: RepositoryStoreShape, submissionId: string): boolean {
+  if (store.pendingSubmissions.some((value) => asRecord(value)?.id === submissionId)) return true;
+  return store.publishedLocalEvents.some((value) => {
+    const event = asRecord(value);
+    if (!event) return false;
+    if (event.localSubmissionId === submissionId || event.id === submissionId) return true;
+    return event.id === `local-approved-${submissionId}`;
+  });
+}
+
 export function resolveSupabaseRepositoryConfig(env: SupabaseRepositoryEnv = process.env): SupabaseRepositoryConfig {
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim() || env.SUPABASE_URL?.trim();
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -79,7 +89,7 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
   constructor(config = resolveSupabaseRepositoryConfig(), options: SupabaseRepositoryOptions = {}) {
     this.config = config;
     this.fetchImpl = options.fetchImpl || fetch;
-    this.maxMutationAttempts = Math.max(1, options.maxMutationAttempts || 8);
+    this.maxMutationAttempts = Math.max(1, options.maxMutationAttempts || 16);
     this.mediaStorage = options.mediaStorage || new SupabaseSubmissionMediaStorage(config, { fetchImpl: this.fetchImpl });
   }
 
@@ -274,6 +284,8 @@ export class SupabaseLocalSubmissionsRepository implements LocalSubmissionsRepos
 
   async authorizeStatusCapability(submissionId: string, token: string): Promise<boolean> {
     if (!submissionId || !token) return false;
+    const snapshot = await this.readSnapshot();
+    if (!storeContainsActiveSubmission(snapshot.store, submissionId)) return false;
     const query = new URLSearchParams({
       id: `eq.${submissionId}`,
       status_token_hash: `eq.${hashStatusCapability(token)}`,

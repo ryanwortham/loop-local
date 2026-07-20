@@ -78,9 +78,20 @@ test('Supabase repository retries compare-and-swap conflicts without dropping co
 
 test('Supabase capability authorization sends only a hash to the server', async () => {
   const token = 'never-send-this-capability';
-  let requestedUrl = '';
+  const requestedUrls: string[] = [];
   const fetchImpl: typeof fetch = async (input) => {
-    requestedUrl = String(input);
+    const url = String(input);
+    requestedUrls.push(url);
+    if (url.includes('read_local_submission_repository_state')) {
+      return new Response(JSON.stringify({
+        revision: 1,
+        store: {
+          version: 1,
+          pendingSubmissions: [{ id: '55555555-5555-4555-8555-555555555555' }],
+          publishedLocalEvents: [],
+        },
+      }), { status: 200 });
+    }
     return new Response('[{"id":"55555555-5555-4555-8555-555555555555"}]', { status: 200 });
   };
   const repository = new SupabaseLocalSubmissionsRepository(
@@ -88,8 +99,40 @@ test('Supabase capability authorization sends only a hash to the server', async 
     { fetchImpl },
   );
   assert.equal(await repository.authorizeStatusCapability('55555555-5555-4555-8555-555555555555', token), true);
-  assert.equal(requestedUrl.includes(token), false);
-  assert.equal(requestedUrl.includes(hashStatusCapability(token)), true);
+  const capabilityUrl = requestedUrls.find((url) => url.includes('/rest/v1/local_submissions?')) || '';
+  assert.equal(capabilityUrl.includes(token), false);
+  assert.equal(capabilityUrl.includes(hashStatusCapability(token)), true);
+});
+
+test('Supabase capability authorization rejects soft-deleted submissions before checking a hash', async () => {
+  const requestedUrls: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const url = String(input);
+    requestedUrls.push(url);
+    if (url.includes('read_local_submission_repository_state')) {
+      return new Response(JSON.stringify({
+        revision: 2,
+        store: {
+          version: 1,
+          pendingSubmissions: [],
+          publishedLocalEvents: [],
+          eventCategoryOverrides: {},
+          operatorAuditLog: [],
+        },
+      }), { status: 200 });
+    }
+    return new Response('[{"id":"55555555-5555-4555-8555-555555555555"}]', { status: 200 });
+  };
+  const repository = new SupabaseLocalSubmissionsRepository(
+    { supabaseUrl: 'https://project.supabase.co', serviceRoleKey: 'server-secret' },
+    { fetchImpl },
+  );
+
+  assert.equal(
+    await repository.authorizeStatusCapability('55555555-5555-4555-8555-555555555555', 'deleted-capability'),
+    false,
+  );
+  assert.equal(requestedUrls.some((url) => url.includes('/rest/v1/local_submissions?')), false);
 });
 
 test('Supabase repository uploads embedded pending media before the database compare-and-swap', async () => {

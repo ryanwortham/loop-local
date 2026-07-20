@@ -1636,6 +1636,30 @@ def test_release_baseline_service_worker_never_freezes_dynamic_navigation():
     assert "url.pathname.startsWith('/operator/')" in sw
 
 
+def test_phase2c_runs_one_repository_contract_against_both_adapters():
+    shared_path = ROOT / 'scripts/local-submissions-repository-contract.shared.ts'
+    assert shared_path.exists(), 'Release 2C requires one adapter-neutral repository contract harness'
+    shared = shared_path.read_text()
+    file_contract = read('scripts/local-submissions-repository-contract.test.ts')
+    supabase_contract = read('scripts/supabase-repository-local-contract.mjs')
+    marker = 'runLocalSubmissionsRepositoryContract'
+    assert marker in shared, 'shared repository contract runner is missing'
+    for source, adapter in [(file_contract, 'file'), (supabase_contract, 'supabase')]:
+        assert marker in source, f'{adapter} adapter must invoke the shared repository contract runner'
+        assert 'local-submissions-repository-contract.shared.ts' in source, f'{adapter} adapter must import the shared contract module'
+    for behavior in [
+        'empty durable store',
+        'capability authorization',
+        'review history',
+        'category overrides',
+        'publication mapping',
+        'idempotent replay',
+        'concurrent mutations',
+        'deletion prunes capability',
+    ]:
+        assert behavior in shared, f'shared repository contract is missing {behavior}'
+
+
 def test_phase2f_supabase_auth_is_the_only_operator_authorization_path():
     account = read('components/account-panel.tsx')
     account_page = read('app/account/page.tsx')
@@ -1709,5 +1733,6 @@ if __name__ == '__main__':
     test_release_baseline_keeps_operator_workflow_out_of_consumer_shell()
     test_release_baseline_upload_limits_are_shared_with_the_api()
     test_release_baseline_service_worker_never_freezes_dynamic_navigation()
+    test_phase2c_runs_one_repository_contract_against_both_adapters()
     test_phase2f_supabase_auth_is_the_only_operator_authorization_path()
     print('loop_local_complete_frontend_rebuild_contract_ok')
