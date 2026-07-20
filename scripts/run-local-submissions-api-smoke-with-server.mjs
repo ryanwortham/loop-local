@@ -3,13 +3,13 @@
 // Contract markers: npm run build · npm run start -- -p · npm run test:api:local
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { provisionLocalOperatorSession } from './local-operator-test-session.mjs';
 
 const port = Number(process.env.LOOP_LOCAL_API_SMOKE_PORT || 3013);
-const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
-const fallbackActorUserId = process.env.LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID || 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const smokeStorePath = process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH || `/tmp/loop-local-api-smoke-${process.pid}.json`;
 const baseURL = `http://127.0.0.1:${port}`;
 let server;
+let operatorSession;
 
 function run(command, args, options = {}) {
   console.log(`${command} ${args.join(' ')}`);
@@ -37,10 +37,21 @@ async function waitForServer() {
   throw new Error(`Timed out waiting for ${baseURL}`);
 }
 
+function applicationEnvironment() {
+  if (!operatorSession) throw new Error('local operator session has not been provisioned');
+  return {
+    ...process.env,
+    LOCAL_SUBMISSIONS_ADAPTER: 'file',
+    LOCAL_SUBMISSIONS_FILE: smokeStorePath,
+    LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath,
+    LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_URL: operatorSession.supabaseUrl,
+    LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_ANON_KEY: operatorSession.anonKey,
+  };
+}
+
 async function startServer() {
   console.log(`npm run start -- -p ${port}`);
-  const smokeEnv = { ...process.env, LOCAL_SUBMISSIONS_ADAPTER: 'file', LOCAL_SUBMISSIONS_FILE: smokeStorePath, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath };
-  server = spawn('npm', ['run', 'start', '--', '-p', String(port)], { stdio: 'inherit', env: smokeEnv });
+  server = spawn('npm', ['run', 'start', '--', '-p', String(port)], { stdio: 'inherit', env: applicationEnvironment() });
   server.on('exit', (code, signal) => {
     if (!server.killed && code !== 0) console.error(`API smoke server exited with ${signal || code}`);
   });
@@ -55,14 +66,21 @@ async function killServer() {
 
 async function main() {
   try {
-    await run('npm', ['run', 'build']);
+    operatorSession = await provisionLocalOperatorSession();
+    await run('npm', ['run', 'build'], { env: applicationEnvironment() });
     await startServer();
     await run('npm', ['run', 'test:api:local'], {
-      env: { ...process.env, LOCAL_SUBMISSIONS_ADAPTER: 'file', LOCAL_SUBMISSIONS_FILE: smokeStorePath, LOOP_LOCAL_API_SMOKE_URL: baseURL, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
+      env: {
+        ...applicationEnvironment(),
+        LOOP_LOCAL_API_SMOKE_URL: baseURL,
+        LOOP_LOCAL_OPERATOR_ACCESS_TOKEN: operatorSession.accessToken,
+        LOOP_LOCAL_OPERATOR_ACTOR_USER_ID: operatorSession.userId,
+      },
     });
     console.log('loop_local_local_submissions_api_full_runner_ok');
   } finally {
     await killServer();
+    if (operatorSession) await operatorSession.cleanup();
   }
 }
 

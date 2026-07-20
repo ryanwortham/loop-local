@@ -25,10 +25,7 @@ function error(message: string, status = 400) {
 }
 
 function statusCapability(request: NextRequest): string | undefined {
-  const headerToken = request.headers.get('x-loop-local-status-token')?.trim();
-  // Legacy query links remain readable while generated links migrate to URL fragments.
-  const legacyQueryToken = request.nextUrl.searchParams.get('statusToken')?.trim();
-  const token = headerToken || legacyQueryToken || '';
+  const token = request.headers.get('x-loop-local-status-token')?.trim() || '';
   return /^[a-f0-9]{32}$/i.test(token) ? token : undefined;
 }
 

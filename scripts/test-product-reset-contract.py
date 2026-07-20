@@ -766,13 +766,13 @@ def test_loop_local_api_backed_post_local_submissions_persist_through_review_que
         'mutateReview',
         'reviews',
         'publishedLocalEvents',
-        "'x-loop-local-operator-token'",
+        'Authorization',
     ]:
         assert marker in operator, f'missing routed API-backed review queue marker {marker}'
     for marker in [
         'API Smoke Bakery',
         'API Smoke Market Night',
-        'Publish locally',
+        'authenticated operator publish failed',
         'Submitted for API-backed review',
         'API Smoke Market Night',
     ]:
@@ -1130,12 +1130,11 @@ def test_loop_local_review_queue_exposes_submitter_status_handoff_links():
     ]:
         assert marker in operator, f'missing routed review queue submitter link marker {marker}'
     for marker in [
-        'operator-submitter-link-pass',
-        'Open status page',
-        'Copy submitter link',
-        '/post-local/status/',
+        'shared operator fallback is unavailable',
+        'anonymous operator queue action must stay disabled',
+        'authenticated operator publish failed',
     ]:
-        assert marker in mobile_smoke, f'missing mobile submitter link marker {marker}'
+        assert marker in mobile_smoke, f'missing mobile operator authorization regression marker {marker}'
 
 def test_loop_local_needs_changes_requires_actionable_reviewer_note():
     operator = read('components/operator-review-panel.tsx')
@@ -1235,7 +1234,7 @@ def test_loop_local_operator_review_system_is_separated_and_token_gated():
         "body.action === 'publish'",
     ]:
         assert marker in api, f'missing operator auth API marker {marker}'
-    for marker in ['auth.getUser', "from('profiles')", 'LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED']:
+    for marker in ['auth.getUser', "from('profiles')", 'authorizationBearerToken']:
         assert marker in auth + auth_config, f'missing Supabase operator verification marker {marker}'
     for marker in [
         'poster-status-token-pass',
@@ -1258,7 +1257,7 @@ def test_loop_local_operator_review_system_is_separated_and_token_gated():
         'operator-supabase-auth-pass',
         'protected GET without authentication',
         'operator authentication required',
-        'fallbackActorUserId',
+        'operatorActorUserId',
         'operatorHeaders',
     ]:
         assert marker in smoke + mobile, f'missing smoke auth gate marker {marker}'
@@ -1556,6 +1555,7 @@ def test_loop_local_status_capabilities_avoid_query_logs_and_public_caches():
     config = read('next.config.mjs')
     route = read('app/api/local-submissions/[id]/route.ts')
     page = read('app/post-local/status/[id]/page.tsx')
+    proxy = read('proxy.ts')
     card = read('components/submission-status-live-card.tsx')
     wizard = read('components/post-local-wizard.tsx')
     app_shell = read('components/app-shell.tsx')
@@ -1566,18 +1566,22 @@ def test_loop_local_status_capabilities_avoid_query_logs_and_public_caches():
         assert marker in config, f'missing status response protection {marker}'
     for marker in ['x-loop-local-status-token', 'statusResponseHeaders', 'private, no-store', 'no-referrer']:
         assert marker in route, f'missing status API capability/header marker {marker}'
-    assert "searchParams.get('statusToken')" in route, 'legacy query capability links must remain readable during migration'
+    assert "searchParams.get('statusToken')" not in route, 'status API must reject legacy query capabilities'
     assert 'findLocalSubmissionStatus' not in page and 'notFound' not in page, 'fragment capability pages must hydrate status client-side'
-    assert 'redirect(' in page and '#statusToken=' in page and 'statusToken={' not in page, 'legacy page links must redirect to fragments without passing capabilities into the client shell'
+    assert 'searchParams' not in page and 'redirect(' not in page and 'statusToken={' not in page, 'status pages must not parse query capabilities'
+    for marker in ["searchParams.has('statusToken')", "searchParams.delete('statusToken')", 'NextResponse.redirect']:
+        assert marker in proxy, f'proxy must scrub query capabilities without handing them to application pages: {marker}'
+    assert '#statusToken=' not in proxy, 'proxy must discard legacy query capabilities rather than migrate them to fragments'
     assert 'robots:' in page and "referrer: 'no-referrer'" in page, 'status metadata must prevent indexing and referrer leakage'
     for source, name in [(card, 'status card'), (wizard, 'wizard')]:
         assert 'x-loop-local-status-token' in source, f'{name} must send capability in a request header'
         assert 'window.history.replaceState' in source, f'{name} must scrub capability URLs after handoff'
         assert 'normalizeStatusCapability' in source, f'{name} must normalize capability values before transport'
+        assert "window.location.search).get('statusToken')" not in source, f'{name} must ignore legacy query capabilities'
     assert '?statusToken=' not in card, 'status polling/revision links must not put capabilities in queries'
     assert '?statusToken=' not in wizard, 'wizard status/revision links must not put capabilities in queries'
     assert '#statusToken=' in operator and '#statusToken=' in wizard, 'generated routed handoff links must use URL fragments'
-    for marker in ['status API must be private no-store', 'status page must not send referrers', 'legacy status query remains compatible']:
+    for marker in ['status API must be private no-store', 'status page must not send referrers', 'legacy status query capability must be rejected', 'legacy status page query must redirect to a clean URL']:
         assert marker in api_smoke, f'missing status capability API regression {marker}'
     for marker in ['status capability must use URL fragment', 'status capability URL must be scrubbed', 'revision capability URL must be scrubbed']:
         assert marker in mobile_smoke, f'missing status capability browser regression {marker}'
@@ -1598,7 +1602,7 @@ def test_release_baseline_keeps_operator_workflow_out_of_consumer_shell():
         assert dead_marker not in shell, f'consumer shell still contains dead operator workflow: {dead_marker}'
     for routed_marker in [
         'OperatorReviewPanel',
-        'x-loop-local-operator-token',
+        'Authorization',
         'loadReviews',
         'mutateReview',
         'removeReview',
@@ -1632,7 +1636,7 @@ def test_release_baseline_service_worker_never_freezes_dynamic_navigation():
     assert "url.pathname.startsWith('/operator/')" in sw
 
 
-def test_phase2b_supabase_auth_protects_operator_identity_and_keeps_fallback_disabled():
+def test_phase2f_supabase_auth_is_the_only_operator_authorization_path():
     account = read('components/account-panel.tsx')
     account_page = read('app/account/page.tsx')
     operator = read('components/operator-review-panel.tsx')
@@ -1644,14 +1648,15 @@ def test_phase2b_supabase_auth_protects_operator_identity_and_keeps_fallback_dis
     for marker in ['signInWithPassword', 'signUp', 'signOut', 'onAuthStateChange', "from('profiles')"]:
         assert marker in account, f'missing Supabase account behavior {marker}'
     assert 'AccountPanel' in account_page
-    for marker in ['authorizationBearerToken', 'auth.getUser', "from('profiles')", "app_role", 'LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED']:
+    for marker in ['authorizationBearerToken', 'auth.getUser', "from('profiles')", "app_role"]:
         assert marker in auth + auth_config, f'missing operator auth marker {marker}'
-    assert "=== 'true'" in auth_config, 'operator fallback must require explicit enablement'
+    for forbidden in ['LOOP_LOCAL_OPERATOR_TOKEN', 'operatorFallback', 'fallbackAccess', "'token_fallback'", 'x-loop-local-operator-token', 'Emergency fallback key']:
+        assert forbidden not in auth + auth_config + operator + session_route, f'legacy shared operator capability remains: {forbidden}'
     assert 'actorUserId' in route and 'access.actorUserId' in route
     assert 'operatorAuditLog' in store and 'actorUserId' in store and 'authMethod' in store
-    assert 'fallbackEnabled' in session_route
     assert 'Authorization' in operator and 'getSession' in operator
-    assert 'Operator token' not in operator, 'normal operator UI must not ask for a shared token'
+    assert 'fallbackEnabled' not in session_route
+    assert 'disabled={!isOperator}' in operator
 
 
 if __name__ == '__main__':
@@ -1704,5 +1709,5 @@ if __name__ == '__main__':
     test_release_baseline_keeps_operator_workflow_out_of_consumer_shell()
     test_release_baseline_upload_limits_are_shared_with_the_api()
     test_release_baseline_service_worker_never_freezes_dynamic_navigation()
-    test_phase2b_supabase_auth_protects_operator_identity_and_keeps_fallback_disabled()
+    test_phase2f_supabase_auth_is_the_only_operator_authorization_path()
     print('loop_local_complete_frontend_rebuild_contract_ok')

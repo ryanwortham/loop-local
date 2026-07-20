@@ -1,14 +1,9 @@
-import { timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicEnv } from '@/lib/env';
-import {
-  authorizationBearerToken,
-  operatorFallbackActorId,
-  operatorFallbackEnabled,
-} from '@/lib/operator-auth-config';
+import { authorizationBearerToken } from '@/lib/operator-auth-config';
 
-export type OperatorAuthMethod = 'supabase' | 'token_fallback';
+export type OperatorAuthMethod = 'supabase';
 
 export type OperatorAccess = {
   authorized: boolean;
@@ -17,46 +12,16 @@ export type OperatorAccess = {
   actorUserId?: string;
   authMethod?: OperatorAuthMethod;
   email?: string;
-  fallbackEnabled: boolean;
 };
-
-function configuredFallbackAvailable(): boolean {
-  return Boolean(
-    operatorFallbackEnabled()
-      && process.env.LOOP_LOCAL_OPERATOR_TOKEN?.trim()
-      && operatorFallbackActorId(),
-  );
-}
-
-function equalSecret(candidate: string | null, expected: string): boolean {
-  if (!candidate) return false;
-  const candidateBuffer = Buffer.from(candidate);
-  const expectedBuffer = Buffer.from(expected);
-  return candidateBuffer.length === expectedBuffer.length && timingSafeEqual(candidateBuffer, expectedBuffer);
-}
-
-function fallbackAccess(request: NextRequest): OperatorAccess | null {
-  const fallbackEnabled = configuredFallbackAvailable();
-  const expected = process.env.LOOP_LOCAL_OPERATOR_TOKEN?.trim();
-  const actorUserId = operatorFallbackActorId();
-  if (!fallbackEnabled || !expected || !actorUserId) return null;
-  if (!equalSecret(request.headers.get('x-loop-local-operator-token'), expected)) return null;
-  return {
-    authorized: true,
-    authenticated: false,
-    operator: true,
-    actorUserId,
-    authMethod: 'token_fallback',
-    fallbackEnabled: true,
-  };
-}
 
 async function supabaseAccess(request: NextRequest): Promise<OperatorAccess | null> {
   const token = authorizationBearerToken(request.headers);
   if (!token) return null;
 
-  const { supabaseUrl, supabaseAnonKey } = getPublicEnv();
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const publicEnv = getPublicEnv();
+  const authSupabaseUrl = process.env.LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_URL?.trim() || publicEnv.supabaseUrl;
+  const authSupabaseAnonKey = process.env.LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_ANON_KEY?.trim() || publicEnv.supabaseAnonKey;
+  const supabase = createClient(authSupabaseUrl, authSupabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
@@ -77,20 +42,14 @@ async function supabaseAccess(request: NextRequest): Promise<OperatorAccess | nu
     actorUserId: operator ? user.id : undefined,
     authMethod: operator ? 'supabase' : undefined,
     email: user.email,
-    fallbackEnabled: configuredFallbackAvailable(),
   };
 }
 
 export async function resolveOperatorAccess(request: NextRequest): Promise<OperatorAccess> {
-  const session = await supabaseAccess(request);
-  if (session?.authorized) return session;
-  const fallback = fallbackAccess(request);
-  if (fallback) return fallback;
-  return session || {
+  return await supabaseAccess(request) || {
     authorized: false,
     authenticated: false,
     operator: false,
-    fallbackEnabled: configuredFallbackAvailable(),
   };
 }
 

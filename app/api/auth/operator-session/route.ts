@@ -9,7 +9,6 @@ export async function GET(request: NextRequest) {
     authenticated: access.authenticated,
     operator: access.operator,
     email: access.email || null,
-    fallbackEnabled: access.fallbackEnabled,
     authMethod: access.authMethod || null,
   });
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');

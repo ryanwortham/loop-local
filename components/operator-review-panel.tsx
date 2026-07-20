@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { LiveFeedItem } from '@/lib/live-feed';
 import { supabase } from '@/lib/supabase/client';
 import { submissionPublicationQuality } from '@/lib/local-submission-quality';
@@ -24,18 +24,15 @@ export function OperatorReviewPanel() {
   // operator-review-route-pass: /operator/reviews owns Review queue instead of consumer Profile.
   const [accessToken, setAccessToken] = useState('');
   const [isOperator, setIsOperator] = useState(false);
-  const [fallbackEnabled, setFallbackEnabled] = useState(false);
-  const [emergencyKey, setEmergencyKey] = useState('');
   const [queue, setQueue] = useState<ReviewQueueState>({ pendingSubmissions: [], publishedLocalEvents: [], taxonomyReviewItems: [] });
   const [status, setStatus] = useState('Checking your Supabase operator session…');
   const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
   const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
 
-  const operatorHeaders = useMemo<Record<string, string>>(() => ({
+  const operatorHeaders: Record<string, string> = {
     'content-type': 'application/json',
     ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-    ...(fallbackEnabled && emergencyKey ? { 'x-loop-local-operator-token': emergencyKey } : {}),
-  }), [accessToken, emergencyKey, fallbackEnabled]);
+  };
 
   useEffect(() => {
     async function refreshSession(token = '') {
@@ -46,10 +43,9 @@ export function OperatorReviewPanel() {
       });
       const data = await response.json();
       setIsOperator(Boolean(data.operator));
-      setFallbackEnabled(Boolean(data.fallbackEnabled));
       if (data.operator) setStatus(`Verified operator${data.email ? ` · ${data.email}` : ''}. Load the review queue when ready.`);
       else if (data.authenticated) setStatus('This account is signed in but does not have the operator role.');
-      else setStatus(data.fallbackEnabled ? 'Sign in with an operator account, or use the enabled emergency fallback.' : 'Sign in with an operator account to continue.');
+      else setStatus('Sign in with an operator account to continue.');
     }
     void supabase.auth.getSession().then(({ data }) => refreshSession(data.session?.access_token || ''));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -126,8 +122,7 @@ export function OperatorReviewPanel() {
         <h1>Review queue</h1>
         <p>Protected operator desk. Supabase verifies both the signed-in user and the assigned operator role.</p>
         {!isOperator ? <p><Link href="/account">Sign in or review your account</Link></p> : null}
-        {fallbackEnabled && !isOperator ? <label className="ll-field"><span>Emergency fallback key</span><input value={emergencyKey} onChange={(event) => setEmergencyKey(event.target.value)} autoComplete="off" type="password" /></label> : null}
-        <div className="ll-submit-actions"><button type="button" disabled={!isOperator && !emergencyKey} onClick={loadReviews}>Load review queue</button><Link href="/post-local">Open Post Local</Link></div>
+        <div className="ll-submit-actions"><button type="button" disabled={!isOperator} onClick={loadReviews}>Load review queue</button><Link href="/post-local">Open Post Local</Link></div>
         <p role="status" className="operator-export-status">{status}</p>
       </section>
       <section className="pending-submissions-panel post-submission-review-panel-pass" aria-label="Pending local submissions">

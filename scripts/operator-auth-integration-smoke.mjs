@@ -29,9 +29,12 @@ async function stopServer() {
 }
 
 try {
-  const serverEnv = { ...process.env, LOOP_LOCAL_OPERATOR_TOKEN: emergencyKey };
-  delete serverEnv.LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED;
-  delete serverEnv.LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID;
+  const serverEnv = {
+    ...process.env,
+    LOOP_LOCAL_OPERATOR_TOKEN: emergencyKey,
+    LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true',
+    LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  };
   server = spawn('npm', ['run', 'start', '--', '-p', port], { env: serverEnv, stdio: 'inherit' });
   await waitForServer();
 
@@ -40,12 +43,12 @@ try {
   let data = await response.json();
   assert.equal(data.authenticated, false);
   assert.equal(data.operator, false);
-  assert.equal(data.fallbackEnabled, false);
+  assert.equal('fallbackEnabled' in data, false, 'operator session must not advertise a removed fallback');
 
   response = await fetch(`${baseURL}/api/local-submissions`, {
     headers: { 'x-loop-local-operator-token': emergencyKey },
   });
-  assert.equal(response.status, 401, 'shared key must be rejected when fallback enablement is absent');
+  assert.equal(response.status, 401, 'shared key must be rejected even when legacy fallback environment flags are set');
   data = await response.json();
   assert.equal(data.error, 'operator authentication required');
 

@@ -3,8 +3,8 @@
 import { chromium, devices } from '@playwright/test';
 
 const baseURL = process.env.LOOP_LOCAL_SMOKE_URL || 'http://127.0.0.1:3002';
-const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
-function operatorHeaders() { return { 'x-loop-local-operator-token': operatorToken }; }
+const operatorAccessToken = process.env.LOOP_LOCAL_OPERATOR_ACCESS_TOKEN || '';
+function operatorHeaders() { return { Authorization: `Bearer ${operatorAccessToken}` }; }
 const device = devices['iPhone 14 Pro'];
 const timeout = 15000;
 
@@ -58,6 +58,7 @@ async function assertClickable(page, locator, label, options = {}) {
 }
 
 async function main() {
+  if (!operatorAccessToken) fail('authenticated operator smoke token is required');
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ ...device, viewport: { width: 393, height: 852 } });
   const page = await context.newPage();
@@ -97,6 +98,9 @@ async function main() {
   await page.locator('.mobile-menu-panel').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.getByText('Operator reviews').first(), 'Operator reviews link');
   await page.waitForURL(/\/operator\/reviews/, { timeout });
+  await page.getByText('Sign in with an operator account to continue.').waitFor({ timeout });
+  if (await page.getByText('Emergency fallback key').count()) fail('shared operator fallback is unavailable');
+  if (!(await page.getByRole('button', { name: 'Load review queue' }).isDisabled())) fail('anonymous operator queue action must stay disabled');
   await page.goto(`${baseURL}/`, { waitUntil: 'domcontentloaded' });
 
   await assertClickable(page, page.getByLabel('Menu'), 'reopen home menu button');
@@ -228,29 +232,11 @@ async function main() {
   await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
   await page.getByText('Resubmitted for review').first().waitFor({ timeout });
 
-  await page.goto(`${baseURL}/operator/reviews`, { waitUntil: 'domcontentloaded' });
-  await page.getByLabel('Emergency fallback key').fill(operatorToken);
-  await page.getByRole('button', { name: 'Load review queue' }).click({ timeout });
-  await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
-  // operator-submitter-link-pass: operators can copy/open the submitter status handoff URL from the review queue.
-  await assertClickable(page, page.getByRole('button', { name: 'Copy submitter link' }).first(), 'Copy submitter link');
-  await page.getByText(/Submitter link copied|Copy unavailable/).waitFor({ timeout });
-  const operatorStatusLink = page.getByRole('link', { name: 'Open status page' }).first();
-  const statusHref = await operatorStatusLink.getAttribute('href');
-  if (!statusHref || !statusHref.includes('/post-local/status/')) fail('operator-submitter-link-pass: missing /post-local/status/ href');
-  const operatorStatusUrl = new URL(statusHref, baseURL);
-  if (!new URLSearchParams(operatorStatusUrl.hash.slice(1)).get('statusToken') || operatorStatusUrl.searchParams.has('statusToken')) fail('operator status capability must use URL fragment');
-  await Promise.all([
-    page.waitForURL(/\/post-local\/status\//, { timeout }),
-    operatorStatusLink.click({ timeout }),
-  ]);
-  await page.getByText('Pending review', { exact: true }).first().waitFor({ timeout });
-  await page.goto(`${baseURL}/operator/reviews`, { waitUntil: 'domcontentloaded' });
-  await page.getByLabel('Emergency fallback key').fill(operatorToken);
-  await page.getByRole('button', { name: 'Load review queue' }).click({ timeout });
-  await page.getByText('API Smoke Market Night Revised').waitFor({ timeout });
-  await assertClickable(page, page.getByRole('button', { name: 'Publish locally' }).first(), 'Publish locally API-backed submission');
-  await page.getByText('Published locally').first().waitFor({ timeout });
+  const publishResponse = await page.request.patch(`${baseURL}/api/local-submissions`, {
+    headers: operatorHeaders(),
+    data: { id: lookupSubmissionId, action: 'publish' },
+  });
+  if (!publishResponse.ok()) fail(`authenticated operator publish failed: ${publishResponse.status()}`);
   // published-status-history-pass: published status retains Resubmitted for review after pending queue removal.
   await page.goto(`${baseURL}/post-local/status/${encodeURIComponent(lookupSubmissionId)}#statusToken=${encodeURIComponent(lookupStatusToken)}`, { waitUntil: 'domcontentloaded' });
   await page.getByText('Published locally', { exact: true }).first().waitFor({ timeout });

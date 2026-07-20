@@ -88,8 +88,7 @@ export function SubmissionStatusLiveCard({ submissionId, initialStatus }: Submis
 
   useEffect(() => {
     const hashToken = normalizeStatusCapability(new URLSearchParams(window.location.hash.slice(1)).get('statusToken'));
-    const legacyQueryToken = normalizeStatusCapability(new URLSearchParams(window.location.search).get('statusToken'));
-    const nextToken = hashToken || legacyQueryToken || normalizeStatusCapability(storedStatusCapability(submissionId));
+    const nextToken = hashToken || normalizeStatusCapability(storedStatusCapability(submissionId));
     if (nextToken) {
       try {
         sessionStorage.setItem(statusCapabilityStorageKey(submissionId), nextToken);

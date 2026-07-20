@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+
 import { SubmissionStatusLiveCard } from '@/components/submission-status-live-card';
 
 // submitter-status-page-pass: review status page for people who submitted through Post Local.
@@ -15,15 +15,10 @@ export const metadata: Metadata = {
 
 type StatusPageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ statusToken?: string }>;
 };
 
-export default async function PostLocalStatusPage({ params, searchParams }: StatusPageProps) {
+export default async function PostLocalStatusPage({ params }: StatusPageProps) {
   const { id } = await params;
-  const { statusToken: legacyCapability } = await searchParams;
-  if (/^[a-f0-9]{32}$/i.test(legacyCapability || '')) {
-    redirect(`/post-local/status/${encodeURIComponent(id)}#statusToken=${encodeURIComponent(legacyCapability || '')}`);
-  }
 
   return (
     <main className="post-local-shell complete-frontend-rebuild submitter-status-page-pass submitter-status-live-refresh-pass">

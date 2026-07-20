@@ -3,12 +3,12 @@
 // published-status-history-pass: published local status API/page must preserve localSubmissionStatusHistory after publish.
 
 const baseURL = process.env.LOOP_LOCAL_API_SMOKE_URL || 'http://127.0.0.1:3002';
-const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
-const fallbackActorUserId = process.env.LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID || 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const operatorAccessToken = process.env.LOOP_LOCAL_OPERATOR_ACCESS_TOKEN || '';
+const operatorActorUserId = process.env.LOOP_LOCAL_OPERATOR_ACTOR_USER_ID || '';
 const endpoint = `${baseURL}/api/local-submissions`;
 
 function operatorHeaders(extra = {}) {
-  return { 'x-loop-local-operator-token': operatorToken, ...extra };
+  return { Authorization: `Bearer ${operatorAccessToken}`, ...extra };
 }
 
 function fail(message) {
@@ -50,11 +50,12 @@ async function fetchText(url) {
 }
 
 async function main() {
+  assert(operatorAccessToken && operatorActorUserId, 'authenticated operator smoke credentials are required');
   const mediaDataUrl = 'data:image/png;base64,iVBORw0KGgo=';
   const svgMediaDataUrl = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>').toString('base64')}`;
   // post-local-media-persistence-pass: API Direct Smoke Media verifies eventImageDataUrl/logoDataUrl survives publish.
   // media-sanitization-boundary-pass: image/png;base64 is allowed, SVG media should be rejected, oversized payload should be rejected, invalid URL should be rejected.
-  // operator-supabase-auth-pass: protected requests require a verified operator session unless the disabled-by-default fallback is explicitly enabled.
+  // operator-supabase-auth-pass: protected requests require a verified Supabase operator session.
   let response = await request('');
   assertStatus(response, 401, 'protected GET without authentication');
   let data = await json(response);
@@ -64,7 +65,12 @@ async function main() {
   assertStatus(response, 200, 'operator session discovery');
   data = await json(response);
   assert(data.authenticated === false && data.operator === false, 'anonymous session must not be an operator');
-  assert(data.fallbackEnabled === true, 'smoke explicitly enables emergency token fallback');
+  assert(!('fallbackEnabled' in data), 'operator session must not expose a shared-token fallback');
+
+  response = await fetch(`${baseURL}/api/auth/operator-session`, { headers: operatorHeaders({ accept: 'application/json' }) });
+  assertStatus(response, 200, 'authenticated operator session discovery');
+  data = await json(response);
+  assert(data.authenticated === true && data.operator === true && data.authMethod === 'supabase', 'authenticated smoke operator must be verified by Supabase');
 
   const accountHtml = await fetchText(`${baseURL}/account`);
   assert(accountHtml.includes('Your Loop Local account'), 'account page should render the account experience');
@@ -285,8 +291,9 @@ async function main() {
   await json(response);
 
   response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
-  assertStatus(response, 200, 'legacy status query remains compatible');
-  await json(response);
+  assertStatus(response, 401, 'legacy status query capability must be rejected');
+  data = await json(response);
+  assert(data.error === 'status token required', 'query capability must not authorize status access');
 
   const statusPageResponse = await fetch(`${baseURL}/post-local/status/${encodeURIComponent(id)}`, { redirect: 'manual' });
   assertStatus(statusPageResponse, 200, 'status page client bootstrap');
@@ -297,13 +304,13 @@ async function main() {
   assert(!statusShellHtml.includes('API Direct Smoke Night') && !statusShellHtml.includes(statusToken), 'status shell must not serialize private submission content or capability tokens');
 
   const legacyStatusPageResponse = await fetch(`${baseURL}/post-local/status/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`, { redirect: 'manual' });
-  assert([307, 308].includes(legacyStatusPageResponse.status), `legacy status page should redirect to a fragment capability, got ${legacyStatusPageResponse.status}`);
-  const legacyStatusLocation = legacyStatusPageResponse.headers.get('location') || '';
-  assert(legacyStatusLocation.includes(`#statusToken=${encodeURIComponent(statusToken)}`) && !legacyStatusLocation.includes('?statusToken='), 'legacy status redirect must move the capability into a fragment');
-  const migratedStatusPageResponse = await fetch(new URL(legacyStatusLocation, baseURL));
-  assertStatus(migratedStatusPageResponse, 200, 'migrated legacy status page shell');
-  const legacyStatusShellHtml = await migratedStatusPageResponse.text();
-  assert(!legacyStatusShellHtml.includes(statusToken) && !legacyStatusShellHtml.includes('API Direct Smoke Night'), 'legacy status shell must scrub capability data from server output');
+  assert([307, 308].includes(legacyStatusPageResponse.status), 'legacy status page query must redirect to a clean URL');
+  const scrubbedStatusLocation = legacyStatusPageResponse.headers.get('location') || '';
+  assert(!scrubbedStatusLocation.includes('statusToken') && !scrubbedStatusLocation.includes('#'), 'legacy status page query must discard rather than migrate the capability');
+  const scrubbedStatusPageResponse = await fetch(new URL(scrubbedStatusLocation, baseURL));
+  assertStatus(scrubbedStatusPageResponse, 200, 'scrubbed status page shell');
+  const legacyStatusShellHtml = await scrubbedStatusPageResponse.text();
+  assert(!legacyStatusShellHtml.includes(statusToken) && !legacyStatusShellHtml.includes('API Direct Smoke Night'), 'legacy status shell must not serialize query capability data');
 
   // needs-changes-note-gate-pass: needs_changes without reviewerNote should be rejected.
   response = await request('', {
@@ -324,10 +331,10 @@ async function main() {
   data = await json(response);
   assert(data.submission.status === 'needs_changes', 'patched status should be needs_changes');
   assert(data.submission.statusHistory?.some((entry) => entry.action === 'needs_changes'), 'needs_changes history entry should persist');
-  assert(data.submission.statusHistory?.some((entry) => entry.action === 'needs_changes' && entry.actorUserId === fallbackActorUserId && entry.authMethod === 'token_fallback'), 'review history must attribute the emergency fallback actor');
+  assert(data.submission.statusHistory?.some((entry) => entry.action === 'needs_changes' && entry.actorUserId === operatorActorUserId && entry.authMethod === 'supabase'), 'review history must attribute the authenticated operator');
   assert(data.submission.reviewerNote?.includes('reviewerNote'), 'patched reviewer note should persist');
 
-  response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
+  response = await request(`/${encodeURIComponent(id)}`, { headers: { 'x-loop-local-status-token': statusToken } });
   assertStatus(response, 200, 'single status needs_changes');
   data = await json(response);
   assert(data.status === 'needs_changes', 'single status should return needs_changes');
@@ -366,7 +373,7 @@ async function main() {
   const idempotentRevision = data.pendingSubmissions.find((item) => item.id === id);
   assert(idempotentRevision?.statusHistory?.filter((entry) => entry.action === 'resubmitted').length === 1, 'replayed resubmit must append history exactly once');
 
-  response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
+  response = await request(`/${encodeURIComponent(id)}`, { headers: { 'x-loop-local-status-token': statusToken } });
   assertStatus(response, 200, 'single status after resubmit');
   data = await json(response);
   assert(data.status === 'pending_review', 'single status should return pending_review after resubmit');
@@ -384,14 +391,14 @@ async function main() {
   assert(data.published?.title === 'API Direct Smoke Night Revised', 'published feed item should use event title');
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published response should preserve review history');
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local'), 'published response should include published_local history');
-  assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local' && entry.actorUserId === fallbackActorUserId), 'published history must identify the operator actor');
+  assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'published_local' && entry.actorUserId === operatorActorUserId), 'published history must identify the operator actor');
   // Contract markers: published.image_url?.startsWith('data:image/png;base64,') and published.imageState === 'photo'
   assert(data.published.image_url?.startsWith('data:image/png;base64,'), 'published image_url should preserve event media data URL');
   assert(data.published.imageState === 'photo', 'published imageState should be photo');
   assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night Revised'), 'publishedLocalEvents should include published event');
   assert(!data.pendingSubmissions.some((item) => item.id === id), 'published submission should leave pending queue');
 
-  response = await request(`/${encodeURIComponent(id)}?statusToken=${encodeURIComponent(statusToken)}`);
+  response = await request(`/${encodeURIComponent(id)}`, { headers: { 'x-loop-local-status-token': statusToken } });
   assertStatus(response, 200, 'single status published_local');
   data = await json(response);
   assert(data.status === 'published_local', 'single status should return published_local');
@@ -399,7 +406,7 @@ async function main() {
   assert(data.published?.localSubmissionStatusHistory?.some((entry) => entry.action === 'resubmitted'), 'published single status should preserve review history');
   assert(data.submission === null, 'single status published response should not expose a pending submission');
 
-  response = await request(`/missing-submission-id?statusToken=${encodeURIComponent(statusToken)}`);
+  response = await request('/missing-submission-id', { headers: { 'x-loop-local-status-token': statusToken } });
   assertStatus(response, 404, 'single status 404');
   data = await json(response);
   assert(data.ok === false && data.error === 'submission not found', 'single status 404 should return error JSON');
@@ -428,8 +435,8 @@ async function main() {
   assert(data.ok === true, 'GET should be ok');
   assert(data.publishedLocalEvents.some((item) => item.title === 'API Direct Smoke Night Revised'), 'publishedLocalEvents should include published event');
   assert(Array.isArray(data.operatorAuditLog) && data.operatorAuditLog.length >= 4, 'operator mutations must append durable audit entries');
-  assert(data.operatorAuditLog.every((entry) => entry.actorUserId === fallbackActorUserId), 'every operator audit entry must identify its actor');
-  assert(data.operatorAuditLog.every((entry) => entry.authMethod === 'token_fallback'), 'fallback audit entries must identify the emergency auth method');
+  assert(data.operatorAuditLog.every((entry) => entry.actorUserId === operatorActorUserId), 'every operator audit entry must identify its actor');
+  assert(data.operatorAuditLog.every((entry) => entry.authMethod === 'supabase'), 'audit entries must identify Supabase authentication');
 
   response = await request('', {
     method: 'POST',

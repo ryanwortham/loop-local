@@ -240,9 +240,8 @@ export function PostLocalWizard() {
       const params = new URLSearchParams(window.location.search);
       const nextRevisionId = params.get('revisionId')?.trim() || '';
       if (!nextRevisionId) return;
-      const legacyQueryToken = normalizeStatusCapability(params.get('statusToken'));
       const hashToken = normalizeStatusCapability(new URLSearchParams(window.location.hash.slice(1)).get('statusToken'));
-      const nextRevisionToken = hashToken || legacyQueryToken || normalizeStatusCapability(readStoredStatusCapability(nextRevisionId));
+      const nextRevisionToken = hashToken || normalizeStatusCapability(readStoredStatusCapability(nextRevisionId));
       storeStatusCapability(nextRevisionId, nextRevisionToken);
       window.history.replaceState(null, '', `/post-local?revisionId=${encodeURIComponent(nextRevisionId)}`);
       setRevisionId(nextRevisionId);

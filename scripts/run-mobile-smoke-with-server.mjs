@@ -2,14 +2,14 @@
 // mobile-smoke-full-runner-pass: build, start, run mobile smoke, and clean up.
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
+import { provisionLocalOperatorSession } from './local-operator-test-session.mjs';
 
 const port = process.env.LOOP_LOCAL_SMOKE_PORT || '3012';
-const operatorToken = process.env.LOOP_LOCAL_OPERATOR_TOKEN || 'loop-local-smoke-operator-token';
-const fallbackActorUserId = process.env.LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID || 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const smokeStorePath = process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH || `/tmp/loop-local-mobile-smoke-${process.pid}.json`;
 const baseURL = process.env.LOOP_LOCAL_SMOKE_URL || `http://127.0.0.1:${port}`;
 const startupTimeoutMs = Number(process.env.LOOP_LOCAL_SMOKE_STARTUP_TIMEOUT_MS || 30000);
 let serverProcess = null;
+let operatorSession;
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -57,14 +57,26 @@ async function killServer() {
   ]);
 }
 
+function applicationEnvironment() {
+  if (!operatorSession) throw new Error('local operator session has not been provisioned');
+  return {
+    LOCAL_SUBMISSIONS_ADAPTER: 'file',
+    LOCAL_SUBMISSIONS_FILE: smokeStorePath,
+    LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath,
+    LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_URL: operatorSession.supabaseUrl,
+    LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_ANON_KEY: operatorSession.anonKey,
+  };
+}
+
 async function main() {
+  operatorSession = await provisionLocalOperatorSession();
   console.log('npm run build');
   await runCommand('npm', ['run', 'build']);
 
   console.log(`npm run start -- -p ${port}`);
   serverProcess = spawn('npm', ['run', 'start', '--', '-p', port], {
     stdio: 'inherit',
-    env: { ...process.env, LOCAL_SUBMISSIONS_ADAPTER: 'file', LOCAL_SUBMISSIONS_FILE: smokeStorePath, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
+    env: { ...process.env, ...applicationEnvironment() },
     shell: false,
   });
   serverProcess.on('error', (error) => {
@@ -75,11 +87,20 @@ async function main() {
     await waitForServer(baseURL);
     console.log('npm run test:mobile:smoke');
     await runCommand('npm', ['run', 'test:mobile:smoke'], {
-      env: { LOOP_LOCAL_SMOKE_URL: baseURL, LOOP_LOCAL_OPERATOR_TOKEN: operatorToken, LOOP_LOCAL_OPERATOR_TOKEN_FALLBACK_ENABLED: 'true', LOOP_LOCAL_OPERATOR_FALLBACK_ACTOR_USER_ID: fallbackActorUserId, LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath },
+      env: {
+        ...applicationEnvironment(),
+        LOOP_LOCAL_SMOKE_URL: baseURL,
+        LOOP_LOCAL_OPERATOR_ACCESS_TOKEN: operatorSession.accessToken,
+      },
     });
     console.log('loop_local_mobile_smoke_full_runner_ok');
   } finally {
     await killServer();
+    if (operatorSession) {
+      const session = operatorSession;
+      operatorSession = undefined;
+      await session.cleanup();
+    }
   }
 }
 
@@ -95,5 +116,6 @@ process.on('SIGTERM', async () => {
 main().catch(async (error) => {
   console.error(error?.stack || error?.message || error);
   await killServer();
+  if (operatorSession) await operatorSession.cleanup().catch(() => {});
   process.exit(1);
 });
