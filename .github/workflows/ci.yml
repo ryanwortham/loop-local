@@ -17,7 +17,7 @@ jobs:
     env:
       NEXT_TELEMETRY_DISABLED: '1'
       LOCAL_SUBMISSIONS_ADAPTER: file
-      LOOP_LOCAL_SUBMISSIONS_STORE_PATH: ${{ runner.temp }}/loop-local-submissions.json
+      LOOP_LOCAL_SUBMISSIONS_STORE_PATH: /tmp/loop-local-submissions.json
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
       SUPABASE_PROJECT_REF: ci-placeholder
