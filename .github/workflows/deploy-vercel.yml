@@ -46,20 +46,29 @@ jobs:
       - name: Build before deploy
         run: npm run build
 
-      - name: Deploy with Vercel CLI
-        id: deploy
+      - name: Check Vercel deployment credentials
+        id: vercel-secrets
         run: |
           set -euo pipefail
           if [ -z "${VERCEL_TOKEN:-}" ] || [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
-            echo "Vercel deployment secrets are not configured." >&2
-            exit 1
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Vercel deployment secrets are not configured; tests/build ran, deploy was skipped."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Deploy with Vercel CLI
+        id: deploy
+        if: steps.vercel-secrets.outputs.ready == 'true'
+        run: |
+          set -euo pipefail
           npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
           url=$(npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" | tail -n 1)
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to $url"
 
       - name: Smoke /api/health on deployed URL
+        if: steps.vercel-secrets.outputs.ready == 'true'
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: |
