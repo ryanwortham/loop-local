@@ -1,5 +1,7 @@
 # Loop Local Full Product Audit
 
+> **Historical snapshot:** This document preserves evidence from commit `128f6e6`. It is not the current launch source of truth. Discovery truthfulness, Saved empty-state, Supabase-persistence documentation, CI/deployment/health foundations, and the tested security-header baseline were addressed after this audit. Use [`2026-07-21-launch-readiness-audit.md`](2026-07-21-launch-readiness-audit.md) for current status and remaining blockers.
+
 **Audit timestamp:** 2026-07-20 04:04 UTC / 2026-07-19 23:04 CDT
 
 **Canonical commit:** `128f6e6323b6879530627c65ad9de84c74c6022b`

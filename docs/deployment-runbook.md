@@ -13,6 +13,19 @@ Loop Local's public production target is **Vercel-managed Next.js hosting**. The
 | Structured alerting | `LOOP_LOCAL_ALERT_WEBHOOK_URL` JSON webhook payloads from the monitor |
 | Reboot-persistent local preview | `system/launchd/com.looplocal.preview.plist.example` |
 
+## Current deployment status (audited 2026-07-21)
+
+- The tailnet-private HTTPS preview is running from the Mac through Tailscale Serve and a detached `screen` process on port `3001`.
+- The preview uses `LOCAL_SUBMISSIONS_ADAPTER=supabase`; it is an internal stakeholder preview, not public production.
+- GitHub CI is green on the audited `main` base commit (`193e613`).
+- GitHub has no Vercel credential secrets, no `LOOP_LOCAL_HEALTH_URL` repository variable, and the repository has no `.vercel/project.json` link.
+- Therefore the green `Deploy to Vercel` run on that commit means the workflow safely skipped the credential-dependent deployment step; it does **not** prove that a public deployment exists.
+- The scheduled uptime workflow is skipped until a public health URL is configured.
+- `/api/health` is transport-healthy but intentionally `degraded`: the live feed has five upcoming events, one category, no event-image coverage, and four placeholder-domain actions.
+- The private preview is not reboot-persistent. Installing the supplied LaunchAgent is an OS-level action and requires explicit approval.
+
+Do not announce a public launch until a public origin has been probed independently and every launch-readiness gate below is satisfied or explicitly accepted.
+
 ## Production environment variables
 
 Configure these in Vercel Project Settings, not in source control.
@@ -73,7 +86,9 @@ The deploy job:
 5. deploys with Vercel CLI using GitHub secrets,
 6. probes the deployed `GET /api/health` endpoint.
 
-Do not treat a successful deploy as launch approval unless `/api/health` returns at least `degraded` and the feed-quality issues are explicitly accepted or resolved.
+When the three Vercel credentials are absent, the workflow records that deployment was skipped and exits successfully so CI remains usable. Inspect the job summary or credential-check output; never infer deployment from the overall green check alone.
+
+Do not treat an executed deployment as launch approval unless the resulting public URL is independently reachable, `/api/health` identifies `deployment.target=vercel`, and feed-quality issues are explicitly accepted or resolved.
 
 ## Health endpoint contract
 
@@ -158,3 +173,5 @@ Before inviting public users:
 - GitHub uptime monitor is configured with a public health URL.
 - Alert webhook is configured and tested.
 - Feed quality issues from `/api/health.feed.quality.issues` are resolved or documented as non-blocking.
+- Privacy, terms, support, password recovery, and account/data deletion are available before public account creation.
+- Security headers are verified on the deployed public origin, not only in configuration tests.

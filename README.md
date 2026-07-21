@@ -4,7 +4,7 @@ Loop Local is a local-discovery prototype for events, businesses, and community 
 
 ## Current product state
 
-Phase 1, **Immediate product correctness**, is implemented in the application:
+The current implementation is a technically strong private-preview build with real Supabase-backed persistence and explicit launch-quality gates:
 
 - live `starts_at` values are normalized into deterministic visible St. Louis market date and time fields;
 - homepage cards expose the event start through semantic `<time datetime="…">` markup;
@@ -12,10 +12,15 @@ Phase 1, **Immediate product correctness**, is implemented in the application:
 - navigations and private/dynamic routes are excluded from service-worker caches;
 - submitter status capabilities use URL fragments and private, no-store responses;
 - the consumer shell no longer carries an unreachable duplicate operator workflow;
-- the dedicated token-gated operator experience remains at `/operator/reviews`;
-- the complete baseline is covered by contracts, unit tests, API smoke tests, and mobile browser smoke tests.
+- the dedicated Supabase Auth and role-gated operator experience remains at `/operator/reviews`;
+- submissions, review history, governed media, category overrides, rate limits, and account saves use the Supabase repository in the preview/production configuration;
+- discovery no longer presents simulated proximity, popularity, featured, map, or “Tonight” semantics as real;
+- `/api/health` distinguishes transport health from launch-quality content readiness;
+- CI, public-deployment, uptime-monitor, and rollback workflows exist, but public Vercel hosting is not configured yet;
+- global CSP, HSTS, frame, MIME, opener, referrer, and permissions headers are covered by a runtime configuration contract;
+- the complete baseline is covered by contracts, unit tests, API smoke tests, mobile browser smoke tests, and local pgTAP/RLS tests.
 
-The canonical privacy and correctness baseline is commit `0bda3e36705b4068a8bc91c40f573f6f1829197c`. Subsequent closeout work adds the homepage rendering regression and this current-state documentation.
+The current launch-readiness source of truth is [`docs/audits/2026-07-21-launch-readiness-audit.md`](docs/audits/2026-07-21-launch-readiness-audit.md). A green Vercel workflow does not imply that a deployment occurred when repository credentials are absent.
 
 ## Stable stakeholder preview
 
@@ -58,11 +63,11 @@ The HTTPS hostname and Tailscale Serve proxy are stable, but access requires a d
 ### Operator review
 
 - Dedicated route: `/operator/reviews`
-- Operator token supplied through the expected request header
+- Supabase Auth session with an operator-authorized profile
 - Reviewer notes, approval, publication, and submitter handoff links
 - Server-side publication-readiness checks remain authoritative
 
-The local submission repository is file-backed for the prototype. Supabase-backed persistence is not yet implemented for the operator queue.
+The private preview uses the Supabase submission repository. The file adapter remains only as a local/test fallback and is not the intended public-production store.
 
 ## Data and time behavior
 
@@ -116,6 +121,8 @@ npm run test:all
 npm run build
 npm run test:api:local:full
 npm run test:mobile:full
+npm run test:db:rls
+npm run test:repository:local-db
 git diff --check
 ```
 
@@ -126,7 +133,9 @@ The suite covers:
 - event taxonomy and operator-reviewed category overrides;
 - submission quality, upload boundaries, and public rate limiting;
 - local-submission API privacy and lifecycle behavior;
+- global launch security headers and private-route no-store/no-referrer controls;
 - mobile interaction behavior and direct homepage date/time rendering;
+- Supabase RLS and shared file/Supabase repository behavior;
 - ESLint and TypeScript;
 - production compilation and representative runtime routes.
 
@@ -162,7 +171,9 @@ scripts/mobile-interaction-smoke.mjs
 
 ## Known follow-ups
 
-1. Add reboot persistence for the production origin with a tested macOS LaunchAgent or process manager.
-2. Extend configured market-time display to per-venue timezones when Loop Local expands beyond one market.
-3. Move the file-backed operator queue to durable Supabase persistence.
-4. Continue event media and source-data quality improvements without guessing taxonomy in presentation code.
+1. Configure and verify the approved Vercel project, GitHub deployment credentials, public health URL, and alert destination.
+2. Raise the live feed above the launch thresholds (inventory, category diversity, media coverage, and trusted action domains) without guessing or fabricating production data.
+3. Add privacy, terms, support, password recovery, and account/data-deletion flows before opening public account creation.
+4. Resolve the retained file-adapter output-tracing warnings before treating managed-host artifacts as fully clean.
+5. Add reboot persistence for the private Mac preview only if explicitly approved as an OS-level change.
+6. Extend configured market-time display to per-venue timezones when Loop Local expands beyond one market.
