@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { currentMarketDate, discoverySectionLabels, distanceLineForItem, eventMatchesMoment, mapPinStyleForItem, visibleDiscoveryItems, type ViewerLocation } from '@/lib/discovery-truthfulness';
 import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, normalizeFeedItems, type LiveFeedHealth, type LiveFeedItem } from '@/lib/live-feed';
 import { useSavedEvents } from '@/lib/use-saved-events';
 
@@ -43,9 +44,8 @@ function priceLine(item: LiveFeedItem): string {
   return 'Free or details pending';
 }
 
-function distanceLine(item: LiveFeedItem): string {
-  if (typeof item.latitude === 'number' && typeof item.longitude === 'number') return '2.1 miles away';
-  return 'Distance after location';
+function distanceLine(item: LiveFeedItem, viewerLocation?: ViewerLocation | null): string {
+  return distanceLineForItem(item, viewerLocation);
 }
 
 function categoryClass(category?: string): string {
@@ -70,23 +70,8 @@ function itemSearchText(item: LiveFeedItem): string {
     .toLowerCase();
 }
 
-function isWeekend(item: LiveFeedItem): boolean {
-  const value = item.startsAt || item.date;
-  if (!value) return false;
-  const day = new Date(value).getUTCDay();
-  return day === 0 || day === 5 || day === 6;
-}
-
-function matchesMoment(item: LiveFeedItem, activeMoment: string): boolean {
-  if (activeMoment === 'All') return true;
-  if (activeMoment === 'Deals') {
-    return /deal|happy hour|special|market|shopping|free/i.test(`${item.category || ''} ${item.title} ${item.summary || ''} ${priceLine(item)}`);
-  }
-  if (activeMoment === 'Weekend') return isWeekend(item);
-  if (activeMoment === 'Tonight') {
-    return /pm/i.test(item.time || '') || /tonight/i.test(`${item.title} ${item.summary || ''}`);
-  }
-  return true;
+function matchesMoment(item: LiveFeedItem, activeMoment: string, marketDate: string): boolean {
+  return eventMatchesMoment(item, activeMoment, { marketDate, timeZone: 'America/Chicago' });
 }
 
 function sortItems(items: LiveFeedItem[], sortBy: string): LiveFeedItem[] {
@@ -177,6 +162,8 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
   const [showSavedPanel, setShowSavedPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
+  const viewerLocation: ViewerLocation | null = null;
+  const marketDate = currentMarketDate('America/Chicago');
 
 
   const combinedFeedItems = useMemo(() => normalizeFeedItems(feedItems), [feedItems]);
@@ -199,17 +186,22 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
       const matchesLocation = !location || location === 'st. louis, mo' || itemSearchText(item).includes(location);
       const matchesCategory = activeCategory === 'All categories' || item.category === activeCategory;
       const matchesCity = activeCity === 'All cities' || item.city === activeCity;
-      return matchesSearch && matchesLocation && matchesCategory && matchesCity && matchesMoment(item, activeMoment);
+      return matchesSearch && matchesLocation && matchesCategory && matchesCity && matchesMoment(item, activeMoment, marketDate);
     });
     return sortItems(filtered, sortBy);
-  }, [activeCategory, activeCity, activeMoment, combinedFeedItems, locationQuery, searchQuery, sortBy]);
+  }, [activeCategory, activeCity, activeMoment, combinedFeedItems, locationQuery, marketDate, searchQuery, sortBy]);
 
-  const heroEvent = filteredItems[0] || combinedFeedItems[0];
-  const featuredItems = filteredItems.slice(0, 6);
-  const popularItems = filteredItems.slice(6, 14);
-  const visibleItems = filteredItems.slice(0, viewMode === 'list' ? 24 : 18);
-  const mapLeadEvent = visibleItems[0];
-  const calendarItems = filteredItems.slice(0, 12);
+  const radiusFilteredItems = useMemo(
+    () => visibleDiscoveryItems(filteredItems, { viewerLocation, radiusMiles: 10 }),
+    [filteredItems, viewerLocation],
+  );
+  const discoveryLabels = discoverySectionLabels({ hasCuration: false, hasPopularityScores: false });
+
+  const heroEvent = radiusFilteredItems[0] || combinedFeedItems[0];
+  const featuredItems = radiusFilteredItems.slice(0, 6);
+  const popularItems = radiusFilteredItems.slice(6, 14);
+  const visibleItems = radiusFilteredItems.slice(0, viewMode === 'list' ? 24 : 18);
+  const calendarItems = radiusFilteredItems.slice(0, 12);
   const hasLiveData = combinedFeedItems.length > 0;
   const feedHealthMessage = health.status === 'unavailable'
     ? 'Live feed is temporarily unavailable. Local submissions remain available.'
@@ -337,7 +329,7 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         </section>
 
         <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
-          <header className="section-title-row"><h2>Featured This Week</h2><a href="#events">View all</a></header>
+          <header className="section-title-row"><h2>{discoveryLabels.featured}</h2><a href="#events">View all</a></header>
           <div className="featured-rail polished-card-density">
             {featuredItems.map((item) => <EventCard compact isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
           </div>
@@ -345,7 +337,7 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
 
         <section className="feed-section popular-near-you" aria-label="Popular nearby">
           <header className="section-title-row">
-            <div><h2>Popular Near You</h2><p>{filteredItems.length} of {totalCount} picks</p></div>
+            <div><h2>{discoveryLabels.popular}</h2><p>{radiusFilteredItems.length} of {totalCount} {discoveryLabels.popularCountLabel}</p></div>
             {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : <a href="#events">View all</a>}
           </header>
           <div className="popular-list polished-list-density">
@@ -362,38 +354,35 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         {viewMode === 'map' ? (
           <section className="map-experience-upgrade map-discovery-shell" id="map" aria-label="Map discovery view">
             <div className="map-control-bar">
-              <span className="map-radius-chip">Within 10 mi</span>
+              <span className="map-radius-chip">Share location to enable 10 mi radius</span>
               <span className="map-neighborhood-chip">Near {activeCity === 'All cities' ? locationQuery : activeCity}</span>
               <button type="button" onClick={() => setSortBy('city')}>Group by area</button>
             </div>
             <div className="map-canvas-premium" aria-label="Premium local map preview">
               <span className="map-route-line" />
-              {visibleItems.slice(0, 10).map((item, index) => (
-                <Link
-                  className="map-pin-cluster"
-                  href={eventDetailPath(item)}
-                  key={item.id}
-                  style={{ left: `${10 + ((index * 19) % 78)}%`, top: `${16 + ((index * 29) % 62)}%` }}
-                  aria-label={`Open event ${item.title}`}
-                >
-                  <b>{index + 1}</b>
-                  <span>{item.category || 'Local'}</span>
-                </Link>
-              ))}
-              {mapLeadEvent ? (
-                <article className="map-selected-event-card">
-                  <small>Closest highlight</small>
-                  <strong>{mapLeadEvent.title}</strong>
-                  <span>{venueLine(mapLeadEvent)} · {distanceLine(mapLeadEvent)}</span>
-                  <div><Link href={eventDetailPath(mapLeadEvent)}>Open event</Link><a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressLine(mapLeadEvent) || venueLine(mapLeadEvent) || mapLeadEvent.city || mapLeadEvent.title || 'event')}`}>Directions</a></div>
-                </article>
-              ) : <p className="map-empty-state">No map matches yet. Clear filters to see nearby events.</p>}
+              {visibleItems.slice(0, 10).map((item, index) => {
+                const pinStyle = mapPinStyleForItem(item, visibleItems);
+                if (!pinStyle) return null;
+                return (
+                  <Link
+                    className="map-pin-cluster"
+                    href={eventDetailPath(item)}
+                    key={item.id}
+                    style={pinStyle}
+                    aria-label={`Open event ${item.title}`}
+                  >
+                    <b>{index + 1}</b>
+                    <span>{item.category || 'Local'}</span>
+                  </Link>
+                );
+              })}
+              <p className="map-empty-state">Map pins use event coordinates when available. Share your location to enable distance, radius, and closest-event sorting.</p>
             </div>
             <aside className="map-side-results" aria-label="Map results list">
               {visibleItems.slice(0, 6).map((item, index) => (
                 <article key={item.id}>
                   <b>{index + 1}</b>
-                  <div><strong>{item.title}</strong><span>{venueLine(item)} · {distanceLine(item)}</span></div>
+                  <div><strong>{item.title}</strong><span>{venueLine(item)} · {distanceLine(item, viewerLocation)}</span></div>
                   <Link href={eventDetailPath(item)}>Open event</Link>
                 </article>
               ))}
@@ -405,9 +394,13 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         {showSavedPanel ? (
           <section className="saved-events-panel" aria-label="Saved events">
             <header className="section-title-row"><div><h2>Saved events</h2><p>{savedItems.length ? `${savedItems.length} saved` : 'Save events to compare plans later.'}</p></div><button type="button" onClick={() => setShowSavedPanel(false)}>Close</button></header>
-            <div className="popular-list polished-list-density">
-              {(savedItems.length ? savedItems : featuredItems.slice(0, 3)).map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
-            </div>
+              {savedItems.length ? (
+                <div className="popular-list polished-list-density">
+                  {savedItems.map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
+                </div>
+              ) : (
+                <div className="empty-filter-state saved-empty-state"><h3>No saved events yet</h3><p>Tap the heart on an event to save it here. We won’t show unsaved picks as saved.</p></div>
+              )}
           </section>
         ) : null}
         {shareStatus ? <p className="share-status" role="status">{shareStatus}</p> : null}
@@ -443,7 +436,7 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
               <span>▣ {formatEventMeta(heroEvent) || 'Date pending'}</span>
               <span>◷ {heroEvent.time || 'Time pending'}</span>
               <span>⌖ {venueLine(heroEvent)}</span>
-              <span>➤ {distanceLine(heroEvent)}</span>
+              <span>➤ {distanceLine(heroEvent, viewerLocation)}</span>
             </div>
             <div className="ticket-action-strip">
               <div><strong>{priceLine(heroEvent)}</strong><span>{heroEvent.price ? 'Reserve your spot' : 'Details from source'}</span></div>

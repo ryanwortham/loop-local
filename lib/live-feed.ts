@@ -161,12 +161,16 @@ export function eventDetailPath(item: LiveFeedItem): string {
   return `/events/${eventSlug(item)}`;
 }
 
+const PLACEHOLDER_EXTERNAL_DOMAINS = new Set(['example.com', 'example.org', 'example.net']);
+
 export function safeExternalUrl(value?: string): string {
   // safe-external-url-pass: only navigable public URL protocols may leave Loop Local.
   if (!value) return '#';
   try {
     const parsed = new URL(value, 'https://looplocal.invalid');
     const { protocol } = parsed;
+    const hostname = parsed.hostname.replace(/^www\./, '').toLowerCase();
+    if (PLACEHOLDER_EXTERNAL_DOMAINS.has(hostname)) return '#';
     if (protocol === 'http:' || protocol === 'https:' || protocol === 'mailto:' || protocol === 'tel:') return value;
   } catch {
     return '#';

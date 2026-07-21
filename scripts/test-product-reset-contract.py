@@ -268,10 +268,10 @@ def test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery
         'map-canvas-premium',
         'map-route-line',
         'map-pin-cluster',
-        'map-selected-event-card',
         'map-side-results',
         'Open event',
-        'Directions',
+        'Share location to enable 10 mi radius',
+        'Map pins use event coordinates when available',
     ]:
         assert marker in shell + css, f'missing map upgrade marker {marker}'
     for preserved in [
@@ -279,7 +279,7 @@ def test_loop_local_map_experience_upgrade_preserves_map_mode_and_adds_discovery
         'visibleItems.slice(0, 10)',
         'setViewMode',
         'eventDetailPath(item)',
-        'distanceLine(item)',
+        'distanceLine(item, viewerLocation)',
     ]:
         assert preserved in shell, f'map upgrade removed preserved feed/view behavior {preserved}'
 

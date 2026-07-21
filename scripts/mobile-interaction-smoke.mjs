@@ -107,7 +107,9 @@ async function main() {
   await page.locator('.mobile-menu-panel').waitFor({ state: 'visible', timeout });
   await page.getByLabel('Open Saved Events').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.getByText('Saved events').first(), 'Open Saved Events menu item');
-  await page.getByRole('heading', { name: 'Saved events' }).waitFor({ timeout });
+  await page.getByRole('heading', { name: 'Saved events', exact: true }).waitFor({ timeout });
+  await page.getByText('No saved events yet').waitFor({ timeout });
+  if (await page.locator('.saved-events-panel .popular-list-row').count()) fail('empty Saved state must not render unsaved featured rows');
 
   await assertClickable(page, page.getByPlaceholder('Search events, artists, venues…'), 'mobile search input');
   await page.getByPlaceholder('Search events, artists, venues…').fill('music');
@@ -115,7 +117,7 @@ async function main() {
   await page.locator('#map').waitFor({ state: 'visible', timeout });
   await assertSingleActiveAppTab(page);
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Saved' }), 'bottom Saved tab', { force: true });
-  await page.getByRole('heading', { name: 'Saved events' }).waitFor({ timeout });
+  await page.getByRole('heading', { name: 'Saved events', exact: true }).waitFor({ timeout });
   await assertSingleActiveAppTab(page);
   await assertClickable(page, page.locator('.polished-bottom-nav button').filter({ hasText: 'Profile' }), 'bottom Profile tab', { force: true });
   await page.waitForURL(/\/account$/, { timeout });

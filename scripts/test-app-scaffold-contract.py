@@ -51,7 +51,7 @@ def test_supabase_env_is_used_safely():
 
 
 def test_initial_ui_has_consumer_app_sections():
-    page = read("app/page.tsx") + read("components/app-shell.tsx")
+    page = read("app/page.tsx") + read("components/app-shell.tsx") + read("lib/discovery-truthfulness.ts")
     for needle in [
         "Loop Local",
         "Discover what’s happening near you",
@@ -62,8 +62,8 @@ def test_initial_ui_has_consumer_app_sections():
         "Map",
         "Saved",
         "Profile",
-        "Featured This Week",
-        "Popular Near You",
+        "Upcoming Events",
+        "More Local Events",
         "Tonight",
         "complete-frontend-rebuild",
         "app-reference-shell",
