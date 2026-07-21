@@ -1,0 +1,67 @@
+name: Deploy to Vercel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      LOCAL_SUBMISSIONS_ADAPTER: file
+      LOOP_LOCAL_SUBMISSIONS_STORE_PATH: ${{ runner.temp }}/loop-local-submissions.json
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_PROJECT_REF: ci-placeholder
+      LOOP_LOCAL_GIT_SHA: ${{ github.sha }}
+      LOOP_LOCAL_DEPLOYMENT_TARGET: vercel
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run complete gate before deploy
+        run: npm run test:all
+
+      - name: Build before deploy
+        run: npm run build
+
+      - name: Deploy with Vercel CLI
+        id: deploy
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ] || [ -z "${VERCEL_ORG_ID:-}" ] || [ -z "${VERCEL_PROJECT_ID:-}" ]; then
+            echo "Vercel deployment secrets are not configured." >&2
+            exit 1
+          fi
+          npx --yes vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+          url=$(npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" | tail -n 1)
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $url"
+
+      - name: Smoke /api/health on deployed URL
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          node scripts/check-health.mjs --url "$DEPLOY_URL/api/health" --expect-public

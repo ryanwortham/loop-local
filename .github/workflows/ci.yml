@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-build:
+    name: Test and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      LOCAL_SUBMISSIONS_ADAPTER: file
+      LOOP_LOCAL_SUBMISSIONS_STORE_PATH: ${{ runner.temp }}/loop-local-submissions.json
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      SUPABASE_PROJECT_REF: ci-placeholder
+      LOOP_LOCAL_DEPLOYMENT_TARGET: github-actions
+      LOOP_LOCAL_GIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run complete gate
+        run: npm run test:all
+
+      - name: Production build
+        run: npm run build

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.looplocal.preview</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>/Users/promax/AI/workspaces/loop-local/system/launchd/run-looplocal-preview.zsh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/promax/AI/workspaces/loop-local</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/promax/AI/workspaces/loop-local/runtime-data/launchd-preview.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/promax/AI/workspaces/loop-local/runtime-data/launchd-preview.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>NODE_ENV</key>
+    <string>production</string>
+    <key>PORT</key>
+    <string>3001</string>
+    <key>LOOP_LOCAL_DEPLOYMENT_TARGET</key>
+    <string>tailnet-preview</string>
+  </dict>
+</dict>
+</plist>

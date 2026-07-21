@@ -1,0 +1,32 @@
+name: Uptime Monitor
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: uptime-monitor
+  cancel-in-progress: true
+
+jobs:
+  health:
+    name: Probe production health
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ vars.LOOP_LOCAL_HEALTH_URL != '' }}
+    env:
+      LOOP_LOCAL_HEALTH_URL: ${{ vars.LOOP_LOCAL_HEALTH_URL }}
+      LOOP_LOCAL_ALERT_WEBHOOK_URL: ${{ secrets.LOOP_LOCAL_ALERT_WEBHOOK_URL }}
+      LOOP_LOCAL_MONITOR_EXPECT_PUBLIC: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Check health and alert on failure
+        run: node scripts/check-health.mjs --quiet --expect-public
