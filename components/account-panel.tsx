@@ -24,6 +24,7 @@ export function AccountPanel() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [name, setName] = useState('');
   const [message, setMessage] = useState('Loading your account…');
   const [busy, setBusy] = useState(false);
@@ -112,6 +113,35 @@ export function AccountPanel() {
     setBusy(false);
   }
 
+  async function handlePasswordResetEmail() {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setMessage('Enter your email first, then request a password reset.');
+      return;
+    }
+    setBusy(true);
+    setMessage('Sending password reset email…');
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      redirectTo: `${window.location.origin}/account`,
+    });
+    setMessage(error ? error.message : 'Password reset email sent. Check your inbox, then return here to set a new password.');
+    setBusy(false);
+  }
+
+  async function handleUpdatePassword() {
+    const cleanPassword = newPassword.trim();
+    if (cleanPassword.length < 8) {
+      setMessage('New password must be at least 8 characters.');
+      return;
+    }
+    setBusy(true);
+    setMessage('Updating password…');
+    const { error } = await supabase.auth.updateUser({ password: cleanPassword });
+    setMessage(error ? error.message : 'Password updated. You can use it for future sign-ins.');
+    if (!error) setNewPassword('');
+    setBusy(false);
+  }
+
   async function handleSignOut() {
     setBusy(true);
     const { error } = await supabase.auth.signOut();
@@ -160,15 +190,18 @@ export function AccountPanel() {
             <div className="account-actions">
               <button className="primary-action" type="submit" disabled={busy}>Sign in</button>
               <button className="secondary-action" type="button" disabled={busy} onClick={handleSignUp}>Create account</button>
+              <button className="secondary-action" type="button" disabled={busy} onClick={handlePasswordResetEmail}>Forgot password</button>
             </div>
           </form>
         ) : (
           <form className="account-form" onSubmit={handleSaveProfile}>
             <p><strong>{user.email}</strong></p>
             <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required /></label>
+            <label>New password<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={8} /></label>
             <p className="account-role">Role: <strong>{operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? 'Operator' : 'Member'}</strong></p>
             <div className="account-actions">
               <button className="primary-action" type="submit" disabled={busy || !profile}>Save profile</button>
+              <button className="secondary-action" type="button" disabled={busy || !newPassword.trim()} onClick={handleUpdatePassword}>Update password</button>
               <button className="secondary-action" type="button" disabled={busy} onClick={handleSignOut}>Sign out</button>
               {operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? <Link className="secondary-action" href="/operator/reviews">Open operator reviews</Link> : null}
             </div>
