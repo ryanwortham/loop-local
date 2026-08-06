@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { getPublicEnv } from '@/lib/env';
-import { authorizationBearerToken } from '@/lib/operator-auth-config';
+import { authorizationBearerToken, configuredOperatorEmails } from '@/lib/operator-auth-config';
 
 export type OperatorAuthMethod = 'supabase';
 
@@ -34,7 +34,8 @@ async function supabaseAccess(request: NextRequest): Promise<OperatorAccess | nu
     .select('app_role,is_admin')
     .eq('id', user.id)
     .maybeSingle();
-  const operator = !profileError && Boolean(profile && (profile.app_role === 'operator' || profile.is_admin === true));
+  const operatorEmail = Boolean(user.email && configuredOperatorEmails().has(user.email.toLowerCase()));
+  const operator = operatorEmail || (!profileError && Boolean(profile && (profile.app_role === 'operator' || profile.is_admin === true)));
   return {
     authorized: operator,
     authenticated: true,
