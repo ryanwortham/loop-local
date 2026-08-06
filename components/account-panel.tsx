@@ -27,6 +27,20 @@ export function AccountPanel() {
   const [name, setName] = useState('');
   const [message, setMessage] = useState('Loading your account…');
   const [busy, setBusy] = useState(false);
+  const [operatorAccess, setOperatorAccess] = useState(false);
+
+  async function refreshOperatorAccess(token = '') {
+    if (!token) {
+      setOperatorAccess(false);
+      return;
+    }
+    const response = await fetch('/api/auth/operator-session', {
+      cache: 'no-store',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await response.json();
+    setOperatorAccess(Boolean(data.operator));
+  }
 
   async function loadProfile(nextUser: User | null) {
     setUser(nextUser);
@@ -62,9 +76,15 @@ export function AccountPanel() {
   }
 
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => loadProfile(data.session?.user || null));
+    void supabase.auth.getSession().then(({ data }) => {
+      void loadProfile(data.session?.user || null);
+      void refreshOperatorAccess(data.session?.access_token || '');
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      window.setTimeout(() => void loadProfile(session?.user || null), 0);
+      window.setTimeout(() => {
+        void loadProfile(session?.user || null);
+        void refreshOperatorAccess(session?.access_token || '');
+      }, 0);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -146,11 +166,11 @@ export function AccountPanel() {
           <form className="account-form" onSubmit={handleSaveProfile}>
             <p><strong>{user.email}</strong></p>
             <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required /></label>
-            <p className="account-role">Role: <strong>{profile?.app_role === 'operator' || profile?.is_admin ? 'Operator' : 'Member'}</strong></p>
+            <p className="account-role">Role: <strong>{operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? 'Operator' : 'Member'}</strong></p>
             <div className="account-actions">
               <button className="primary-action" type="submit" disabled={busy || !profile}>Save profile</button>
               <button className="secondary-action" type="button" disabled={busy} onClick={handleSignOut}>Sign out</button>
-              {profile?.app_role === 'operator' || profile?.is_admin ? <Link className="secondary-action" href="/operator/reviews">Open operator reviews</Link> : null}
+              {operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? <Link className="secondary-action" href="/operator/reviews">Open operator reviews</Link> : null}
             </div>
           </form>
         )}
