@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { SessionNav } from '@/components/session-nav';
 import type { LiveFeedItem } from '@/lib/live-feed';
 import { supabase } from '@/lib/supabase/client';
 import { submissionPublicationQuality } from '@/lib/local-submission-quality';
@@ -116,6 +117,7 @@ export function OperatorReviewPanel() {
       <header className="ll-nav post-app-topbar post-local-command-center">
         <Link className="ll-brand" href="/">Loop Local</Link>
         <nav aria-label="Operator navigation"><Link href="/">Discover</Link><Link href="/post-local">Post Local</Link><Link href="/account">Account</Link></nav>
+        <SessionNav className="post-local-session-nav" />
       </header>
       <section className="ll-card post-flow-card operator-review-card">
         <p className="ll-kicker">Operator reviews</p>

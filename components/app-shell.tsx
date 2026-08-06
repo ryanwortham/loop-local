@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { SessionNav } from '@/components/session-nav';
 import { currentMarketDate, discoverySectionLabels, distanceLineForItem, eventMatchesMoment, mapPinStyleForItem, visibleDiscoveryItems, type ViewerLocation } from '@/lib/discovery-truthfulness';
 import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, normalizeFeedItems, type LiveFeedHealth, type LiveFeedItem } from '@/lib/live-feed';
 import { useSavedEvents } from '@/lib/use-saved-events';
@@ -294,7 +295,10 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
           <button className="mobile-qa-target" type="button" aria-label="Menu" aria-expanded={showMobileMenu} onClick={toggleMobileMenu}>☰</button>
           <Link className="phone-logo mobile-qa-target" href="/"><span className="brand-mark mini"><span className="brand-logo-image" aria-label="Loop Local" /></span> loop local</Link>
           {/* Legacy saved marker: onClick={() => setShowSavedPanel(true)} now also sets activeAppTab. */}
-          <button className="mobile-qa-target" type="button" aria-label="Open Saved Events" onClick={() => { setShowSavedPanel(true); setActiveAppTab('Saved'); }}>♡</button>
+          <div className="phone-topbar-actions">
+            <SessionNav className="phone-session-nav" />
+            <button className="mobile-qa-target" type="button" aria-label="Open Saved Events" onClick={() => { setShowSavedPanel(true); setActiveAppTab('Saved'); }}>♡</button>
+          </div>
         </nav>
         {showMobileMenu ? (
           <section className="mobile-menu-panel mobile-qa-home-menu" aria-label="Mobile menu">

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { FileDropInput } from '@/components/file-drop-input';
+import { SessionNav } from '@/components/session-nav';
 import { SUBMISSION_EVENT_CATEGORIES } from '@/lib/event-taxonomy';
 import {
   MAX_LOCAL_SUBMISSION_UPLOAD_BYTES,
@@ -414,7 +415,10 @@ export function PostLocalWizard() {
           <Link href="/#events">Events</Link>
           <Link href="/#map">Map</Link>
           <Link href="/post-local#first-post">Post Local</Link>
+          <Link href="/account">Account</Link>
+          <Link href="/operator/reviews">Reviews</Link>
         </nav>
+        <SessionNav className="post-local-session-nav" />
       </header>
 
       <section className="post-draft-status-bar" aria-label="Draft status">
