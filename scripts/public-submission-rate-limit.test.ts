@@ -75,3 +75,27 @@ test('Supabase adapter consumes the durable atomic rate-limit RPC', async () => 
   assert.equal(requestBody.includes('203.0.113.9'), false);
   assert.deepEqual(decision, { allowed: false, limit: 2, remaining: 0, retryAfterSeconds: 8, resetAt: 18_000 });
 });
+
+test('unmet-demand signals use a stricter independent throttle', async () => {
+  let requestBody = '';
+  await publicSubmissionRateLimit(
+    new Headers({ 'x-real-ip': '203.0.113.10' }),
+    'unmet_demand',
+    10_000,
+    {
+      env: {
+        LOOP_LOCAL_SUBMISSIONS_ADAPTER: 'supabase',
+        NEXT_PUBLIC_SUPABASE_URL: 'https://project.supabase.co',
+        SUPABASE_SERVICE_ROLE_KEY: 'server-only-secret',
+      },
+      fetchImpl: async (_url, init) => {
+        requestBody = String(init?.body);
+        return Response.json({ allowed: true, remaining: 2, resetAt: 3610 });
+      },
+    },
+  );
+  const body = JSON.parse(requestBody);
+  assert.equal(body.p_scope, 'unmet_demand');
+  assert.equal(body.p_limit, 3);
+  assert.equal(body.p_window_seconds, 3600);
+});

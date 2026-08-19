@@ -43,6 +43,8 @@ export type LiveFeedItem = {
   soldOut?: boolean;
   limitedAvailability?: boolean;
   rescheduled?: boolean;
+  lifecycleStatus?: 'confirmed' | 'cancelled' | 'corrected';
+  lastVerifiedAt?: string;
   isPartnerEvent?: boolean;
   // published-status-history-pass marker: localSubmissionStatusHistory?: LocalSubmissionHistoryEntry[]
   localSubmissionStatusHistory?: Array<{ action: string; label?: string; at?: string; note?: string }>;

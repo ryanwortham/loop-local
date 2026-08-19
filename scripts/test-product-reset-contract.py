@@ -105,6 +105,63 @@ def test_home_preserves_search_filters_views_and_feed_logic():
         assert preserved in shell, f'working search/filter/view/feed behavior was removed: {preserved}'
 
 
+def test_unmet_demand_capture_is_privacy_bounded_and_operator_visible():
+    shell = read('components/app-shell.tsx')
+    route = read('app/api/unmet-demand/route.ts')
+    model = read('lib/unmet-demand.ts')
+    operator = read('components/operator-review-panel.tsx')
+    migration = read('supabase/migrations/20260818213000_unmet_demand_signals.sql')
+    for marker in [
+        'unmet-demand-capture-pass',
+        'Tell us what you hoped to find',
+        "radiusFilteredItems.length <= 2",
+        "fetch('/api/unmet-demand'",
+        'category',
+        'area',
+        'dateWindow',
+    ]:
+        assert marker in shell, f'unmet-demand capture missing UI marker {marker}'
+    for marker in ['validateDemandSignal', 'aggregateDemandSignals', 'ALLOWED_DEMAND_FIELDS', 'DEMAND_CATEGORIES', 'DEMAND_AREAS']:
+        assert marker in model, f'unmet-demand model missing privacy/aggregation marker {marker}'
+    for marker in ['requireOperatorAccess', 'publicSubmissionRateLimit', 'createDemandSignal', 'readDemandSignals']:
+        assert marker in route, f'unmet-demand API missing boundary marker {marker}'
+    for marker in ['Demand signals', 'demandSummary', "fetch('/api/unmet-demand'"]:
+        assert marker in operator, f'operator demand summary missing marker {marker}'
+    assert 'enable row level security' in migration
+    assert 'revoke all on table public.unmet_demand_signals from anon, authenticated' in migration
+    assert 'read_unmet_demand_summary' in migration
+    assert "category in ('Any category'" in migration
+    assert "area in ('St. Louis City'" in migration
+    assert "limit', '1000'" not in read('lib/unmet-demand-repository.ts')
+    for prohibited in ['latitude', 'longitude', 'email', 'user_id', 'ip_address', 'note']:
+        assert prohibited not in migration, f'unmet-demand storage must not include {prohibited}'
+
+
+def test_plan_it_and_event_lifecycle_are_actionable_and_server_governed():
+    detail = read('app/events/[slug]/page.tsx')
+    actions = read('components/event-detail-client-actions.tsx')
+    action_route = read('app/api/event-actions/route.ts')
+    lifecycle_route = read('app/api/event-lifecycle/route.ts')
+    operator = read('components/operator-review-panel.tsx')
+    feed = read('lib/live-feed-server.ts')
+    migration = read('supabase/migrations/20260818220000_event_engagement_lifecycle.sql')
+    for marker in ['DTSTART:', 'DTEND:', 'LOCATION:', 'URL:', 'eventEndsAt=', 'lifecycleStatus=']:
+        assert marker in detail, f'event plan bridge missing {marker}'
+    for marker in ["trackIntent('share')", "trackIntent('copy_link')", "trackIntent('calendar_add')", 'Was this listing accurate?']:
+        assert marker in actions, f'event action client missing {marker}'
+    for marker in ['publicSubmissionRateLimit', 'validateEventKey', 'recordEventIntent', 'getLiveFeed']:
+        assert marker in action_route, f'event intent route missing {marker}'
+    for marker in ['requireOperatorAccess', 'event feedback opens after the event', 'reconfirmationQueue', 'correctionQueue', 'readEventIntentSummary']:
+        assert marker in lifecycle_route, f'event lifecycle route missing {marker}'
+    for marker in ['Event verification', 'Still happening', 'Attendee issue', 'Strong intent signals']:
+        assert marker in operator, f'operator lifecycle queue missing {marker}'
+    assert "item.lifecycleStatus !== 'cancelled'" in feed
+    assert 'enable row level security' in migration
+    assert 'revoke all on table public.event_intent_signals, public.event_lifecycle_records from anon, authenticated' in migration
+    for prohibited in ['user_id', 'ip_address', 'email']:
+        assert prohibited not in migration, f'event engagement storage must not include {prohibited}'
+
+
 def test_event_media_and_placeholder_assets_stay_intentional():
     shell = read('components/app-shell.tsx')
     css = read('app/globals.css')
@@ -1287,11 +1344,13 @@ def test_loop_local_safe_urls_pwa_accessibility_and_smoke_cleanup():
     for marker in [
         'post-local-validation-interception-pass',
         'validateSelectedFiles',
-        'logo upload is required',
         'File is larger than',
         'required={false}',
+        'noValidate',
+        "data?.error || 'Could not submit this event. Please try again.'",
     ]:
         assert marker in post, f'missing Post Local validation interception marker {marker}'
+    assert 'logo upload is required' not in post, 'optional logo must not block event submission'
     for marker in [
         'smoke-runtime-cleanup-pass',
         'LOOP_LOCAL_SUBMISSIONS_STORE_PATH',
@@ -1687,6 +1746,8 @@ if __name__ == '__main__':
     test_live_engine_and_distribution_docs_remain_present()
     test_complete_frontend_rebuild_matches_reference_without_touching_engine()
     test_home_preserves_search_filters_views_and_feed_logic()
+    test_unmet_demand_capture_is_privacy_bounded_and_operator_visible()
+    test_plan_it_and_event_lifecycle_are_actionable_and_server_governed()
     test_event_media_and_placeholder_assets_stay_intentional()
     test_post_local_preserves_form_fields_and_uploads()
     test_loop_local_ux_polish_tightens_mobile_cards_detail_nav_and_hierarchy()

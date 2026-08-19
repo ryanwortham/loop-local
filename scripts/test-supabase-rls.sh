@@ -26,6 +26,8 @@ apply_sql "$ROOT/supabase/migrations/20260719153000_repository_event_city_mappin
 apply_sql "$ROOT/supabase/migrations/20260719154000_repository_event_slug.sql"
 apply_sql "$ROOT/supabase/migrations/20260719155000_governed_submission_media_storage.sql"
 apply_sql "$ROOT/supabase/migrations/20260719160000_durable_saved_events_controls.sql"
+apply_sql "$ROOT/supabase/migrations/20260818213000_unmet_demand_signals.sql"
+apply_sql "$ROOT/supabase/migrations/20260818220000_event_engagement_lifecycle.sql"
 
 cd "$ROOT"
 supabase test db

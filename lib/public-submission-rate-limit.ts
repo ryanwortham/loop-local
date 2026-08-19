@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 
-export type PublicSubmissionScope = 'create' | 'resubmit';
+export type PublicSubmissionScope = 'create' | 'resubmit' | 'unmet_demand' | 'event_intent' | 'event_feedback';
 
 export type RateLimitBucket = {
   count: number;
@@ -18,6 +18,8 @@ export type RateLimitDecision = {
 export const MAX_RATE_LIMIT_BUCKETS = 4096;
 const DEFAULT_LIMIT = 20;
 const DEFAULT_WINDOW_MS = 60_000;
+const DEFAULT_UNMET_DEMAND_LIMIT = 3;
+const DEFAULT_UNMET_DEMAND_WINDOW_MS = 60 * 60_000;
 
 type GlobalRateLimitState = typeof globalThis & {
   __loopLocalPublicSubmissionRateLimits?: Map<string, RateLimitBucket>;
@@ -97,8 +99,19 @@ export async function publicSubmissionRateLimit(
   options: PublicRateLimitOptions = {},
 ): Promise<RateLimitDecision> {
   const env = options.env || process.env;
-  const limit = boundedInteger(env.LOOP_LOCAL_PUBLIC_SUBMISSION_RATE_LIMIT, DEFAULT_LIMIT, 1, 200);
-  const windowMs = boundedInteger(env.LOOP_LOCAL_PUBLIC_SUBMISSION_RATE_WINDOW_MS, DEFAULT_WINDOW_MS, 1_000, 3_600_000);
+  const isDemandSignal = scope === 'unmet_demand' || scope === 'event_feedback';
+  const limit = boundedInteger(
+    isDemandSignal ? env.LOOP_LOCAL_UNMET_DEMAND_RATE_LIMIT : env.LOOP_LOCAL_PUBLIC_SUBMISSION_RATE_LIMIT,
+    isDemandSignal ? DEFAULT_UNMET_DEMAND_LIMIT : DEFAULT_LIMIT,
+    1,
+    200,
+  );
+  const windowMs = boundedInteger(
+    isDemandSignal ? env.LOOP_LOCAL_UNMET_DEMAND_RATE_WINDOW_MS : env.LOOP_LOCAL_PUBLIC_SUBMISSION_RATE_WINDOW_MS,
+    isDemandSignal ? DEFAULT_UNMET_DEMAND_WINDOW_MS : DEFAULT_WINDOW_MS,
+    1_000,
+    86_400_000,
+  );
   const identity = publicRequestIdentity(headers);
   if (env.LOOP_LOCAL_SUBMISSIONS_ADAPTER === 'supabase') {
     const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');

@@ -60,6 +60,8 @@ async function killServer() {
 function applicationEnvironment() {
   if (!operatorSession) throw new Error('local operator session has not been provisioned');
   return {
+    NEXT_PUBLIC_SUPABASE_URL: operatorSession.supabaseUrl,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: operatorSession.anonKey,
     LOCAL_SUBMISSIONS_ADAPTER: 'file',
     LOCAL_SUBMISSIONS_FILE: smokeStorePath,
     LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath,
@@ -71,7 +73,7 @@ function applicationEnvironment() {
 async function main() {
   operatorSession = await provisionLocalOperatorSession();
   console.log('npm run build');
-  await runCommand('npm', ['run', 'build']);
+  await runCommand('npm', ['run', 'build'], { env: applicationEnvironment() });
 
   console.log(`npm run start -- -p ${port}`);
   serverProcess = spawn('npm', ['run', 'start', '--', '-p', port], {
