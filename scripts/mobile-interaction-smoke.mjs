@@ -148,7 +148,7 @@ async function main() {
   // Submitted for API-backed review: API Smoke Bakery / API Smoke Market Night.
   await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Profile details'), 'Profile details dock before valid fill');
   await page.locator('input[name="entityName"]').fill('API Smoke Bakery');
-  await page.locator('input[name="logo"]').setInputFiles('public/looplocal-logo.png');
+  // event-only-submit-pass: the optional profile logo must not block review submission.
   await page.locator('input[name="event_image"]').setInputFiles('public/looplocal-logo.png');
   await page.locator('input[name="contactName"]').fill('Riley Smoke');
   await page.locator('input[name="email"]').fill('riley@example.com');

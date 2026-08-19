@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(58);
 
 select has_column('public', 'profiles', 'app_role', 'profiles has explicit app_role');
 select has_table('public', 'local_submissions', 'local_submissions exists');
@@ -10,6 +10,13 @@ select has_table('public', 'event_category_overrides', 'event_category_overrides
 select has_table('public', 'operator_audit_logs', 'operator_audit_logs exists');
 select has_table('public', 'public_rate_limits', 'public_rate_limits exists');
 select has_table('public', 'saved_events', 'saved_events exists');
+select has_table('public', 'unmet_demand_signals', 'unmet demand signals exist');
+select has_table('public', 'event_intent_signals', 'event intent signals exist');
+select has_table('public', 'event_lifecycle_records', 'event lifecycle records exist');
+select has_function('public', 'read_unmet_demand_summary', array['timestamp with time zone'], 'demand summary function exists');
+select has_function('public', 'read_event_intent_summary', array[]::text[], 'event intent summary function exists');
+select has_function('public', 'read_event_lifecycle_states', array[]::text[], 'event lifecycle state function exists');
+select has_function('public', 'read_event_lifecycle_queue', array[]::text[], 'event lifecycle queue function exists');
 select has_function('public', 'is_loop_operator', array[]::text[], 'operator predicate exists');
 select has_function('public', 'consume_public_rate_limit', array['text', 'text', 'integer', 'integer'], 'atomic rate-limit function exists');
 
@@ -115,6 +122,27 @@ select is(
   'a normal user cannot call the server-only rate limiter'
 );
 select is(
+  pg_temp.try_sql($attempt$select count(*) from public.unmet_demand_signals$attempt$),
+  false,
+  'a normal user cannot read demand signals'
+);
+select is(
+  pg_temp.try_sql($attempt$insert into public.unmet_demand_signals (category, area, date_window, result_count, context)
+    values ('Family', 'St. Louis City', 'this_weekend', 0, 'empty')$attempt$),
+  false,
+  'a normal user cannot forge demand signals directly'
+);
+select is(
+  pg_temp.try_sql($attempt$select * from public.read_unmet_demand_summary(now() - interval '30 days')$attempt$),
+  false,
+  'a normal user cannot read the server-only demand summary'
+);
+select is(pg_temp.try_sql($attempt$insert into public.event_intent_signals (event_key, action) values ('event-1', 'calendar_add')$attempt$), false, 'a normal user cannot forge intent signals');
+select is(pg_temp.try_sql($attempt$insert into public.event_lifecycle_records (event_key, event_title, action, reporter_type) values ('event-1', 'Event', 'inaccurate', 'attendee')$attempt$), false, 'a normal user cannot forge lifecycle records');
+select is(pg_temp.try_sql($attempt$select * from public.read_event_intent_summary()$attempt$), false, 'a normal user cannot read intent summaries');
+select is(pg_temp.try_sql($attempt$select * from public.read_event_lifecycle_states()$attempt$), false, 'a normal user cannot read lifecycle states');
+select is(pg_temp.try_sql($attempt$select * from public.read_event_lifecycle_queue()$attempt$), false, 'a normal user cannot read lifecycle queues');
+select is(
   pg_temp.try_sql($attempt$insert into public.submission_review_events
     (submission_id, action, actor_user_id)
     values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'approved_local', auth.uid())$attempt$),
@@ -176,6 +204,21 @@ select is(
 reset role;
 select set_config('request.jwt.claim.sub', '', true);
 set local role service_role;
+
+select ok(
+  pg_temp.try_sql($attempt$insert into public.unmet_demand_signals (category, area, date_window, result_count, context)
+    values ('Family', 'St. Louis City', 'this_weekend', 0, 'empty')$attempt$),
+  'the server role can record a validated demand signal'
+);
+select ok(
+  pg_temp.try_sql($attempt$select * from public.read_unmet_demand_summary(now() - interval '30 days')$attempt$),
+  'the server role can read aggregated demand signals'
+);
+select ok(pg_temp.try_sql($attempt$insert into public.event_intent_signals (event_key, action) values ('event-1', 'calendar_add')$attempt$), 'the server role can record intent');
+select ok(pg_temp.try_sql($attempt$insert into public.event_lifecycle_records (event_key, event_title, action, reporter_type) values ('event-1', 'Event', 'inaccurate', 'attendee')$attempt$), 'the server role can record lifecycle feedback');
+select ok(pg_temp.try_sql($attempt$select * from public.read_event_intent_summary()$attempt$), 'the server role can read intent summaries');
+select ok(pg_temp.try_sql($attempt$select * from public.read_event_lifecycle_states()$attempt$), 'the server role can read lifecycle states');
+select ok(pg_temp.try_sql($attempt$select * from public.read_event_lifecycle_queue()$attempt$), 'the server role can read lifecycle queues');
 
 select is(
   pg_temp.try_sql($attempt$update public.submission_review_events set note = 'tampered'$attempt$),

@@ -9,6 +9,8 @@ import { supabase } from '@/lib/supabase/client';
 import { submissionPublicationQuality } from '@/lib/local-submission-quality';
 import { SUBMISSION_EVENT_CATEGORIES } from '@/lib/event-taxonomy';
 import type { LocalSubmissionRecord } from '@/lib/local-submissions-store';
+import type { DemandSummary } from '@/lib/unmet-demand';
+import type { EventIntentSummary, EventLifecycleRecord } from '@/lib/event-engagement';
 
 type ReviewQueueState = {
   pendingSubmissions: LocalSubmissionRecord[];
@@ -29,6 +31,11 @@ export function OperatorReviewPanel() {
   const [status, setStatus] = useState('Checking your Supabase operator session…');
   const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
   const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
+  const [demandSummary, setDemandSummary] = useState<DemandSummary[]>([]);
+  const [reconfirmationQueue, setReconfirmationQueue] = useState<LiveFeedItem[]>([]);
+  const [correctionQueue, setCorrectionQueue] = useState<EventLifecycleRecord[]>([]);
+  const [intentSummary, setIntentSummary] = useState<EventIntentSummary[]>([]);
+  const [lifecycleNotes, setLifecycleNotes] = useState<Record<string, string>>({});
 
   const operatorHeaders: Record<string, string> = {
     'content-type': 'application/json',
@@ -56,14 +63,30 @@ export function OperatorReviewPanel() {
   }, []);
 
   async function loadReviews() {
-    const response = await fetch('/api/local-submissions', { cache: 'no-store', headers: operatorHeaders });
-    const data = await response.json();
-    if (!response.ok) {
-      setStatus(data.error || 'Unable to load reviews');
+    const [reviewsResponse, demandResponse, lifecycleResponse] = await Promise.all([
+      fetch('/api/local-submissions', { cache: 'no-store', headers: operatorHeaders }),
+      fetch('/api/unmet-demand', { cache: 'no-store', headers: operatorHeaders }),
+      fetch('/api/event-lifecycle', { cache: 'no-store', headers: operatorHeaders }),
+    ]);
+    const [reviewsData, demandData, lifecycleData] = await Promise.all([reviewsResponse.json(), demandResponse.json(), lifecycleResponse.json()]);
+    if (!reviewsResponse.ok) {
+      setStatus(reviewsData.error || 'Unable to load reviews');
       return;
     }
-    setQueue({ pendingSubmissions: data.pendingSubmissions || [], publishedLocalEvents: data.publishedLocalEvents || [], taxonomyReviewItems: data.taxonomyReviewItems || [] });
-    setStatus('Review queue loaded');
+    setQueue({ pendingSubmissions: reviewsData.pendingSubmissions || [], publishedLocalEvents: reviewsData.publishedLocalEvents || [], taxonomyReviewItems: reviewsData.taxonomyReviewItems || [] });
+    setDemandSummary(demandResponse.ok ? demandData.summary || [] : []);
+    setReconfirmationQueue(lifecycleResponse.ok ? lifecycleData.reconfirmationQueue || [] : []);
+    setCorrectionQueue(lifecycleResponse.ok ? lifecycleData.correctionQueue || [] : []);
+    setIntentSummary(lifecycleResponse.ok ? lifecycleData.intentSummary || [] : []);
+    setStatus(demandResponse.ok && lifecycleResponse.ok ? 'Review, demand, and event lifecycle queues loaded' : 'Review queue loaded; some supporting signals are unavailable');
+  }
+
+  async function updateLifecycle(eventKey: string, action: 'confirmed' | 'cancelled' | 'corrected') {
+    const response = await fetch('/api/event-lifecycle', { method: 'PATCH', headers: operatorHeaders, body: JSON.stringify({ eventKey, action, note: lifecycleNotes[eventKey] || '' }) });
+    const data = await response.json();
+    if (!response.ok) { setStatus(data.error || 'Lifecycle update failed'); return; }
+    setStatus(action === 'confirmed' ? 'Event reconfirmed' : action === 'cancelled' ? 'Event marked cancelled' : 'Correction recorded');
+    await loadReviews();
   }
 
   async function mutateReview(body: Record<string, unknown>, nextStatus: string) {
@@ -172,6 +195,25 @@ export function OperatorReviewPanel() {
             })}
           </div>
         ) : <p className="pending-submission-empty">No taxonomy reviews loaded.</p>}
+      </section>
+      <section className="pending-submissions-panel event-lifecycle-queue" aria-label="Event verification lifecycle">
+        <header className="section-title-row"><div><h2>Event verification</h2><p>{reconfirmationQueue.length} due soon · {correctionQueue.length} attendee issue{correctionQueue.length === 1 ? '' : 's'}</p></div></header>
+        <p className="taxonomy-review-intro">Reconfirm events in the 48 hours before they start. Attendee accuracy reports enter the same correction queue after an event ends.</p>
+        <div className="event-lifecycle-grid">
+          {reconfirmationQueue.map((item) => <article className="pending-submission-card" key={item.id}><span>Reconfirmation due</span><strong>{item.title}</strong><p>{[item.date, item.time, item.city].filter(Boolean).join(' · ')}</p><label className="reviewer-note-field"><span>Correction note</span><textarea value={lifecycleNotes[item.id] || ''} onChange={(event) => setLifecycleNotes((current) => ({ ...current, [item.id]: event.target.value }))} rows={2} /></label><div className="pending-submission-actions"><button type="button" onClick={() => updateLifecycle(item.id, 'confirmed')}>Still happening</button><button type="button" onClick={() => updateLifecycle(item.id, 'cancelled')}>Cancelled</button><button type="button" onClick={() => updateLifecycle(item.id, 'corrected')}>Record correction</button></div></article>)}
+          {correctionQueue.map((record) => <article className="pending-submission-card lifecycle-correction-card" key={record.id}><span>Attendee issue</span><strong>{record.eventTitle}</strong><p>Reported {new Date(record.createdAt).toLocaleString()}</p><label className="reviewer-note-field"><span>Resolution note</span><textarea value={lifecycleNotes[record.eventKey] || ''} onChange={(event) => setLifecycleNotes((current) => ({ ...current, [record.eventKey]: event.target.value }))} rows={2} /></label><div className="pending-submission-actions"><button type="button" onClick={() => updateLifecycle(record.eventKey, 'confirmed')}>Listing was accurate</button><button type="button" onClick={() => updateLifecycle(record.eventKey, 'cancelled')}>Cancelled</button><button type="button" onClick={() => updateLifecycle(record.eventKey, 'corrected')}>Resolve with correction</button></div></article>)}
+        </div>
+        {!reconfirmationQueue.length && !correctionQueue.length ? <p className="pending-submission-empty">No event verifications need attention.</p> : null}
+        {intentSummary.length ? <div className="unmet-demand-summary-grid event-intent-summary"><h3>Strong intent signals</h3>{intentSummary.slice(0, 12).map((item) => <article key={item.eventKey}><strong>{item.eventKey}</strong><p>{item.calendarAdds} calendar · {item.shares + item.copyLinks} shared/copied</p><span>Stronger than a page view</span></article>)}</div> : null}
+      </section>
+      <section className="pending-submissions-panel unmet-demand-summary-panel" aria-label="Demand signals">
+        <header className="section-title-row"><div><h2>Demand signals</h2><p>{demandSummary.reduce((total, item) => total + item.count, 0)} requests from the last 30 days</p></div></header>
+        <p className="taxonomy-review-intro">Aggregated category, broad area, and date requests. No account identity or precise location is stored.</p>
+        {demandSummary.length ? (
+          <div className="unmet-demand-summary-grid">
+            {demandSummary.map((item) => <article key={`${item.category}-${item.area}-${item.dateWindow}`}><strong>{item.category}</strong><p>{item.area} · {item.dateWindow.replaceAll('_', ' ')}</p><span>{item.count} request{item.count === 1 ? '' : 's'} · {item.emptyCount} empty-result</span></article>)}
+          </div>
+        ) : <p className="pending-submission-empty">No demand signals loaded.</p>}
       </section>
     </main>
   );

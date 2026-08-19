@@ -46,6 +46,29 @@ function mapQuery(item: LiveFeedItem): string {
   return encodeURIComponent(addressLine(item) || venueLine(item) || item.city || item.title);
 }
 
+function calendarHref(item: LiveFeedItem): string {
+  const escape = (value: string) => value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+  const formatUtc = (value: number) => new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const start = Date.parse(item.startsAt || item.date || '');
+  const end = Date.parse(item.endsAt || '');
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://looplocal.com').replace(/\/$/, '');
+  const cleanUrl = `${siteUrl}${eventDetailPath(item)}`;
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Loop Local//Plan It//EN', 'BEGIN:VEVENT', `UID:${escape(item.id)}@looplocal.com`, `DTSTAMP:${formatUtc(Date.now())}`];
+  if (Number.isFinite(start)) {
+    lines.push(`DTSTART:${formatUtc(start)}`);
+    lines.push(`DTEND:${formatUtc(Number.isFinite(end) ? end : start + 2 * 60 * 60 * 1000)}`);
+  }
+  lines.push(`SUMMARY:${escape(item.title)}`, `DESCRIPTION:${escape(item.summary || '')}`, `LOCATION:${escape(addressLine(item) || venueLine(item))}`, `URL:${cleanUrl}`, 'END:VEVENT', 'END:VCALENDAR');
+  return `data:text/calendar;charset=utf-8,${encodeURIComponent(lines.join('\r\n'))}`;
+}
+
+function eventEnd(item: LiveFeedItem): number {
+  const end = Date.parse(item.endsAt || '');
+  if (Number.isFinite(end)) return end;
+  const start = Date.parse(item.startsAt || '');
+  return Number.isFinite(start) ? start + 4 * 60 * 60 * 1000 : Number.POSITIVE_INFINITY;
+}
+
 export async function generateStaticParams() {
   const feed = await getLiveFeed(48);
   return feed.items.slice(0, 24).map((item) => ({ slug: eventSlug(item) }));
@@ -80,6 +103,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     .slice(0, 3);
   const sourceUrl = eventExternalUrl(event);
   const hasSourceUrl = sourceUrl !== '#';
+  const isCancelled = event.lifecycleStatus === 'cancelled';
 
   return (
     <main className="event-detail-route-real-page event-detail-page-shell event-detail-polish-pass event-detail-premium-shell complete-frontend-rebuild ux-polish-pass">
@@ -109,13 +133,16 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <span><b>Price</b>{priceLine(event)}</span>
           </div>
           <div className="event-detail-action-row event-detail-action-cluster">
-            {hasSourceUrl ? <a className="primary-action" href={sourceUrl}>Reserve / tickets ↗</a> : null}
+            {hasSourceUrl && !isCancelled ? <a className="primary-action" href={sourceUrl}>Reserve / tickets ↗</a> : null}
             <a className="secondary-action" href={`https://www.google.com/maps/search/?api=1&query=${mapQuery(event)}`}>Get directions</a>
             {hasSourceUrl ? <a className="secondary-action" href={sourceUrl}>View source</a> : null}
           </div>
           <SavedShareActions
-            calendarHref={`data:text/calendar;charset=utf8,${encodeURIComponent(`BEGIN:VCALENDAR\nVERSION:2.0\nSUMMARY:${event.title}\nDESCRIPTION:${event.summary || ''}\nEND:VCALENDAR`)}`}
+            calendarHref={calendarHref(event)}
             eventId={event.id}
+            eventEndsAt={Number.isFinite(eventEnd(event)) ? new Date(eventEnd(event)).toISOString() : '9999-12-31T23:59:59.000Z'}
+            lastVerifiedAt={event.lastVerifiedAt}
+            lifecycleStatus={event.lifecycleStatus}
             summary={event.summary || eventTimeLine(event)}
             title={event.title}
             url={eventDetailPath(event)}

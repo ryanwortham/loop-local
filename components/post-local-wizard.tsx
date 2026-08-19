@@ -223,6 +223,8 @@ export function PostLocalWizard() {
   const [draft, setDraft] = useState<PostLocalDraft>(readInitialDraft);
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
   const [submitStatus, setSubmitStatus] = useState('Required before review');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedSubmissionId, setSubmittedSubmissionId] = useState('');
   const [submittedStatusToken, setSubmittedStatusToken] = useState('');
   const [revisionId, setRevisionId] = useState('');
@@ -280,6 +282,7 @@ export function PostLocalWizard() {
     setDraft((current) => ({ ...current, [name]: value }));
     setValidationErrors((current) => ({ ...current, [name]: undefined }));
     setSubmitStatus('Required before review');
+    setSubmitError('');
     setDraftStatus('Draft saved locally');
   }
 
@@ -288,10 +291,22 @@ export function PostLocalWizard() {
     if (!draft.entityName.trim()) nextErrors.entityName = 'Business/community/entity name is required.';
     if (!draft.contactName.trim()) nextErrors.contactName = 'Contact name is required.';
     if (!draft.email.trim()) nextErrors.email = 'Email is required.';
+    else if (!/^\S+@\S+\.\S+$/.test(draft.email.trim())) nextErrors.email = 'Enter a valid email address.';
     if (!draft.entityType) nextErrors.entityType = 'Entity type is required.';
     if (!draft.eventTitle.trim()) nextErrors.eventTitle = 'Event title is required.';
     if (!draft.eventDate) nextErrors.eventDate = 'Event date is required.';
     if (!draft.eventCategory) nextErrors.eventCategory = 'Category is required.';
+    if (draft.contactEmail.trim() && !/^\S+@\S+\.\S+$/.test(draft.contactEmail.trim())) nextErrors.contactEmail = 'Enter a valid contact email address.';
+    for (const [field, label] of [['website', 'website'], ['ticketUrl', 'ticket link']] as const) {
+      const value = draft[field].trim();
+      if (!value) continue;
+      try {
+        const url = new URL(value);
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+      } catch {
+        nextErrors[field] = `Enter a full ${label} beginning with http:// or https://.`;
+      }
+    }
     return nextErrors;
   }
 
@@ -300,8 +315,8 @@ export function PostLocalWizard() {
   }
 
   function firstErrorWizardStep(errors: Partial<Record<keyof PostLocalDraft, string>>): WizardStepId {
-    if (errors.entityName || errors.contactName || errors.email || errors.entityType) return 'profile';
-    if (errors.eventTitle || errors.eventDate || errors.eventCategory) return 'event';
+    if (errors.entityName || errors.contactName || errors.email || errors.entityType || errors.website) return 'profile';
+    if (errors.eventTitle || errors.eventDate || errors.eventCategory || errors.contactEmail || errors.ticketUrl) return 'event';
     return 'submit';
   }
 
@@ -344,8 +359,8 @@ export function PostLocalWizard() {
         status: 'pending_review',
       }),
     });
-    if (!response.ok) throw new Error('Failed to submit Post Local draft');
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(data?.error || 'Could not submit this event. Please try again.');
     storeStatusCapability(data.submission?.id || '', data.submission?.statusToken || '');
     clearStoredSubmissionRequestId(requestStorageKey);
     submissionRequestId.current = '';
@@ -374,7 +389,6 @@ export function PostLocalWizard() {
     const errors: Partial<Record<keyof PostLocalDraft, string>> = {};
     const logo = form.querySelector<HTMLInputElement>('input[name="logo"]')?.files?.[0];
     const eventImage = form.querySelector<HTMLInputElement>('input[name="event_image"]')?.files?.[0];
-    if (!revisionId && !logo) errors.entityName = 'logo upload is required before review.';
     if (logo && logo.size > MAX_LOCAL_SUBMISSION_UPLOAD_BYTES) errors.entityName = `File is larger than ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}.`;
     if (eventImage && eventImage.size > MAX_LOCAL_SUBMISSION_UPLOAD_BYTES) errors.eventTitle = `File is larger than ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}.`;
     return errors;
@@ -382,6 +396,8 @@ export function PostLocalWizard() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isSubmitting) return;
+    setSubmitError('');
     const nextErrors = { ...validateDraft(), ...validateSelectedFiles(event.currentTarget) };
     setValidationErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
@@ -389,6 +405,8 @@ export function PostLocalWizard() {
       setActiveWizardStep(firstErrorWizardStep(nextErrors));
       return;
     }
+    setIsSubmitting(true);
+    setSubmitStatus('Submitting…');
     try {
       const data = await submitPostLocalDraft(event.currentTarget);
       // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
@@ -397,9 +415,12 @@ export function PostLocalWizard() {
       setSubmitStatus('Ready for review');
       // Legacy contract marker: setDraftStatus('Saved to review queue') for create branch.
       setDraftStatus(revisionId ? 'Updated submission returned to review queue' : 'Saved to review queue');
-    } catch {
+    } catch (error) {
       setSubmitStatus('Submit failed — try again');
+      setSubmitError(error instanceof Error ? error.message : 'Could not submit this event. Please try again.');
       setDraftStatus('Draft saved locally');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -472,7 +493,7 @@ export function PostLocalWizard() {
         ))}
       </ol>
 
-      <form className="ll-form post-wizard-form" onSubmit={handleSubmit}>
+      <form className="ll-form post-wizard-form" noValidate onSubmit={handleSubmit}>
         {Object.keys(validationErrors).length ? (
           <section className="post-validation-summary" role="alert">
             <strong>Required before review</strong>
@@ -518,7 +539,7 @@ export function PostLocalWizard() {
             <TextField label="City" name="city" value={draft.city} onChange={updateDraft} />
             <TextField label="State" name="state" value={draft.state} onChange={updateDraft} />
             <TextField label="ZIP" name="zip" value={draft.zip} onChange={updateDraft} />
-            <TextField label="Website" name="website" type="url" value={draft.website} onChange={updateDraft} />
+            <TextField label="Website" name="website" type="url" value={draft.website} onChange={updateDraft} error={validationErrors.website} />
             <SelectField label="Entity type" name="entityType" placeholder="Choose one" options={entityTypes} value={draft.entityType} onChange={updateDraft} error={validationErrors.entityType} />
             <SelectField label="Category" name="category" placeholder="Choose one" options={categories} value={draft.category} onChange={updateDraft} />
             <TextAreaField label="Short description" name="description" value={draft.description} onChange={updateDraft} />
@@ -561,9 +582,9 @@ export function PostLocalWizard() {
             <TextField label="City" name="eventCity" value={draft.eventCity} onChange={updateDraft} />
             <TextField label="State" name="eventState" value={draft.eventState} onChange={updateDraft} />
             <TextField label="ZIP" name="eventZip" value={draft.eventZip} onChange={updateDraft} />
-            <TextField label="Website/ticket link" name="ticketUrl" type="url" value={draft.ticketUrl} onChange={updateDraft} />
+            <TextField label="Website/ticket link" name="ticketUrl" type="url" value={draft.ticketUrl} onChange={updateDraft} error={validationErrors.ticketUrl} />
             <TextField label="Contact phone" name="contactPhone" type="tel" value={draft.contactPhone} onChange={updateDraft} />
-            <TextField label="Contact email" name="contactEmail" type="email" value={draft.contactEmail} onChange={updateDraft} />
+            <TextField label="Contact email" name="contactEmail" type="email" value={draft.contactEmail} onChange={updateDraft} error={validationErrors.contactEmail} />
             <SelectField label="Category" name="eventCategory" placeholder="Choose category" options={categories} value={draft.eventCategory} onChange={updateDraft} error={validationErrors.eventCategory} />
             <TextAreaField label="Description" name="eventDescription" value={draft.eventDescription} onChange={updateDraft} />
           </div>
@@ -594,10 +615,11 @@ export function PostLocalWizard() {
               {submittedStatusHref ? <Link href={submittedStatusHref}>Check submission status</Link> : null}
             </div>
           ) : null}
+          {submitError ? <p className="ll-field-error post-submit-error" role="alert">{submitError}</p> : null}
           <div className="ll-submit-actions">
             <button type="button" onClick={goToPreviousWizardStep}>Back</button>
             <Link href="/">Back to discovery</Link>
-            <button type="submit">{revisionId ? 'Resubmit for Review' : 'Submit for Approval'}</button>
+            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Submitting…' : revisionId ? 'Resubmit for Review' : 'Submit for Approval'}</button>
           </div>
         </section>
       </form>

@@ -6,6 +6,7 @@ import { SessionNav } from '@/components/session-nav';
 import { currentMarketDate, discoverySectionLabels, distanceLineForItem, eventMatchesMoment, mapPinStyleForItem, visibleDiscoveryItems, type ViewerLocation } from '@/lib/discovery-truthfulness';
 import { eventDetailPath, eventExternalUrl, eventImageState, eventVisualKey, fallbackVisualLabel, normalizeFeedItems, type LiveFeedHealth, type LiveFeedItem } from '@/lib/live-feed';
 import { useSavedEvents } from '@/lib/use-saved-events';
+import { DEMAND_AREAS, DEMAND_CATEGORIES, type DemandArea, type DemandCategory, type DemandDateWindow } from '@/lib/unmet-demand';
 
 type ViewMode = 'card' | 'list' | 'map' | 'calendar';
 
@@ -22,6 +23,30 @@ const viewModes: Array<{ id: ViewMode; label: string }> = [
   { id: 'map', label: 'Map' },
   { id: 'calendar', label: 'Calendar' },
 ];
+const demandDateWindows: Array<{ id: DemandDateWindow; label: string }> = [
+  { id: 'any_time', label: 'Any date' },
+  { id: 'tonight', label: 'Tonight' },
+  { id: 'this_weekend', label: 'This weekend' },
+  { id: 'next_7_days', label: 'Next 7 days' },
+  { id: 'later', label: 'Later' },
+];
+
+function demandAreaForLocation(value: string): DemandArea {
+  const location = value.toLowerCase();
+  if (/belleville|edwardsville|collinsville|alton|fairview heights|illinois/.test(location)) return 'Metro East';
+  if (/st\.? charles|wentzville|o['’]?fallon,? mo/.test(location)) return 'St. Charles County';
+  if (/maplewood|clayton|brentwood|richmond heights|university city/.test(location)) return 'Mid County';
+  if (/chesterfield|ballwin|wildwood|ellisville|kirkwood/.test(location)) return 'West County';
+  if (/florissant|ferguson|hazelwood|north county/.test(location)) return 'North County';
+  if (/affton|mehlville|lemay|south county/.test(location)) return 'South County';
+  return location.includes('illinois') ? 'Nearby Illinois' : location.includes('st. louis') || location.includes('saint louis') ? 'St. Louis City' : 'Nearby Missouri';
+}
+
+function demandWindowForMoment(moment: string): DemandDateWindow {
+  if (moment === 'Tonight') return 'tonight';
+  if (moment === 'Weekend') return 'this_weekend';
+  return 'any_time';
+}
 
 function formatEventMeta(item: LiveFeedItem): string {
   return [item.city, item.date, item.time].filter(Boolean).join(' · ');
@@ -163,6 +188,12 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
   const [showSavedPanel, setShowSavedPanel] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [shareStatus, setShareStatus] = useState('');
+  const [demandCategory, setDemandCategory] = useState<DemandCategory>('Any category');
+  const [demandArea, setDemandArea] = useState<DemandArea>('St. Louis City');
+  const [demandDateWindow, setDemandDateWindow] = useState<DemandDateWindow>('any_time');
+  const [demandStatus, setDemandStatus] = useState('');
+  const [demandSubmitting, setDemandSubmitting] = useState(false);
+  const [demandSent, setDemandSent] = useState(false);
   const viewerLocation: ViewerLocation | null = null;
   const marketDate = currentMarketDate('America/Chicago');
 
@@ -212,8 +243,38 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         ? `Showing recently cached events${health.ageSeconds !== null ? ` from ${Math.max(1, Math.round(health.ageSeconds / 60))} minutes ago` : ''}.`
         : 'Live feed connected and current.';
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
+  const hasDemandIntent = Boolean(searchQuery.trim()) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || locationQuery !== 'St. Louis, MO';
+  const showDemandCapture = hasLiveData && hasDemandIntent && health.status !== 'unavailable' && radiusFilteredItems.length <= 2;
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
   const savedItems = combinedFeedItems.filter((item) => isSavedEvent(item.id));
+
+  function resetDemandSubmission() {
+    setDemandSent(false);
+    setDemandStatus('');
+  }
+
+  function updateSearchQuery(value: string) {
+    setSearchQuery(value);
+    resetDemandSubmission();
+  }
+
+  function updateCategory(value: string) {
+    setActiveCategory(value);
+    setDemandCategory(DEMAND_CATEGORIES.includes(value as DemandCategory) ? value as DemandCategory : 'Any category');
+    resetDemandSubmission();
+  }
+
+  function updateCity(value: string) {
+    setActiveCity(value);
+    setDemandArea(demandAreaForLocation(value === 'All cities' ? locationQuery : value));
+    resetDemandSubmission();
+  }
+
+  function updateMoment(value: string) {
+    setActiveMoment(value);
+    setDemandDateWindow(demandWindowForMoment(value));
+    resetDemandSubmission();
+  }
 
   function isSavedItem(item: LiveFeedItem): boolean {
     return isSavedEvent(item.id);
@@ -238,12 +299,42 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
     }
   }
 
+  async function submitDemandSignal() {
+    setDemandSubmitting(true);
+    setDemandStatus('');
+    try {
+      const response = await fetch('/api/unmet-demand', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          category: demandCategory,
+          area: demandArea,
+          dateWindow: demandDateWindow,
+          resultCount: radiusFilteredItems.length,
+          context: radiusFilteredItems.length === 0 ? 'empty' : 'weak',
+        }),
+      });
+      const data = await response.json();
+      setDemandSent(response.ok);
+      setDemandStatus(response.ok ? 'Thanks — this helps us find better local listings.' : data.error || 'Unable to send right now.');
+    } catch {
+      setDemandSent(false);
+      setDemandStatus('Unable to send right now.');
+    } finally {
+      setDemandSubmitting(false);
+    }
+  }
+
   function clearFilters() {
     setSearchQuery('');
     setActiveCategory('All categories');
     setActiveCity('All cities');
     setActiveMoment('All');
     setSortBy('soonest');
+    setDemandCategory('Any category');
+    setDemandArea(demandAreaForLocation(locationQuery));
+    setDemandDateWindow('any_time');
+    resetDemandSubmission();
   }
 
   function toggleMobileMenu() {
@@ -313,23 +404,23 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         <section className="search-stack" aria-label="Search and filters">
           <label className="search-field">
             <span>⌕</span>
-            <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search events, artists, venues…" />
+            <input type="search" value={searchQuery} onChange={(event) => updateSearchQuery(event.target.value)} placeholder="Search events, artists, venues…" />
           </label>
           <div className="category-chip-row" aria-label="Category shortcuts">
             {['All categories', ...categories.filter((category) => category !== 'All categories').slice(0, 5)].map((category) => (
-              <button className={activeCategory === category ? 'category-chip active' : 'category-chip'} key={category} type="button" onClick={() => setActiveCategory(category)}>
+              <button className={activeCategory === category ? 'category-chip active' : 'category-chip'} key={category} type="button" onClick={() => updateCategory(category)}>
                 {category === 'All categories' ? 'All' : category}
               </button>
             ))}
           </div>
           <div className="utility-filter-grid" aria-label="Advanced filters">
-            <label><span>City</span><select value={activeCity} onChange={(event) => setActiveCity(event.target.value)}>{cities.map((city) => <option key={city}>{city}</option>)}</select></label>
+            <label><span>City</span><select value={activeCity} onChange={(event) => updateCity(event.target.value)}>{cities.map((city) => <option key={city}>{city}</option>)}</select></label>
             <label><span>Sort</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="soonest">Soonest</option><option value="title">A–Z</option><option value="city">City</option><option value="price">Price</option></select></label>
           </div>
         </section>
 
         <section className="moment-row" aria-label="Moment filters">
-          {moments.map((moment) => <button className={activeMoment === moment ? 'active' : ''} key={moment} type="button" onClick={() => setActiveMoment(moment)}>{moment}</button>)}
+          {moments.map((moment) => <button className={activeMoment === moment ? 'active' : ''} key={moment} type="button" onClick={() => updateMoment(moment)}>{moment}</button>)}
         </section>
 
         <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
@@ -395,6 +486,18 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         ) : null}
         {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view" id="calendar">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
         {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
+        {showDemandCapture ? (
+          <section className="unmet-demand-capture-pass unmet-demand-card" aria-label="Tell us what you hoped to find">
+            <div><span className="mini-tag">Help shape the feed</span><h3>Tell us what you hoped to find</h3><p>Share only a broad category, area, and date. We do not collect your precise location.</p></div>
+            <div className="unmet-demand-fields">
+              <label><span>Category</span><select value={demandCategory} onChange={(event) => { setDemandCategory(event.target.value as DemandCategory); setDemandSent(false); setDemandStatus(''); }}>{DEMAND_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select></label>
+              <label><span>Area</span><select value={demandArea} onChange={(event) => { setDemandArea(event.target.value as DemandArea); setDemandSent(false); setDemandStatus(''); }}>{DEMAND_AREAS.map((area) => <option key={area}>{area}</option>)}</select></label>
+              <label><span>When</span><select value={demandDateWindow} onChange={(event) => { setDemandDateWindow(event.target.value as DemandDateWindow); setDemandSent(false); setDemandStatus(''); }}>{demandDateWindows.map((window) => <option value={window.id} key={window.id}>{window.label}</option>)}</select></label>
+            </div>
+            <button type="button" disabled={demandSubmitting || demandSent} onClick={submitDemandSignal}>{demandSubmitting ? 'Sending…' : demandSent ? 'Sent' : demandStatus ? 'Try again' : 'Send request'}</button>
+            {demandStatus ? <p className="unmet-demand-status" role="status">{demandStatus}</p> : null}
+          </section>
+        ) : null}
         {showSavedPanel ? (
           <section className="saved-events-panel" aria-label="Saved events">
             <header className="section-title-row"><div><h2>Saved events</h2><p>{savedItems.length ? `${savedItems.length} saved` : 'Save events to compare plans later.'}</p></div><button type="button" onClick={() => setShowSavedPanel(false)}>Close</button></header>
