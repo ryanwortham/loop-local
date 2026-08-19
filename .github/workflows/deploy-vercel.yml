@@ -27,6 +27,7 @@ jobs:
       SUPABASE_PROJECT_REF: ci-placeholder
       LOOP_LOCAL_GIT_SHA: ${{ github.sha }}
       LOOP_LOCAL_DEPLOYMENT_TARGET: vercel
+      PRODUCTION_HEALTH_URL: ${{ vars.LOOP_LOCAL_HEALTH_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,10 +68,11 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to $url"
 
-      - name: Smoke /api/health on deployed URL
+      - name: Smoke production /api/health
         if: steps.vercel-secrets.outputs.ready == 'true'
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.url }}
         run: |
           set -euo pipefail
-          node scripts/check-health.mjs --url "$DEPLOY_URL/api/health" --expect-public
+          health_url="${PRODUCTION_HEALTH_URL:-$DEPLOY_URL/api/health}"
+          node scripts/check-health.mjs --url "$health_url" --expect-public
