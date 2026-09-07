@@ -144,11 +144,54 @@ async function main() {
   // post-local-true-wizard-pass: validation returns user to the first invalid wizard step.
   await page.locator('#profile').waitFor({ state: 'visible', timeout });
 
+  // post-local-no-logo-submit-pass: public submitters can send a complete listing without optional media.
+  await page.locator('input[name="entityName"]').fill('No Logo Smoke Bakery');
+  await page.locator('input[name="contactName"]').fill('No Logo Smoke');
+  await page.locator('input[name="email"]').fill('nologo@example.com');
+  await page.locator('select[name="entityType"]').selectOption('Business');
+  await assertClickable(page, page.getByRole('button', { name: 'Next: event details' }), 'No-logo next: event details');
+  await page.locator('#event-details').waitFor({ state: 'visible', timeout });
+  await page.locator('input[name="eventTitle"]').fill('No Logo Smoke Market Night');
+  await page.locator('input[name="eventDate"]').fill('2026-08-15');
+  await page.locator('select[name="eventCategory"]').selectOption('Community');
+  await assertClickable(page, page.getByRole('button', { name: 'Next: preview' }), 'No-logo next: preview');
+  await page.locator('#preview-listing').waitFor({ state: 'visible', timeout });
+  await assertClickable(page, page.getByRole('button', { name: 'Next: submit' }), 'No-logo next: submit');
+  await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
+  await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval', exact: true }), 'No-logo Submit for Approval button');
+  await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
+  await page.locator('.post-submit-success').getByText('Submission ID').waitFor({ timeout });
+  await page.request.post(`${baseURL}/api/local-submissions`, {
+    headers: operatorHeaders(),
+    data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] },
+  });
+
+  // business-profile-submission-pass: List Your Business can submit a profile without event-only fields.
+  await page.goto(`${baseURL}/post-local?mode=business`, { waitUntil: 'domcontentloaded' });
+  await page.locator('#profile').waitFor({ state: 'visible', timeout });
+  await page.locator('input[name="entityName"]').fill('Business Profile Smoke Studio');
+  await page.locator('input[name="contactName"]').fill('Blair Profile');
+  await page.locator('input[name="email"]').fill('profile-smoke@example.com');
+  await page.locator('select[name="entityType"]').selectOption('Business');
+  await assertClickable(page, page.getByRole('button', { name: 'Submit a Business Profile', exact: true }), 'Submit a Business Profile shortcut');
+  await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
+  await assertClickable(page, page.getByRole('button', { name: 'Submit Business Profile', exact: true }), 'Submit Business Profile final button');
+  await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
+  await page.locator('.post-submit-success').getByText('Submission ID').waitFor({ timeout });
+  await page.request.post(`${baseURL}/api/local-submissions`, {
+    headers: operatorHeaders(),
+    data: { action: 'replace', pendingSubmissions: [], publishedLocalEvents: [] },
+  });
+  await page.goto(`${baseURL}/post-local`, { waitUntil: 'domcontentloaded' });
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
   // api-backed-local-submissions-pass: submit a valid item and prove it survives through Review Queue publish.
   // Submitted for API-backed review: API Smoke Bakery / API Smoke Market Night.
   await assertClickable(page, page.locator('.mobile-qa-post-dock').getByText('Profile details'), 'Profile details dock before valid fill');
   await page.locator('input[name="entityName"]').fill('API Smoke Bakery');
-  // event-only-submit-pass: the optional profile logo must not block review submission.
+  await page.locator('input[name="logo"]').setInputFiles('public/looplocal-logo.png');
+  await page.locator('.post-wizard-live-preview .post-local-preview-logo').waitFor({ state: 'visible', timeout });
   await page.locator('input[name="event_image"]').setInputFiles('public/looplocal-logo.png');
   await page.locator('input[name="contactName"]').fill('Riley Smoke');
   await page.locator('input[name="email"]').fill('riley@example.com');
@@ -163,6 +206,9 @@ async function main() {
   await page.locator('textarea[name="eventDescription"]').fill('Submitted for API-backed review from the mobile smoke test.');
   await assertClickable(page, page.getByRole('button', { name: 'Next: preview' }), 'Next: preview');
   await page.locator('#preview-listing').waitFor({ state: 'visible', timeout });
+  await page.locator('#preview-listing .post-local-preview-logo').waitFor({ state: 'visible', timeout });
+  const previewHasSelectedImage = await page.locator('#preview-listing .post-local-preview-media').getAttribute('data-has-image');
+  if (previewHasSelectedImage !== 'true') fail('selected event image should render in the listing preview');
   await assertClickable(page, page.getByRole('button', { name: 'Next: submit' }), 'Next: submit');
   await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Submit for Approval', exact: true }), 'valid Submit for Approval button');

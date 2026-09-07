@@ -9,9 +9,10 @@ type FileDropInputProps = {
   accept: string;
   required?: boolean;
   maxSizeLabel: string;
+  onFileSelect?: (file: File | null) => void;
 };
 
-export function FileDropInput({ name, label, helperText, accept, required = false, maxSizeLabel }: FileDropInputProps) {
+export function FileDropInput({ name, label, helperText, accept, required = false, maxSizeLabel, onFileSelect }: FileDropInputProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
@@ -20,6 +21,7 @@ export function FileDropInput({ name, label, helperText, accept, required = fals
   function updateSelectedFile(files: FileList | null) {
     const file = files?.[0];
     setFileName(file?.name ?? '');
+    onFileSelect?.(file ?? null);
   }
 
   function onChange(event: ChangeEvent<HTMLInputElement>) {

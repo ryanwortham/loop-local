@@ -44,6 +44,7 @@ const wizardStepDefinitions = [
 ] as const;
 // post-local-true-wizard-pass: render one primary step at a time instead of one long mobile form.
 type WizardStepId = (typeof wizardStepDefinitions)[number]['id'];
+type SubmissionIntent = 'business_profile' | 'event';
 
 type PostLocalDraft = {
   entityName: string;
@@ -221,10 +222,11 @@ function storeStatusCapability(submissionId: string, statusToken: string) {
 
 export function PostLocalWizard() {
   const [draft, setDraft] = useState<PostLocalDraft>(readInitialDraft);
+  const [submissionIntent, setSubmissionIntent] = useState<SubmissionIntent>('event');
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
+  const [eventImagePreviewUrl, setEventImagePreviewUrl] = useState('');
   const [draftStatus, setDraftStatus] = useState('Draft saved locally');
   const [submitStatus, setSubmitStatus] = useState('Required before review');
-  const [submitError, setSubmitError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedSubmissionId, setSubmittedSubmissionId] = useState('');
   const [submittedStatusToken, setSubmittedStatusToken] = useState('');
   const [revisionId, setRevisionId] = useState('');
@@ -232,15 +234,31 @@ export function PostLocalWizard() {
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof PostLocalDraft, string>>>({});
   const [activeWizardStep, setActiveWizardStep] = useState<WizardStepId>('profile');
   const submissionRequestId = useRef('');
+  const logoPreviewObjectUrl = useRef('');
+  const eventImagePreviewObjectUrl = useRef('');
 
   useEffect(() => {
     localStorage.setItem('looplocal:post-local-draft', JSON.stringify(draft));
   }, [draft]);
 
+  useEffect(() => () => {
+    if (logoPreviewObjectUrl.current) URL.revokeObjectURL(logoPreviewObjectUrl.current);
+    if (eventImagePreviewObjectUrl.current) URL.revokeObjectURL(eventImagePreviewObjectUrl.current);
+  }, []);
+
   useEffect(() => {
     // submitter-revision-flow-pass: load ?revisionId= into Post Local for requested changes.
     async function loadRevisionSubmission() {
       const params = new URLSearchParams(window.location.search);
+      const requestedMode = params.get('mode')?.trim();
+      if (requestedMode === 'business') {
+        setSubmissionIntent('business_profile');
+        setActiveWizardStep('profile');
+      }
+      if (requestedMode === 'event') {
+        setSubmissionIntent('event');
+        setActiveWizardStep('event');
+      }
       const nextRevisionId = params.get('revisionId')?.trim() || '';
       if (!nextRevisionId) return;
       const hashToken = normalizeStatusCapability(new URLSearchParams(window.location.hash.slice(1)).get('statusToken'));
@@ -282,30 +300,46 @@ export function PostLocalWizard() {
     setDraft((current) => ({ ...current, [name]: value }));
     setValidationErrors((current) => ({ ...current, [name]: undefined }));
     setSubmitStatus('Required before review');
-    setSubmitError('');
     setDraftStatus('Draft saved locally');
   }
 
-  function validateDraft() {
+  function chooseBusinessProfile(nextStep: WizardStepId = 'profile') {
+    // business-profile-submission-pass: List Your Business is a real profile submission path, not an event-only shortcut.
+    setSubmissionIntent('business_profile');
+    updateDraft('entityType', 'Business');
+    setActiveWizardStep(nextStep);
+    setSubmitStatus('Business profile ready after required contact fields');
+  }
+
+  function chooseEventPost() {
+    // event-submission-entry-pass: Post an Event sends submitters into the event-required path.
+    setSubmissionIntent('event');
+    updateDraft('postType', 'Event');
+    setActiveWizardStep('event');
+  }
+
+  function updateMediaPreview(kind: 'logo' | 'eventImage', file: File | null) {
+    const objectUrlRef = kind === 'logo' ? logoPreviewObjectUrl : eventImagePreviewObjectUrl;
+    if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
+    const nextUrl = file?.type.startsWith('image/') ? URL.createObjectURL(file) : '';
+    objectUrlRef.current = nextUrl;
+    if (kind === 'logo') {
+      setLogoPreviewUrl(nextUrl);
+    } else {
+      setEventImagePreviewUrl(nextUrl);
+    }
+  }
+
+  function validateDraft(intent: SubmissionIntent = submissionIntent) {
     const nextErrors: Partial<Record<keyof PostLocalDraft, string>> = {};
     if (!draft.entityName.trim()) nextErrors.entityName = 'Business/community/entity name is required.';
     if (!draft.contactName.trim()) nextErrors.contactName = 'Contact name is required.';
     if (!draft.email.trim()) nextErrors.email = 'Email is required.';
-    else if (!/^\S+@\S+\.\S+$/.test(draft.email.trim())) nextErrors.email = 'Enter a valid email address.';
     if (!draft.entityType) nextErrors.entityType = 'Entity type is required.';
-    if (!draft.eventTitle.trim()) nextErrors.eventTitle = 'Event title is required.';
-    if (!draft.eventDate) nextErrors.eventDate = 'Event date is required.';
-    if (!draft.eventCategory) nextErrors.eventCategory = 'Category is required.';
-    if (draft.contactEmail.trim() && !/^\S+@\S+\.\S+$/.test(draft.contactEmail.trim())) nextErrors.contactEmail = 'Enter a valid contact email address.';
-    for (const [field, label] of [['website', 'website'], ['ticketUrl', 'ticket link']] as const) {
-      const value = draft[field].trim();
-      if (!value) continue;
-      try {
-        const url = new URL(value);
-        if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
-      } catch {
-        nextErrors[field] = `Enter a full ${label} beginning with http:// or https://.`;
-      }
+    if (intent === 'event') {
+      if (!draft.eventTitle.trim()) nextErrors.eventTitle = 'Event title is required.';
+      if (!draft.eventDate) nextErrors.eventDate = 'Event date is required.';
+      if (!draft.eventCategory) nextErrors.eventCategory = 'Category is required.';
     }
     return nextErrors;
   }
@@ -315,14 +349,30 @@ export function PostLocalWizard() {
   }
 
   function firstErrorWizardStep(errors: Partial<Record<keyof PostLocalDraft, string>>): WizardStepId {
-    if (errors.entityName || errors.contactName || errors.email || errors.entityType || errors.website) return 'profile';
-    if (errors.eventTitle || errors.eventDate || errors.eventCategory || errors.contactEmail || errors.ticketUrl) return 'event';
+    if (errors.entityName || errors.contactName || errors.email || errors.entityType) return 'profile';
+    if (errors.eventTitle || errors.eventDate || errors.eventCategory) return 'event';
     return 'submit';
   }
 
   function goToNextWizardStep() {
+    if (activeWizardStep === 'profile' && submissionIntent === 'business_profile') {
+      goToSubmitWizardStep();
+      return;
+    }
     const index = wizardStepDefinitions.findIndex((step) => step.id === activeWizardStep);
     setActiveWizardStep(wizardStepDefinitions[Math.min(index + 1, wizardStepDefinitions.length - 1)].id);
+  }
+
+  function goToSubmitWizardStep() {
+    const nextErrors = validateDraft();
+    setValidationErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      setSubmitStatus('Required before review');
+      setActiveWizardStep(firstErrorWizardStep(nextErrors));
+      return;
+    }
+    setSubmitStatus('Ready to submit');
+    setActiveWizardStep('submit');
   }
 
   function goToPreviousWizardStep() {
@@ -345,6 +395,10 @@ export function PostLocalWizard() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         ...draft,
+        postType: submissionIntent === 'business_profile' ? 'Business Profile' : draft.postType,
+        eventTitle: submissionIntent === 'business_profile' ? undefined : draft.eventTitle,
+        eventDate: submissionIntent === 'business_profile' ? undefined : draft.eventDate,
+        eventCategory: submissionIntent === 'business_profile' ? undefined : draft.eventCategory,
         id: revisionId || undefined,
         action: revisionId ? 'resubmit' : undefined,
         statusToken: revisionId ? submittedStatusToken : undefined,
@@ -360,7 +414,7 @@ export function PostLocalWizard() {
       }),
     });
     const data = await response.json().catch(() => null);
-    if (!response.ok) throw new Error(data?.error || 'Could not submit this event. Please try again.');
+    if (!response.ok) throw new Error(data?.error || 'Failed to submit Post Local draft');
     storeStatusCapability(data.submission?.id || '', data.submission?.statusToken || '');
     clearStoredSubmissionRequestId(requestStorageKey);
     submissionRequestId.current = '';
@@ -396,8 +450,6 @@ export function PostLocalWizard() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSubmitting) return;
-    setSubmitError('');
     const nextErrors = { ...validateDraft(), ...validateSelectedFiles(event.currentTarget) };
     setValidationErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
@@ -405,8 +457,6 @@ export function PostLocalWizard() {
       setActiveWizardStep(firstErrorWizardStep(nextErrors));
       return;
     }
-    setIsSubmitting(true);
-    setSubmitStatus('Submitting…');
     try {
       const data = await submitPostLocalDraft(event.currentTarget);
       // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
@@ -414,13 +464,10 @@ export function PostLocalWizard() {
       setSubmittedStatusToken(data?.submission?.statusToken || submittedStatusToken || '');
       setSubmitStatus('Ready for review');
       // Legacy contract marker: setDraftStatus('Saved to review queue') for create branch.
-      setDraftStatus(revisionId ? 'Updated submission returned to review queue' : 'Saved to review queue');
+      setDraftStatus(revisionId ? 'Updated submission returned to review queue' : submissionIntent === 'business_profile' ? 'Business profile saved to review queue' : 'Saved to review queue');
     } catch (error) {
-      setSubmitStatus('Submit failed — try again');
-      setSubmitError(error instanceof Error ? error.message : 'Could not submit this event. Please try again.');
+      setSubmitStatus(error instanceof Error ? error.message : 'Submit failed - try again');
       setDraftStatus('Draft saved locally');
-    } finally {
-      setIsSubmitting(false);
     }
   }
 
@@ -466,18 +513,21 @@ export function PostLocalWizard() {
             <span><strong>100%</strong> review-first</span>
           </div>
           <div className="ll-choice-row" aria-label="submission type shortcuts">
-            <button type="button" onClick={() => updateDraft('entityType', 'Business')}>List Your Business</button>
-            <button type="button" onClick={() => updateDraft('postType', 'Event')}>Post an Event</button>
-            <button type="button" onClick={() => updateDraft('entityType', 'Community Organization')}>Join as a Community Organization</button>
+            <button type="button" onClick={() => chooseBusinessProfile()}>List Your Business</button>
+            <button type="button" onClick={chooseEventPost}>Post an Event</button>
+            <button type="button" onClick={() => { setSubmissionIntent('business_profile'); updateDraft('entityType', 'Community Organization'); setActiveWizardStep('profile'); }}>Join as a Community Organization</button>
           </div>
           <div className="ll-success-note">
-            Your profile has been submitted for review. Once approved, you’ll be able to post events and promotions.
+            Complete the steps below to send your listing to review. Nothing goes public until an admin approves it.
           </div>
         </aside>
 
         <aside className="post-wizard-live-preview" aria-label="Post Local mobile preview">
           <span className="mini-tag">Live draft preview</span>
-          <div className="ll-phone-card">
+          <div className="ll-phone-card post-local-preview-card">
+            <div className="post-local-preview-media" data-has-image={Boolean(eventImagePreviewUrl)} style={eventImagePreviewUrl ? { backgroundImage: `url("${eventImagePreviewUrl}")` } : undefined}>
+              {logoPreviewUrl ? <span className="post-local-preview-logo" style={{ backgroundImage: `url("${logoPreviewUrl}")` }} aria-label="Selected logo preview" /> : null}
+            </div>
             <span>{draft.entityName || 'Loop Local Preview'}</span>
             <strong>{draft.eventTitle || 'Your event title'}</strong>
             <p>{previewMeta}</p>
@@ -493,7 +543,7 @@ export function PostLocalWizard() {
         ))}
       </ol>
 
-      <form className="ll-form post-wizard-form" noValidate onSubmit={handleSubmit}>
+      <form className="ll-form post-wizard-form" onSubmit={handleSubmit}>
         {Object.keys(validationErrors).length ? (
           <section className="post-validation-summary" role="alert">
             <strong>Required before review</strong>
@@ -527,8 +577,9 @@ export function PostLocalWizard() {
             label="Logo upload"
             required={false}
             accept="image/png,image/jpeg,image/webp"
-            helperText="Browse computer or drag and drop a logo here. PNG, JPG, or WebP."
+            helperText="Optional but recommended. Browse computer or drag and drop a logo here. PNG, JPG, or WebP."
             maxSizeLabel={`Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
+            onFileSelect={(file) => updateMediaPreview('logo', file)}
           />
           <div className="ll-grid">
             <TextField label="Business/community/entity name" name="entityName" value={draft.entityName} onChange={updateDraft} error={validationErrors.entityName} />
@@ -539,12 +590,26 @@ export function PostLocalWizard() {
             <TextField label="City" name="city" value={draft.city} onChange={updateDraft} />
             <TextField label="State" name="state" value={draft.state} onChange={updateDraft} />
             <TextField label="ZIP" name="zip" value={draft.zip} onChange={updateDraft} />
-            <TextField label="Website" name="website" type="url" value={draft.website} onChange={updateDraft} error={validationErrors.website} />
+            <TextField label="Website" name="website" type="url" value={draft.website} onChange={updateDraft} />
             <SelectField label="Entity type" name="entityType" placeholder="Choose one" options={entityTypes} value={draft.entityType} onChange={updateDraft} error={validationErrors.entityType} />
             <SelectField label="Category" name="category" placeholder="Choose one" options={categories} value={draft.category} onChange={updateDraft} />
             <TextAreaField label="Short description" name="description" value={draft.description} onChange={updateDraft} />
           </div>
-          <div className="wizard-step-actions"><button type="button" onClick={goToNextWizardStep}>Next: event details</button></div>
+          <div className="wizard-step-actions">
+            <button type="button" onClick={() => {
+              setSubmissionIntent('business_profile');
+              const nextErrors = validateDraft('business_profile');
+              setValidationErrors(nextErrors);
+              if (Object.keys(nextErrors).length) {
+                setSubmitStatus('Required before review');
+                setActiveWizardStep(firstErrorWizardStep(nextErrors));
+                return;
+              }
+              setSubmitStatus('Ready to submit');
+              setActiveWizardStep('submit');
+            }}>Submit a Business Profile</button>
+            <button type="button" onClick={goToNextWizardStep}>{submissionIntent === 'business_profile' ? 'Review profile submission' : 'Next: event details'}</button>
+          </div>
         </section>
 
         <section className="ll-card post-flow-card post-wizard-stage-card" id="event-details" data-wizard-active={isWizardStepActive('event')} hidden={!isWizardStepActive('event')}>
@@ -567,6 +632,7 @@ export function PostLocalWizard() {
             accept="image/png,image/jpeg,image/webp"
             helperText="Browse computer or drag and drop the event image."
             maxSizeLabel={`Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
+            onFileSelect={(file) => updateMediaPreview('eventImage', file)}
           />
           <div className="ll-mobile-contract" aria-hidden="true">
             <input name="mobile_date_picker_contract" type="date" />
@@ -582,9 +648,9 @@ export function PostLocalWizard() {
             <TextField label="City" name="eventCity" value={draft.eventCity} onChange={updateDraft} />
             <TextField label="State" name="eventState" value={draft.eventState} onChange={updateDraft} />
             <TextField label="ZIP" name="eventZip" value={draft.eventZip} onChange={updateDraft} />
-            <TextField label="Website/ticket link" name="ticketUrl" type="url" value={draft.ticketUrl} onChange={updateDraft} error={validationErrors.ticketUrl} />
+            <TextField label="Website/ticket link" name="ticketUrl" type="url" value={draft.ticketUrl} onChange={updateDraft} />
             <TextField label="Contact phone" name="contactPhone" type="tel" value={draft.contactPhone} onChange={updateDraft} />
-            <TextField label="Contact email" name="contactEmail" type="email" value={draft.contactEmail} onChange={updateDraft} error={validationErrors.contactEmail} />
+            <TextField label="Contact email" name="contactEmail" type="email" value={draft.contactEmail} onChange={updateDraft} />
             <SelectField label="Category" name="eventCategory" placeholder="Choose category" options={categories} value={draft.eventCategory} onChange={updateDraft} error={validationErrors.eventCategory} />
             <TextAreaField label="Description" name="eventDescription" value={draft.eventDescription} onChange={updateDraft} />
           </div>
@@ -595,31 +661,33 @@ export function PostLocalWizard() {
           <p className="ll-kicker">Step 3: Preview</p>
           <h2>Preview your listing</h2>
           <p>Mobile preview card will show logo, image, title, date/time, address, category, call, website, directions, save, and share actions.</p>
-          <div className="ll-phone-card">
+          <div className="ll-phone-card post-local-preview-card">
+            <div className="post-local-preview-media" data-has-image={Boolean(eventImagePreviewUrl)} style={eventImagePreviewUrl ? { backgroundImage: `url("${eventImagePreviewUrl}")` } : undefined}>
+              {logoPreviewUrl ? <span className="post-local-preview-logo" style={{ backgroundImage: `url("${logoPreviewUrl}")` }} aria-label="Selected logo preview" /> : null}
+            </div>
             <span>{draft.entityName || 'Loop Local Preview'}</span>
             <strong>{draft.eventTitle || 'Your event title'}</strong>
             <p>{previewMeta}</p>
             <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
           </div>
-          <div className="wizard-step-actions"><button type="button" onClick={goToPreviousWizardStep}>Back</button><button type="button" onClick={goToNextWizardStep}>Next: submit</button></div>
+          <div className="wizard-step-actions"><button type="button" onClick={goToPreviousWizardStep}>Back</button><button type="button" onClick={goToSubmitWizardStep}>Next: submit</button></div>
         </section>
 
         <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card" id="submit-for-approval" data-wizard-active={isWizardStepActive('submit')} hidden={!isWizardStepActive('submit')}>
           <p className="ll-kicker">Step 4: Submit for Approval</p>
           <h2>Submit for approval</h2>
-          <p>Submissions remain pending until approved by an admin. No public posting happens automatically.</p>
+          <p>{submissionIntent === 'business_profile' ? 'Business profiles remain pending until approved by an admin. No public listing happens automatically.' : 'Submissions remain pending until approved by an admin. No public posting happens automatically.'}</p>
           {submitStatus === 'Ready for review' ? (
             <div className="post-submit-success submitter-status-page-pass">
-              <strong>{revisionId ? 'Updated submission returned to review queue.' : 'Ready for review — your submission was saved locally for admin handoff.'}</strong>
+              <strong>{revisionId ? 'Updated submission returned to review queue.' : submissionIntent === 'business_profile' ? 'Ready for review - your business profile was saved for admin handoff.' : 'Ready for review — your submission was saved locally for admin handoff.'}</strong>
               {submittedSubmissionId ? <span>Submission ID: <code>{submittedSubmissionId}</code></span> : null}
               {submittedStatusHref ? <Link href={submittedStatusHref}>Check submission status</Link> : null}
             </div>
           ) : null}
-          {submitError ? <p className="ll-field-error post-submit-error" role="alert">{submitError}</p> : null}
           <div className="ll-submit-actions">
             <button type="button" onClick={goToPreviousWizardStep}>Back</button>
             <Link href="/">Back to discovery</Link>
-            <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Submitting…' : revisionId ? 'Resubmit for Review' : 'Submit for Approval'}</button>
+            <button type="submit">{revisionId ? 'Resubmit for Review' : submissionIntent === 'business_profile' ? 'Submit Business Profile' : 'Submit for Approval'}</button>
           </div>
         </section>
       </form>

@@ -1,5 +1,7 @@
 # Loop Local
 
+> **New machine or new agent?** Start with [`AGENTS.md`](AGENTS.md) and [`HANDOFF.md`](HANDOFF.md). They contain the transfer checklist, access/re-authentication map, current-state snapshot, safety boundaries, and verification sequence. No credentials are stored in this repository.
+
 Loop Local is a local-discovery prototype for events, businesses, and community activity around St. Louis. The application combines a public Supabase event feed with an operator-reviewed **Post Local** workflow for locally submitted listings.
 
 ## Current product state

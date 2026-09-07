@@ -1,5 +1,7 @@
 # Loop Local production deployment runbook
 
+> **Handoff note (2026-09-07):** The dated deployment-status section below is historical. The checkout is now locally linked to the existing Vercel project `loop-local`, but deployment health and production readiness have not been re-certified. Start with `HANDOFF.md` and independently verify the linked project, current deployment, environment configuration, and `/api/health` before acting.
+
 Loop Local's public production target is **Vercel-managed Next.js hosting**. The Mac/Tailscale process remains an internal preview path only; it is not the public launch deployment.
 
 ## Operational requirements covered
