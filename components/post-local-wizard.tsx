@@ -630,8 +630,8 @@ export function PostLocalWizard() {
             name="event_image"
             label="Event image"
             accept="image/png,image/jpeg,image/webp"
-            helperText="Browse computer or drag and drop the event image."
-            maxSizeLabel={`Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
+            helperText="Upload a JPG, PNG, or WebP event image at exactly 1600 x 900 px, 16:9 landscape. Keep important text and logos centered."
+            maxSizeLabel={`Exact fit: 1600 x 900 px. Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
             onFileSelect={(file) => updateMediaPreview('eventImage', file)}
           />
           <div className="ll-mobile-contract" aria-hidden="true">

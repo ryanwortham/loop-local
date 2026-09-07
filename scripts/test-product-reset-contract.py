@@ -136,6 +136,8 @@ def test_post_local_preserves_form_fields_and_uploads():
         'End time',
         'Website/ticket link',
         'Submit for Approval',
+        'exactly 1600 x 900 px',
+        'JPG, PNG, or WebP event image',
         'mobile_date_picker_contract',
         'mobile_time_picker_contract',
     ]:
