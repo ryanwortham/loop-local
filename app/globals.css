@@ -3023,6 +3023,12 @@ body {
   .post-mobile-reference-shell.mobile-interaction-qa-pass .post-wizard-mobile-dock {
     bottom: max(12px, env(safe-area-inset-bottom));
   }
+  .mobile-interaction-qa-pass .mobile-app-tabbar.polished-bottom-nav {
+    position: sticky;
+  }
+  .mobile-interaction-qa-pass .explore-card:not(.explore-card-compact) .explore-card-image {
+    min-height: 118px;
+  }
 }
 
 /* phase2b-account-auth-pass: premium, mobile-first Supabase account and operator identity surface. */

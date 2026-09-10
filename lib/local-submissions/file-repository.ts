@@ -11,6 +11,11 @@ type FileRepositoryOptions = { runtimePath?: string };
 type UnknownRecord = Record<string, unknown>;
 
 const mutationQueues = new Map<string, Promise<void>>();
+const DEFAULT_RUNTIME_STORE_PATH = path.join(
+  /* turbopackIgnore: true */ process.cwd(),
+  'runtime-data',
+  'local-submissions.json',
+);
 
 const EMPTY_STORE: RepositoryStoreShape = {
   version: 1,
@@ -80,10 +85,10 @@ export class FileLocalSubmissionsRepository implements LocalSubmissionsRepositor
   private readonly runtimePath: string;
 
   constructor(options: FileRepositoryOptions = {}) {
-    this.runtimePath = path.resolve(options.runtimePath
+    this.runtimePath = path.resolve(/* turbopackIgnore: true */ options.runtimePath
       || process.env.LOCAL_SUBMISSIONS_FILE
       || process.env.LOOP_LOCAL_SUBMISSIONS_STORE_PATH
-      || path.join(process.cwd(), 'runtime-data', 'local-submissions.json'));
+      || DEFAULT_RUNTIME_STORE_PATH);
   }
 
   private async readUnlocked(): Promise<RepositoryStoreShape> {

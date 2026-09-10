@@ -46,6 +46,7 @@ function applicationEnvironment() {
     LOOP_LOCAL_SUBMISSIONS_STORE_PATH: smokeStorePath,
     LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_URL: operatorSession.supabaseUrl,
     LOOP_LOCAL_OPERATOR_AUTH_SUPABASE_ANON_KEY: operatorSession.anonKey,
+    LOOP_LOCAL_OPERATOR_EMAILS: operatorSession.email,
   };
 }
 
