@@ -53,6 +53,14 @@ function deploymentEnvironment(env: HealthEnv): string {
   return env.VERCEL_ENV || env.NODE_ENV || 'unknown';
 }
 
+function monitorConfigured(env: HealthEnv): boolean {
+  return Boolean(
+    env.LOOP_LOCAL_ALERT_WEBHOOK_URL
+    || env.LOOP_LOCAL_MONITOR_WEBHOOK_URL
+    || env.LOOP_LOCAL_MONITOR_TELEGRAM_CHAT_ID,
+  );
+}
+
 export function buildOperationsHealthPayload({
   feed,
   store,
@@ -80,7 +88,7 @@ export function buildOperationsHealthPayload({
     deployment: {
       target: deploymentTarget(env),
       publicUrlConfigured: publicUrlConfigured(env),
-      monitorConfigured: Boolean(env.LOOP_LOCAL_MONITOR_WEBHOOK_URL || env.LOOP_LOCAL_MONITOR_TELEGRAM_CHAT_ID),
+      monitorConfigured: monitorConfigured(env),
     },
     feed: {
       status: feed.health.status,

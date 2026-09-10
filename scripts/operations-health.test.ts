@@ -47,7 +47,7 @@ test('operations health payload exposes deployment, feed, and submissions status
       VERCEL_GIT_COMMIT_SHA: 'abc123',
       NEXT_PUBLIC_APP_VERSION: '0.1.0',
       LOOP_LOCAL_PUBLIC_URL: 'https://looplocal.example.test',
-      LOOP_LOCAL_MONITOR_WEBHOOK_URL: 'https://hooks.example.test/redacted',
+      LOOP_LOCAL_ALERT_WEBHOOK_URL: 'https://hooks.example.test/redacted',
       SUPABASE_SERVICE_ROLE_KEY: 'must-not-appear',
     },
   });
