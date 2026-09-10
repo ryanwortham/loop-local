@@ -16,9 +16,21 @@ type ReviewQueueState = {
   taxonomyReviewItems: LiveFeedItem[];
 };
 
+const supportedPublishCities = ['Collinsville', 'Edwardsville', 'Granite City'];
+
+type ReviewItemFeedback = {
+  tone: 'info' | 'success' | 'error';
+  message: string;
+};
+
 function submitterStatusHref(submission: LocalSubmissionRecord) {
   const token = submission.statusToken ? `#statusToken=${encodeURIComponent(submission.statusToken)}` : '';
   return `/post-local/status/${encodeURIComponent(submission.id)}${token}`;
+}
+
+function supportedPublishCity(value?: string) {
+  const city = (value || '').trim();
+  return supportedPublishCities.find((candidate) => candidate.toLowerCase() === city.toLowerCase()) || '';
 }
 
 export function OperatorReviewPanel() {
@@ -29,6 +41,9 @@ export function OperatorReviewPanel() {
   const [status, setStatus] = useState('Checking your Supabase operator session…');
   const [reviewerNotes, setReviewerNotes] = useState<Record<string, string>>({});
   const [categoryDrafts, setCategoryDrafts] = useState<Record<string, string>>({});
+  const [cityDrafts, setCityDrafts] = useState<Record<string, string>>({});
+  const [pendingActions, setPendingActions] = useState<Record<string, string>>({});
+  const [itemFeedback, setItemFeedback] = useState<Record<string, ReviewItemFeedback>>({});
 
   const operatorHeaders: Record<string, string> = {
     'content-type': 'application/json',
@@ -66,27 +81,84 @@ export function OperatorReviewPanel() {
     setStatus('Review queue loaded');
   }
 
-  async function mutateReview(body: Record<string, unknown>, nextStatus: string) {
+  async function mutateReview(body: Record<string, unknown>, nextStatus: string, itemId?: string, pendingLabel = 'Working') {
+    const targetId = itemId || (typeof body.id === 'string' ? body.id : '');
+    if (targetId) {
+      setPendingActions((current) => ({ ...current, [targetId]: pendingLabel }));
+      setItemFeedback((current) => ({ ...current, [targetId]: { tone: 'info', message: pendingLabel } }));
+    }
     const response = await fetch('/api/local-submissions', { method: 'PATCH', headers: operatorHeaders, body: JSON.stringify(body) });
     const data = await response.json();
     if (!response.ok) {
-      setStatus(data.error || 'Review mutation failed');
+      const message = data.error || 'Review mutation failed';
+      setStatus(message);
+      if (targetId) setItemFeedback((current) => ({ ...current, [targetId]: { tone: 'error', message } }));
+      if (targetId) setPendingActions((current) => {
+        const next = { ...current };
+        delete next[targetId];
+        return next;
+      });
       return false;
     }
     setQueue((current) => ({ pendingSubmissions: data.pendingSubmissions || [], publishedLocalEvents: data.publishedLocalEvents || [], taxonomyReviewItems: data.taxonomyReviewItems || current.taxonomyReviewItems }));
     setStatus(nextStatus);
+    if (targetId) {
+      setItemFeedback((current) => ({ ...current, [targetId]: { tone: 'success', message: nextStatus } }));
+      setPendingActions((current) => {
+        const next = { ...current };
+        delete next[targetId];
+        return next;
+      });
+    }
     return true;
   }
 
   async function removeReview(id: string) {
+    setPendingActions((current) => ({ ...current, [id]: 'Removing' }));
+    setItemFeedback((current) => ({ ...current, [id]: { tone: 'info', message: 'Removing' } }));
     const response = await fetch(`/api/local-submissions?id=${encodeURIComponent(id)}`, { method: 'DELETE', headers: operatorHeaders });
     const data = await response.json();
     if (!response.ok) {
-      setStatus(data.error || 'Remove failed');
+      const message = data.error || 'Remove failed';
+      setStatus(message);
+      setItemFeedback((current) => ({ ...current, [id]: { tone: 'error', message } }));
+      setPendingActions((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       return;
     }
     setQueue((current) => ({ pendingSubmissions: data.pendingSubmissions || [], publishedLocalEvents: data.publishedLocalEvents || [], taxonomyReviewItems: data.taxonomyReviewItems || current.taxonomyReviewItems }));
     setStatus('Removed from review queue');
+  }
+
+  async function publishReview(submission: LocalSubmissionRecord) {
+    const quality = submissionPublicationQuality(submission);
+    if (!quality.canPublish) {
+      const message = `Missing ${quality.missingFields.join(', ')}`;
+      setStatus(message);
+      setItemFeedback((current) => ({ ...current, [submission.id]: { tone: 'error', message } }));
+      return;
+    }
+    const currentCity = supportedPublishCity(submission.eventCity || submission.city);
+    const selectedCity = cityDrafts[submission.id] || currentCity;
+    if (!selectedCity) {
+      const message = `Choose a publish city: ${supportedPublishCities.join(', ')}`;
+      setStatus(message);
+      setItemFeedback((current) => ({ ...current, [submission.id]: { tone: 'error', message } }));
+      return;
+    }
+    if (selectedCity !== currentCity) {
+      const updated = await mutateReview(
+        { id: submission.id, eventCity: selectedCity, city: selectedCity },
+        `City set to ${selectedCity}`,
+        submission.id,
+        'Saving city',
+      );
+      if (!updated) return;
+    }
+    await mutateReview({ id: submission.id, action: 'publish' }, 'Published locally', submission.id, 'Publishing');
   }
 
   async function updateEventCategory(item: LiveFeedItem, restoreSource = false) {
@@ -134,6 +206,10 @@ export function OperatorReviewPanel() {
             {queue.pendingSubmissions.map((submission) => {
               const note = reviewerNotes[submission.id] ?? submission.reviewerNote ?? '';
               const quality = submissionPublicationQuality(submission);
+              const publishCity = supportedPublishCity(submission.eventCity || submission.city);
+              const selectedCity = cityDrafts[submission.id] || publishCity;
+              const actionPending = pendingActions[submission.id];
+              const feedback = itemFeedback[submission.id];
               return <article className="pending-submission-card" key={submission.id}>
                 <span>{submission.status || 'pending_review'}</span>
                 <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
@@ -143,9 +219,11 @@ export function OperatorReviewPanel() {
                   <div className="operator-quality-preview"><Image alt={`${quality.mediaLabel} preview`} src={quality.previewImageUrl} fill sizes="88px" unoptimized /></div>
                   <div><strong>{quality.mediaLabel}</strong><p>{quality.canPublish ? 'Required event details complete' : `Missing ${quality.missingFields.join(', ')}`}</p></div>
                 </div>
+                <label className="operator-publish-city-field"><span>Publish city</span><select value={selectedCity} onChange={(event) => setCityDrafts((current) => ({ ...current, [submission.id]: event.target.value }))}><option value="">Choose city</option>{supportedPublishCities.map((city) => <option value={city} key={city}>{city}</option>)}</select></label>
                 <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={note} onChange={(event) => setReviewerNotes((current) => ({ ...current, [submission.id]: event.target.value }))} placeholder="Required before requesting changes" rows={2} /></label>
                 <div className="operator-submitter-link-pass pending-submitter-link-row"><Link href={submitterStatusHref(submission)}>Open status page</Link><button type="button" onClick={() => copySubmitterLink(submission)}>Copy submitter link</button></div>
-                <div className="pending-submission-actions"><button className="needs-changes-local" type="button" onClick={() => mutateReview({ id: submission.id, status: 'needs_changes', reviewerNote: note }, 'Requested changes')}>Needs changes</button><button className="approve-only-local" type="button" onClick={() => mutateReview({ id: submission.id, status: 'approved_local' }, 'Approved only')}>Approve only</button><button className="publish-local" type="button" disabled={!quality.canPublish} title={quality.canPublish ? quality.mediaLabel : `Missing ${quality.missingFields.join(', ')}`} onClick={() => mutateReview({ id: submission.id, action: 'publish' }, 'Published locally')}>{!quality.canPublish ? 'Complete required fields' : quality.mediaMode === 'bundled' ? 'Publish with fallback art' : 'Publish locally'}</button><button className="remove-local" type="button" onClick={() => removeReview(submission.id)}>Remove</button></div>
+                {feedback ? <p className={`operator-item-feedback operator-item-feedback-${feedback.tone}`} role="status">{feedback.message}</p> : null}
+                <div className="pending-submission-actions"><button className="needs-changes-local" type="button" disabled={Boolean(actionPending)} onClick={() => mutateReview({ id: submission.id, status: 'needs_changes', reviewerNote: note }, 'Requested changes', submission.id, 'Requesting changes')}>{actionPending || 'Needs changes'}</button><button className="approve-only-local" type="button" disabled={Boolean(actionPending)} onClick={() => mutateReview({ id: submission.id, status: 'approved_local' }, 'Approved only; still in queue until published or removed', submission.id, 'Approving')}>{actionPending || 'Approve only'}</button><button className="publish-local" type="button" disabled={Boolean(actionPending) || !quality.canPublish} title={quality.canPublish ? quality.mediaLabel : `Missing ${quality.missingFields.join(', ')}`} onClick={() => publishReview(submission)}>{actionPending || (!quality.canPublish ? 'Complete required fields' : quality.mediaMode === 'bundled' ? 'Publish with fallback art' : 'Publish locally')}</button><button className="remove-local" type="button" disabled={Boolean(actionPending)} onClick={() => removeReview(submission.id)}>{actionPending || 'Remove'}</button></div>
               </article>;
             })}
           </div>

@@ -2194,6 +2194,46 @@ button { -webkit-tap-highlight-color: transparent; }
   margin-bottom: 4px;
   font-size: .82rem;
 }
+.operator-publish-city-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+  color: #334155;
+  font-size: .75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.operator-publish-city-field select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(148,163,184,.32);
+  border-radius: 12px;
+  padding: 0 12px;
+  color: #0F172A;
+  background: #FFFFFF;
+  font: inherit;
+  font-size: .9rem;
+  text-transform: none;
+}
+.operator-item-feedback {
+  margin: 2px 0 0;
+  border-radius: 12px;
+  padding: 9px 11px;
+  font-size: .82rem;
+  font-weight: 750;
+}
+.operator-item-feedback-info {
+  color: #0369A1;
+  background: #E0F2FE;
+}
+.operator-item-feedback-success {
+  color: #047857;
+  background: #D1FAE5;
+}
+.operator-item-feedback-error {
+  color: #B91C1C;
+  background: #FEE2E2;
+}
 .pending-submission-actions button {
   min-height: 44px;
   flex: 1 1 132px;
