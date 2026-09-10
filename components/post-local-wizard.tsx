@@ -577,8 +577,8 @@ export function PostLocalWizard() {
             label="Logo upload"
             required={false}
             accept="image/png,image/jpeg,image/webp"
-            helperText="Optional but recommended. Browse computer or drag and drop a logo here. PNG, JPG, or WebP."
-            maxSizeLabel={`Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
+            helperText="Optional but recommended. Upload a PNG, JPG, or WebP logo at exactly 800 x 800 px square. Transparent PNG works best."
+            maxSizeLabel={`Best fit: 800 x 800 px. Maximum file size: ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}`}
             onFileSelect={(file) => updateMediaPreview('logo', file)}
           />
           <div className="ll-grid">
