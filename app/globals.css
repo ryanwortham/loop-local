@@ -2186,6 +2186,18 @@ button { -webkit-tap-highlight-color: transparent; }
 .operator-quality-preview img {
   object-fit: cover;
 }
+.operator-profile-icon {
+  display: grid;
+  place-items: center;
+  width: 88px;
+  aspect-ratio: 16 / 10;
+  border-radius: 12px;
+  color: #0F172A;
+  background: #DBEAFE;
+  font-size: .9rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
 .operator-quality-summary > div:last-child {
   min-width: 0;
 }

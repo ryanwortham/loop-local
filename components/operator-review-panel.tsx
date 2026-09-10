@@ -33,6 +33,10 @@ function supportedPublishCity(value?: string) {
   return supportedPublishCities.find((candidate) => candidate.toLowerCase() === city.toLowerCase()) || '';
 }
 
+function isBusinessProfileSubmission(submission: LocalSubmissionRecord) {
+  return submission.postType === 'Business Profile' || Boolean(submission.entityName && !submission.eventTitle);
+}
+
 export function OperatorReviewPanel() {
   // operator-review-route-pass: /operator/reviews owns Review queue instead of consumer Profile.
   const [accessToken, setAccessToken] = useState('');
@@ -205,25 +209,39 @@ export function OperatorReviewPanel() {
           <div className="pending-submission-grid">
             {queue.pendingSubmissions.map((submission) => {
               const note = reviewerNotes[submission.id] ?? submission.reviewerNote ?? '';
+              const isBusinessProfile = isBusinessProfileSubmission(submission);
               const quality = submissionPublicationQuality(submission);
               const publishCity = supportedPublishCity(submission.eventCity || submission.city);
               const selectedCity = cityDrafts[submission.id] || publishCity;
               const actionPending = pendingActions[submission.id];
               const feedback = itemFeedback[submission.id];
+              const cardTitle = isBusinessProfile ? submission.entityName : submission.eventTitle;
+              const cardDetails = isBusinessProfile
+                ? [submission.entityType, submission.category, submission.city].filter(Boolean).join(' · ')
+                : [submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ');
               return <article className="pending-submission-card" key={submission.id}>
                 <span>{submission.status || 'pending_review'}</span>
-                <strong>{submission.eventTitle || 'Untitled local submission'}</strong>
-                <p>{[submission.eventCategory, submission.eventDate, submission.locationName || submission.eventCity].filter(Boolean).join(' · ') || 'Details pending'}</p>
-                <small>{submission.entityName || 'Local contributor'}</small>
-                <div className="operator-quality-summary">
-                  <div className="operator-quality-preview"><Image alt={`${quality.mediaLabel} preview`} src={quality.previewImageUrl} fill sizes="88px" unoptimized /></div>
-                  <div><strong>{quality.mediaLabel}</strong><p>{quality.canPublish ? 'Required event details complete' : `Missing ${quality.missingFields.join(', ')}`}</p></div>
-                </div>
-                <label className="operator-publish-city-field"><span>Publish city</span><select value={selectedCity} onChange={(event) => setCityDrafts((current) => ({ ...current, [submission.id]: event.target.value }))}><option value="">Choose city</option>{supportedPublishCities.map((city) => <option value={city} key={city}>{city}</option>)}</select></label>
+                <strong>{cardTitle || 'Untitled local submission'}</strong>
+                <p>{cardDetails || 'Details pending'}</p>
+                <small>{isBusinessProfile ? 'Business profile setup request' : submission.entityName || 'Local contributor'}</small>
+                {isBusinessProfile ? (
+                  <div className="operator-quality-summary">
+                    <div className="operator-profile-icon" aria-hidden="true">BP</div>
+                    <div><strong>Business profile</strong><p>Ready for operator setup. This does not publish to the event feed.</p></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="operator-quality-summary">
+                      <div className="operator-quality-preview"><Image alt={`${quality.mediaLabel} preview`} src={quality.previewImageUrl} fill sizes="88px" unoptimized /></div>
+                      <div><strong>{quality.mediaLabel}</strong><p>{quality.canPublish ? 'Required event details complete' : `Missing ${quality.missingFields.join(', ')}`}</p></div>
+                    </div>
+                    <label className="operator-publish-city-field"><span>Publish city</span><select value={selectedCity} onChange={(event) => setCityDrafts((current) => ({ ...current, [submission.id]: event.target.value }))}><option value="">Choose city</option>{supportedPublishCities.map((city) => <option value={city} key={city}>{city}</option>)}</select></label>
+                  </>
+                )}
                 <label className="reviewer-note-field"><span>Reviewer note</span><textarea value={note} onChange={(event) => setReviewerNotes((current) => ({ ...current, [submission.id]: event.target.value }))} placeholder="Required before requesting changes" rows={2} /></label>
                 <div className="operator-submitter-link-pass pending-submitter-link-row"><Link href={submitterStatusHref(submission)}>Open status page</Link><button type="button" onClick={() => copySubmitterLink(submission)}>Copy submitter link</button></div>
                 {feedback ? <p className={`operator-item-feedback operator-item-feedback-${feedback.tone}`} role="status">{feedback.message}</p> : null}
-                <div className="pending-submission-actions"><button className="needs-changes-local" type="button" disabled={Boolean(actionPending)} onClick={() => mutateReview({ id: submission.id, status: 'needs_changes', reviewerNote: note }, 'Requested changes', submission.id, 'Requesting changes')}>{actionPending || 'Needs changes'}</button><button className="approve-only-local" type="button" disabled={Boolean(actionPending)} onClick={() => mutateReview({ id: submission.id, status: 'approved_local' }, 'Approved only; still in queue until published or removed', submission.id, 'Approving')}>{actionPending || 'Approve only'}</button><button className="publish-local" type="button" disabled={Boolean(actionPending) || !quality.canPublish} title={quality.canPublish ? quality.mediaLabel : `Missing ${quality.missingFields.join(', ')}`} onClick={() => publishReview(submission)}>{actionPending || (!quality.canPublish ? 'Complete required fields' : quality.mediaMode === 'bundled' ? 'Publish with fallback art' : 'Publish locally')}</button><button className="remove-local" type="button" disabled={Boolean(actionPending)} onClick={() => removeReview(submission.id)}>{actionPending || 'Remove'}</button></div>
+                <div className="pending-submission-actions"><button className="needs-changes-local" type="button" disabled={Boolean(actionPending)} onClick={() => mutateReview({ id: submission.id, status: 'needs_changes', reviewerNote: note }, 'Requested changes', submission.id, 'Requesting changes')}>{actionPending || 'Needs changes'}</button><button className="approve-only-local" type="button" disabled={Boolean(actionPending)} onClick={() => mutateReview({ id: submission.id, status: 'approved_local' }, isBusinessProfile ? 'Business profile approved for setup' : 'Approved only; still in queue until published or removed', submission.id, 'Approving')}>{actionPending || (isBusinessProfile ? 'Approve profile' : 'Approve only')}</button>{!isBusinessProfile ? <button className="publish-local" type="button" disabled={Boolean(actionPending) || !quality.canPublish} title={quality.canPublish ? quality.mediaLabel : `Missing ${quality.missingFields.join(', ')}`} onClick={() => publishReview(submission)}>{actionPending || (!quality.canPublish ? 'Complete required fields' : quality.mediaMode === 'bundled' ? 'Publish with fallback art' : 'Publish locally')}</button> : null}<button className="remove-local" type="button" disabled={Boolean(actionPending)} onClick={() => removeReview(submission.id)}>{actionPending || 'Remove'}</button></div>
               </article>;
             })}
           </div>
