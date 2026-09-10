@@ -236,6 +236,7 @@ export function PostLocalWizard() {
   const submissionRequestId = useRef('');
   const logoPreviewObjectUrl = useRef('');
   const eventImagePreviewObjectUrl = useRef('');
+  const postLocalFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     localStorage.setItem('looplocal:post-local-draft', JSON.stringify(draft));
@@ -398,6 +399,11 @@ export function PostLocalWizard() {
     const nextStep = step === 'submit' ? goToSubmitWizardStep() : step;
     if (step !== 'submit') setActiveWizardStep(step);
     scrollToWizardStep(nextStep);
+  }
+
+  function submitPreviewDraft() {
+    setSubmitStatus('Submitting for review…');
+    postLocalFormRef.current?.requestSubmit();
   }
 
   async function submitPostLocalDraft(form: HTMLFormElement) {
@@ -566,7 +572,7 @@ export function PostLocalWizard() {
             <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
           </div>
           <p>Preview your listing before approval so the card feels ready for the discovery feed.</p>
-          <button className="post-preview-submit-button" form="post-local-submission-form" type="submit">
+          <button className="post-preview-submit-button" type="button" onClick={submitPreviewDraft}>
             {submissionIntent === 'business_profile' ? 'Submit Business Profile' : 'Submit for Approval'}
           </button>
           {previewSubmitIssues.length ? (
@@ -587,7 +593,7 @@ export function PostLocalWizard() {
         ))}
       </ol>
 
-      <form className="ll-form post-wizard-form" id="post-local-submission-form" onSubmit={handleSubmit}>
+      <form className="ll-form post-wizard-form" id="post-local-submission-form" ref={postLocalFormRef} onSubmit={handleSubmit}>
         {Object.keys(validationErrors).length ? (
           <section className="post-validation-summary" role="alert">
             <strong>Required before review</strong>
