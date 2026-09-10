@@ -24,6 +24,9 @@ const entityTypes = [
 
 const categories = [...SUBMISSION_EVENT_CATEGORIES];
 
+const POST_LOCAL_FILE_READ_TIMEOUT_MS = 10_000;
+const POST_LOCAL_SUBMIT_TIMEOUT_MS = 25_000;
+
 const postTypes = [
   'Event',
   'Promotion',
@@ -149,16 +152,40 @@ function TextAreaField({ label, name, value, onChange, error }: { label: string;
   );
 }
 
-function readPostLocalFileAsDataUrl(input: HTMLInputElement | null): Promise<{ dataUrl?: string; fileName?: string }> {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
+function readPostLocalFileAsDataUrl(input: HTMLInputElement | null, label: string): Promise<{ dataUrl?: string; fileName?: string }> {
   // post-local-media-persistence-pass: preserve uploaded logo/event image through API-backed review.
   const file = input?.files?.[0];
   if (!file) return Promise.resolve({});
-  return new Promise((resolve, reject) => {
+  if (file.size > MAX_LOCAL_SUBMISSION_UPLOAD_BYTES) {
+    return Promise.reject(new Error(`${label} is larger than ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}.`));
+  }
+  const readPromise = new Promise<{ dataUrl?: string; fileName?: string }>((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve({ dataUrl: String(reader.result || ''), fileName: file.name });
-    reader.onerror = () => reject(new Error('Unable to read Post Local media file'));
+    reader.onload = () => {
+      if (typeof reader.result !== 'string' || !reader.result) {
+        reject(new Error(`${label} could not be read. Try a smaller PNG, JPG, or WebP.`));
+        return;
+      }
+      resolve({ dataUrl: reader.result, fileName: file.name });
+    };
+    reader.onerror = () => reject(new Error(`${label} could not be read. Try removing it or uploading a smaller PNG, JPG, or WebP.`));
     reader.readAsDataURL(file);
   });
+  return withTimeout(
+    readPromise,
+    POST_LOCAL_FILE_READ_TIMEOUT_MS,
+    `${label} took too long to read. Try removing it or uploading a smaller PNG, JPG, or WebP under ${MAX_LOCAL_SUBMISSION_UPLOAD_LABEL}.`,
+  );
 }
 
 function newSubmissionRequestId(): string {
@@ -402,7 +429,7 @@ export function PostLocalWizard() {
   }
 
   function submitPreviewDraft() {
-    setSubmitStatus('Submitting for review…');
+    setSubmitStatus('Submitting for review...');
     postLocalFormRef.current?.requestSubmit();
   }
 
@@ -410,35 +437,48 @@ export function PostLocalWizard() {
     // api-backed-local-submissions-pass: POST persists the review queue beyond this browser.
     // post-local-validation-interception-pass: validateSelectedFiles controls required uploads instead of native required blocking React errors.
     // legacy migration marker: looplocal:post-local-submissions moved from source-of-truth to API-backed review queue.
-    const logoMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="logo"]'));
-    const eventImageMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="event_image"]'));
+    const logoMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="logo"]'), 'Logo');
+    const eventImageMedia = await readPostLocalFileAsDataUrl(form.querySelector('input[name="event_image"]'), 'Event image');
     const requestStorageKey = submissionRequestStorageKey(revisionId);
     if (!submissionRequestId.current) submissionRequestId.current = readStoredSubmissionRequestId(requestStorageKey) || newSubmissionRequestId();
     storeSubmissionRequestId(requestStorageKey, submissionRequestId.current);
     // Legacy contract marker: fetch('/api/local-submissions' now supports create and resubmit branches.
-    const response = await fetch(revisionId ? '/api/local-submissions' : '/api/local-submissions', {
-      method: revisionId ? 'PATCH' : 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        ...draft,
-        postType: submissionIntent === 'business_profile' ? 'Business Profile' : draft.postType,
-        eventTitle: submissionIntent === 'business_profile' ? undefined : draft.eventTitle,
-        eventDate: submissionIntent === 'business_profile' ? undefined : draft.eventDate,
-        eventCategory: submissionIntent === 'business_profile' ? undefined : draft.eventCategory,
-        id: revisionId || undefined,
-        action: revisionId ? 'resubmit' : undefined,
-        statusToken: revisionId ? submittedStatusToken : undefined,
-        requestId: revisionId ? undefined : submissionRequestId.current,
-        revisionRequestId: revisionId ? submissionRequestId.current : undefined,
-        // submitter-revision-flow-pass marker: action: 'resubmit'
-        logoDataUrl: logoMedia.dataUrl,
-        logoFileName: logoMedia.fileName,
-        eventImageDataUrl: eventImageMedia.dataUrl,
-        eventImageFileName: eventImageMedia.fileName,
-        submittedAt: new Date().toISOString(),
-        status: 'pending_review',
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), POST_LOCAL_SUBMIT_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(revisionId ? '/api/local-submissions' : '/api/local-submissions', {
+        method: revisionId ? 'PATCH' : 'POST',
+        headers: { 'content-type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          ...draft,
+          postType: submissionIntent === 'business_profile' ? 'Business Profile' : draft.postType,
+          eventTitle: submissionIntent === 'business_profile' ? undefined : draft.eventTitle,
+          eventDate: submissionIntent === 'business_profile' ? undefined : draft.eventDate,
+          eventCategory: submissionIntent === 'business_profile' ? undefined : draft.eventCategory,
+          id: revisionId || undefined,
+          action: revisionId ? 'resubmit' : undefined,
+          statusToken: revisionId ? submittedStatusToken : undefined,
+          requestId: revisionId ? undefined : submissionRequestId.current,
+          revisionRequestId: revisionId ? submissionRequestId.current : undefined,
+          // submitter-revision-flow-pass marker: action: 'resubmit'
+          logoDataUrl: logoMedia.dataUrl,
+          logoFileName: logoMedia.fileName,
+          eventImageDataUrl: eventImageMedia.dataUrl,
+          eventImageFileName: eventImageMedia.fileName,
+          submittedAt: new Date().toISOString(),
+          status: 'pending_review',
+        }),
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Submission timed out. Try again, or remove large uploads and submit once more.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
     const data = await response.json().catch(() => null);
     if (!response.ok) throw new Error(data?.error || 'Failed to submit Post Local draft');
     storeStatusCapability(data.submission?.id || '', data.submission?.statusToken || '');
@@ -486,6 +526,7 @@ export function PostLocalWizard() {
       return;
     }
     try {
+      setSubmitStatus('Submitting for review...');
       const data = await submitPostLocalDraft(event.currentTarget);
       // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
       setSubmittedSubmissionId(data?.submission?.id || revisionId || '');
@@ -508,6 +549,11 @@ export function PostLocalWizard() {
   }
 
   const previewSubmitIssues = Object.values(validateDraft()).filter((value): value is string => Boolean(value));
+  const previewSubmitStatusClass = submitStatus === 'Ready for review' || submitStatus === 'Business profile submitted'
+    ? 'post-preview-submit-hint-ready'
+    : submitStatus && submitStatus !== 'Ready to submit' && submitStatus !== 'Submitting for review...'
+      ? 'post-preview-submit-hint-error'
+      : 'post-preview-submit-hint-ready';
 
   return (
     <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard post-local-functional-draft-pass mobile-interaction-qa-pass post-local-true-wizard-pass">
@@ -575,7 +621,11 @@ export function PostLocalWizard() {
           <button className="post-preview-submit-button" type="button" onClick={submitPreviewDraft}>
             {submissionIntent === 'business_profile' ? 'Submit Business Profile' : 'Submit for Approval'}
           </button>
-          {previewSubmitIssues.length ? (
+          {submitStatus && submitStatus !== 'Ready to submit' ? (
+            <p className={`post-preview-submit-hint ${previewSubmitStatusClass}`} role="status">
+              {submitStatus}
+            </p>
+          ) : previewSubmitIssues.length ? (
             <p className="post-preview-submit-hint post-preview-submit-hint-error" role="status">
               Needed before submit: {previewSubmitIssues.join(' ')}
             </p>
