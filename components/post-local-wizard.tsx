@@ -40,7 +40,7 @@ const wizardStepDefinitions = [
   { id: 'profile', number: '01', title: 'Start with your profile', detail: 'Who is posting?' },
   { id: 'event', number: '02', title: 'Build the first post', detail: 'What should locals see?' },
   { id: 'preview', number: '03', title: 'Preview your listing', detail: 'Mobile-first review' },
-  { id: 'submit', number: '04', title: 'Submit for approval', detail: 'Human review before live' },
+  { id: 'submit', number: '04', title: 'Submit', detail: 'Finish submission' },
 ] as const;
 // post-local-true-wizard-pass: render one primary step at a time instead of one long mobile form.
 type WizardStepId = (typeof wizardStepDefinitions)[number]['id'];
@@ -462,7 +462,11 @@ export function PostLocalWizard() {
       // submitter-status-page-pass: preserve submission.id so the submitter can check review status later.
       setSubmittedSubmissionId(data?.submission?.id || revisionId || '');
       setSubmittedStatusToken(data?.submission?.statusToken || submittedStatusToken || '');
-      setSubmitStatus('Ready for review');
+      if (submissionIntent === 'business_profile') {
+        setSubmitStatus('Business profile submitted');
+      } else {
+        setSubmitStatus('Ready for review');
+      }
       // Legacy contract marker: setDraftStatus('Saved to review queue') for create branch.
       setDraftStatus(revisionId ? 'Updated submission returned to review queue' : submissionIntent === 'business_profile' ? 'Business profile saved to review queue' : 'Saved to review queue');
     } catch (error) {
@@ -539,7 +543,7 @@ export function PostLocalWizard() {
 
       <ol className="ll-progress post-wizard-stepper post-local-true-wizard-pass" aria-label="progress indicator">
         {wizardStepDefinitions.map((step) => (
-          <li key={step.id} data-active={activeWizardStep === step.id}><button type="button" onClick={() => setActiveWizardStep(step.id)}><strong>{step.number}</strong><span>{step.title}</span><small>{step.detail}</small></button></li>
+          <li key={step.id} data-active={activeWizardStep === step.id}><button type="button" onClick={() => setActiveWizardStep(step.id)}><strong>{step.number}</strong><span>{step.id === 'submit' ? (submissionIntent === 'business_profile' ? 'Submit business profile' : 'Submit for approval') : step.title}</span><small>{step.id === 'submit' ? (submissionIntent === 'business_profile' ? 'Send profile details' : 'Human review before live') : step.detail}</small></button></li>
         ))}
       </ol>
 
@@ -674,12 +678,12 @@ export function PostLocalWizard() {
         </section>
 
         <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card" id="submit-for-approval" data-wizard-active={isWizardStepActive('submit')} hidden={!isWizardStepActive('submit')}>
-          <p className="ll-kicker">Step 4: Submit for Approval</p>
-          <h2>Submit for approval</h2>
-          <p>{submissionIntent === 'business_profile' ? 'Business profiles remain pending until approved by an admin. No public listing happens automatically.' : 'Submissions remain pending until approved by an admin. No public posting happens automatically.'}</p>
-          {submitStatus === 'Ready for review' ? (
+          <p className="ll-kicker">{submissionIntent === 'business_profile' ? 'Step 4: Submit Business Profile' : 'Step 4: Submit for Approval'}</p>
+          <h2>{submissionIntent === 'business_profile' ? 'Submit business profile' : 'Submit for approval'}</h2>
+          <p>{submissionIntent === 'business_profile' ? 'Send your business profile details so Loop Local can set up the listing before it appears publicly.' : 'Submissions remain pending until approved by an admin. No public posting happens automatically.'}</p>
+          {submitStatus === 'Ready for review' || submitStatus === 'Business profile submitted' ? (
             <div className="post-submit-success submitter-status-page-pass">
-              <strong>{revisionId ? 'Updated submission returned to review queue.' : submissionIntent === 'business_profile' ? 'Ready for review - your business profile was saved for admin handoff.' : 'Ready for review — your submission was saved locally for admin handoff.'}</strong>
+              <strong>{revisionId ? 'Updated submission returned to review queue.' : submissionIntent === 'business_profile' ? 'Business profile submitted - your listing details were saved for setup.' : 'Ready for review — your submission was saved locally for admin handoff.'}</strong>
               {submittedSubmissionId ? <span>Submission ID: <code>{submittedSubmissionId}</code></span> : null}
               {submittedStatusHref ? <Link href={submittedStatusHref}>Check submission status</Link> : null}
             </div>

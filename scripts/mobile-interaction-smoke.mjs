@@ -176,7 +176,7 @@ async function main() {
   await assertClickable(page, page.getByRole('button', { name: 'Submit a Business Profile', exact: true }), 'Submit a Business Profile shortcut');
   await page.locator('#submit-for-approval').waitFor({ state: 'visible', timeout });
   await assertClickable(page, page.getByRole('button', { name: 'Submit Business Profile', exact: true }), 'Submit Business Profile final button');
-  await page.getByText('Ready for review', { exact: true }).waitFor({ timeout });
+  await page.getByText('Business profile submitted', { exact: true }).waitFor({ timeout });
   await page.locator('.post-submit-success').getByText('Submission ID').waitFor({ timeout });
   await page.request.post(`${baseURL}/api/local-submissions`, {
     headers: operatorHeaders(),

@@ -136,6 +136,9 @@ def test_post_local_preserves_form_fields_and_uploads():
         'End time',
         'Website/ticket link',
         'Submit for Approval',
+        'Submit Business Profile',
+        'Send your business profile details so Loop Local can set up the listing before it appears publicly.',
+        'Business profile submitted - your listing details were saved for setup.',
         'exactly 800 x 800 px',
         'Transparent PNG works best',
         'exactly 1600 x 900 px',
@@ -156,6 +159,7 @@ def test_post_local_supports_business_profile_and_event_entry_paths():
         "type SubmissionIntent = 'business_profile' | 'event'",
         "submissionIntent === 'event'",
         'Submit Business Profile',
+        'Business profile submitted',
         '/post-local?mode=business',
         '/post-local?mode=event',
     ]:
@@ -776,6 +780,7 @@ def test_loop_local_api_backed_post_local_submissions_persist_through_review_que
         "fetch('/api/local-submissions'",
         'submitPostLocalDraft',
         'setSubmitStatus(\'Ready for review\')',
+        "setSubmitStatus('Business profile submitted')",
         'setDraftStatus(\'Saved to review queue\')',
         'looplocal:post-local-draft',
     ]:
