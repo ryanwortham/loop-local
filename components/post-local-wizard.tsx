@@ -558,6 +558,9 @@ export function PostLocalWizard() {
             <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
           </div>
           <p>Preview your listing before approval so the card feels ready for the discovery feed.</p>
+          <button className="post-preview-submit-button" type="button" onClick={() => activateWizardDockStep('submit')}>
+            Review & submit
+          </button>
         </aside>
       </section>
 

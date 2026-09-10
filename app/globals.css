@@ -1631,6 +1631,22 @@ button { -webkit-tap-highlight-color: transparent; }
   color: var(--ll-rebuild-slate);
   line-height: 1.45;
 }
+.post-preview-submit-button {
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 18px;
+  color: #FFFFFF;
+  background: var(--ll-rebuild-blue);
+  box-shadow: 0 12px 24px rgba(21,94,239,.24);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+.post-preview-submit-button:focus-visible {
+  outline: 3px solid rgba(21,94,239,.22);
+  outline-offset: 3px;
+}
 .post-wizard-stepper {
   position: sticky;
   top: 86px;
