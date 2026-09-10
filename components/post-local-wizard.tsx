@@ -368,16 +368,36 @@ export function PostLocalWizard() {
     setValidationErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setSubmitStatus('Required before review');
-      setActiveWizardStep(firstErrorWizardStep(nextErrors));
-      return;
+      const errorStep = firstErrorWizardStep(nextErrors);
+      setActiveWizardStep(errorStep);
+      return errorStep;
     }
     setSubmitStatus('Ready to submit');
     setActiveWizardStep('submit');
+    return 'submit';
   }
 
   function goToPreviousWizardStep() {
     const index = wizardStepDefinitions.findIndex((step) => step.id === activeWizardStep);
     setActiveWizardStep(wizardStepDefinitions[Math.max(index - 1, 0)].id);
+  }
+
+  function scrollToWizardStep(step: WizardStepId) {
+    const targetIdByStep: Record<WizardStepId, string> = {
+      profile: 'profile',
+      event: 'event-details',
+      preview: 'preview-listing',
+      submit: 'submit-for-approval',
+    };
+    window.setTimeout(() => {
+      document.getElementById(targetIdByStep[step])?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }, 0);
+  }
+
+  function activateWizardDockStep(step: WizardStepId) {
+    const nextStep = step === 'submit' ? goToSubmitWizardStep() : step;
+    if (step !== 'submit') setActiveWizardStep(step);
+    scrollToWizardStep(nextStep);
   }
 
   async function submitPostLocalDraft(form: HTMLFormElement) {
@@ -717,10 +737,10 @@ export function PostLocalWizard() {
 
       <nav className="post-wizard-mobile-dock ll-mobile-tabs mobile-app-tabbar mobile-qa-post-dock" aria-label="Post Local mobile tabs">
         <Link className="mobile-qa-target" href="/#discover">⌂ Discover</Link>
-        <a className="mobile-qa-target" href="#first-post" onClick={() => setActiveWizardStep('event')}>✦ Post</a>
-        <a className="mobile-qa-target" href="#preview-listing" onClick={() => setActiveWizardStep('preview')}>⌖ Preview</a>
-        <a className="mobile-qa-target" href="#submit-for-approval" onClick={() => setActiveWizardStep('submit')}>✓ Submit</a>
-        <a className="mobile-qa-target" href="#profile" onClick={() => setActiveWizardStep('profile')}>◉ Profile details</a>
+        <button className="mobile-qa-target" type="button" onClick={() => activateWizardDockStep('event')}>✦ Post</button>
+        <button className="mobile-qa-target" type="button" onClick={() => activateWizardDockStep('preview')}>⌖ Preview</button>
+        <button className="mobile-qa-target" type="button" onClick={() => activateWizardDockStep('submit')}>✓ Submit</button>
+        <button className="mobile-qa-target" type="button" onClick={() => activateWizardDockStep('profile')}>◉ Profile details</button>
       </nav>
     </main>
   );
