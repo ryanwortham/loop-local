@@ -474,7 +474,9 @@ export function PostLocalWizard() {
     setValidationErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setSubmitStatus('Required before review');
-      setActiveWizardStep(firstErrorWizardStep(nextErrors));
+      const errorStep = firstErrorWizardStep(nextErrors);
+      setActiveWizardStep(errorStep);
+      scrollToWizardStep(errorStep);
       return;
     }
     try {
@@ -489,9 +491,13 @@ export function PostLocalWizard() {
       }
       // Legacy contract marker: setDraftStatus('Saved to review queue') for create branch.
       setDraftStatus(revisionId ? 'Updated submission returned to review queue' : submissionIntent === 'business_profile' ? 'Business profile saved to review queue' : 'Saved to review queue');
+      setActiveWizardStep('submit');
+      scrollToWizardStep('submit');
     } catch (error) {
       setSubmitStatus(error instanceof Error ? error.message : 'Submit failed - try again');
       setDraftStatus('Draft saved locally');
+      setActiveWizardStep('submit');
+      scrollToWizardStep('submit');
     }
   }
 
@@ -558,8 +564,8 @@ export function PostLocalWizard() {
             <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
           </div>
           <p>Preview your listing before approval so the card feels ready for the discovery feed.</p>
-          <button className="post-preview-submit-button" type="button" onClick={() => activateWizardDockStep('submit')}>
-            Review & submit
+          <button className="post-preview-submit-button" form="post-local-submission-form" type="submit">
+            {submissionIntent === 'business_profile' ? 'Submit Business Profile' : 'Submit for Approval'}
           </button>
         </aside>
       </section>
@@ -570,7 +576,7 @@ export function PostLocalWizard() {
         ))}
       </ol>
 
-      <form className="ll-form post-wizard-form" onSubmit={handleSubmit}>
+      <form className="ll-form post-wizard-form" id="post-local-submission-form" onSubmit={handleSubmit}>
         {Object.keys(validationErrors).length ? (
           <section className="post-validation-summary" role="alert">
             <strong>Required before review</strong>
