@@ -179,14 +179,23 @@ export function AccountPanel() {
         <Link href="/">Back to discovery</Link>
       </header>
       <section className="account-card" aria-labelledby="account-heading">
-        <p className="eyebrow">Account</p>
-        <h1 id="account-heading">Your Loop Local account</h1>
-        <p className="account-status" role="status">{message}</p>
+        <div className="account-card-header">
+          <div>
+            <p className="eyebrow">Account</p>
+            <h1 id="account-heading">{user ? 'Account settings' : 'Sign in to Loop Local'}</h1>
+            <p className="account-status" role="status">{message}</p>
+          </div>
+          {user ? (
+            <span className="account-role-pill">{operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? 'Operator' : 'Member'}</span>
+          ) : null}
+        </div>
         {!user ? (
           <form className="account-form" onSubmit={handleSignIn}>
-            <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>
-            <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
-            <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" minLength={8} required /></label>
+            <div className="account-form-grid">
+              <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>
+              <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required /></label>
+              <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" minLength={8} required /></label>
+            </div>
             <div className="account-actions">
               <button className="primary-action" type="submit" disabled={busy}>Sign in</button>
               <button className="secondary-action" type="button" disabled={busy} onClick={handleSignUp}>Create account</button>
@@ -195,15 +204,37 @@ export function AccountPanel() {
           </form>
         ) : (
           <form className="account-form" onSubmit={handleSaveProfile}>
-            <p><strong>{user.email}</strong></p>
-            <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required /></label>
-            <label>New password<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={8} /></label>
-            <p className="account-role">Role: <strong>{operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? 'Operator' : 'Member'}</strong></p>
-            <div className="account-actions">
-              <button className="primary-action" type="submit" disabled={busy || !profile}>Save profile</button>
-              <button className="secondary-action" type="button" disabled={busy || !newPassword.trim()} onClick={handleUpdatePassword}>Update password</button>
+            <div className="account-identity-band">
+              <span>Signed in as</span>
+              <strong>{user.email}</strong>
+            </div>
+            <div className="account-settings-grid">
+              <section className="account-settings-section" aria-label="Profile">
+                <div className="account-section-heading">
+                  <span>Profile</span>
+                  <small>Public operator display name</small>
+                </div>
+                <label>Display name<input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" required /></label>
+                <button className="primary-action" type="submit" disabled={busy || !profile}>Save profile</button>
+              </section>
+              <section className="account-settings-section" aria-label="Security">
+                <div className="account-section-heading">
+                  <span>Security</span>
+                  <small>Set a new password when needed</small>
+                </div>
+                <label>New password<input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" minLength={8} /></label>
+                <button className="secondary-action" type="button" disabled={busy || !newPassword.trim()} onClick={handleUpdatePassword}>Update password</button>
+              </section>
+            </div>
+            <div className="account-operator-band">
+              <div>
+                <span>{operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? 'Operator access enabled' : 'Standard member access'}</span>
+                <small>{operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? 'Review and publish local submissions from the operator desk.' : 'Operator tools appear here when access is assigned.'}</small>
+              </div>
+              {operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? <Link className="primary-action" href="/operator/reviews">Open operator reviews</Link> : null}
+            </div>
+            <div className="account-footer-actions">
               <button className="secondary-action" type="button" disabled={busy} onClick={handleSignOut}>Sign out</button>
-              {operatorAccess || profile?.app_role === 'operator' || profile?.is_admin ? <Link className="secondary-action" href="/operator/reviews">Open operator reviews</Link> : null}
             </div>
           </form>
         )}
