@@ -1647,6 +1647,22 @@ button { -webkit-tap-highlight-color: transparent; }
   outline: 3px solid rgba(21,94,239,.22);
   outline-offset: 3px;
 }
+.post-preview-submit-hint {
+  margin: -4px 0 0;
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: .84rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+.post-preview-submit-hint-error {
+  color: #9F1239;
+  background: #FFE4E6;
+}
+.post-preview-submit-hint-ready {
+  color: #047857;
+  background: #D1FAE5;
+}
 .post-wizard-stepper {
   position: sticky;
   top: 86px;

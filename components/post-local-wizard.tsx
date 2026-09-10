@@ -501,6 +501,8 @@ export function PostLocalWizard() {
     }
   }
 
+  const previewSubmitIssues = Object.values(validateDraft()).filter((value): value is string => Boolean(value));
+
   return (
     <main className="post-local-shell complete-frontend-rebuild post-mobile-reference-shell post-local-premium-wizard post-local-functional-draft-pass mobile-interaction-qa-pass post-local-true-wizard-pass">
       <header className="ll-nav post-app-topbar post-local-command-center">
@@ -567,6 +569,15 @@ export function PostLocalWizard() {
           <button className="post-preview-submit-button" form="post-local-submission-form" type="submit">
             {submissionIntent === 'business_profile' ? 'Submit Business Profile' : 'Submit for Approval'}
           </button>
+          {previewSubmitIssues.length ? (
+            <p className="post-preview-submit-hint post-preview-submit-hint-error" role="status">
+              Needed before submit: {previewSubmitIssues.join(' ')}
+            </p>
+          ) : (
+            <p className="post-preview-submit-hint post-preview-submit-hint-ready" role="status">
+              Ready to submit for review.
+            </p>
+          )}
         </aside>
       </section>
 
