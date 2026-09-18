@@ -62,6 +62,8 @@ export type LiveFeedResponse = {
   source: 'live_supabase' | string;
   count: number;
   items: LiveFeedItem[];
+  pastItems?: LiveFeedItem[];
+  pastCount?: number;
   health: LiveFeedHealth;
 };
 
@@ -70,6 +72,8 @@ export const emptyLiveFeed: LiveFeedResponse = {
   source: 'live_supabase_unavailable',
   count: 0,
   items: [],
+  pastItems: [],
+  pastCount: 0,
   health: {
     status: 'unavailable',
     fetchedAt: null,

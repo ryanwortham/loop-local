@@ -9,6 +9,7 @@ import {
 import { getSupabaseFeed } from '@/lib/supabase-feed';
 import { readLocalSubmissionsStore } from '@/lib/local-submissions-store';
 import { applyEventCategoryOverrides } from '@/lib/event-category-overrides';
+import { currentMarketDate, itemMarketDate } from '@/lib/discovery-truthfulness';
 
 // local-published-detail-pages-pass: keep fs-backed local event resolution out of the client bundle.
 
@@ -39,6 +40,17 @@ function normalizePublishedLocalEvents(items: LiveFeedItem[]): LiveFeedItem[] {
   return items.filter((item) => allowSmokeRecords || !isSmokeTestLocalEvent(item)).map(normalizePublishedLocalItem);
 }
 
+function splitPastEvents(items: LiveFeedItem[], marketDate = currentMarketDate('America/Chicago')) {
+  const currentItems: LiveFeedItem[] = [];
+  const pastItems: LiveFeedItem[] = [];
+  for (const item of items) {
+    const date = itemMarketDate(item, 'America/Chicago');
+    if (date && date < marketDate) pastItems.push({ ...item, status: item.status || 'past' });
+    else currentItems.push(item);
+  }
+  return { currentItems, pastItems };
+}
+
 export async function loadPublishedLocalEvents(): Promise<LiveFeedItem[]> {
   const store = await readLocalSubmissionsStore();
   return normalizePublishedLocalEvents(store.publishedLocalEvents || []);
@@ -57,17 +69,22 @@ export async function getLiveFeed(limit = 24): Promise<LiveFeedResponse> {
   ]);
   const publishedLocalEvents = normalizePublishedLocalEvents(store.publishedLocalEvents || []);
   const remoteItems = normalizeFeedItems(remoteFeed.items);
-  const sourceItems = dedupeFeedItems([...publishedLocalEvents, ...remoteItems]).slice(0, limit);
-  const items = applyEventCategoryOverrides(sourceItems, store.eventCategoryOverrides);
+  const sourceItems = dedupeFeedItems([...publishedLocalEvents, ...remoteItems]);
+  const categorizedItems = applyEventCategoryOverrides(sourceItems, store.eventCategoryOverrides);
+  const { currentItems, pastItems } = splitPastEvents(categorizedItems);
+  const items = currentItems.slice(0, limit);
   return {
     ...remoteFeed,
     source: publishedLocalEvents.length ? `local_api_backed+${remoteFeed.source}` : remoteFeed.source,
-    count: remoteFeed.count + publishedLocalEvents.length,
+    count: items.length,
     items,
+    pastItems: pastItems.slice(0, 160),
+    pastCount: pastItems.length,
   };
 }
 
 export async function getEventBySlug(slug: string): Promise<LiveFeedItem | null> {
   const feed = await getLiveFeed(160);
-  return feed.items.find((item) => eventSlug(item) === slug || item.slug === slug || item.id === slug) || null;
+  const items = [...feed.items, ...(feed.pastItems || [])];
+  return items.find((item) => eventSlug(item) === slug || item.slug === slug || item.id === slug) || null;
 }

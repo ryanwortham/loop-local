@@ -91,7 +91,7 @@ export function currentMarketDate(timeZone = DEFAULT_MARKET_TIME_ZONE): string {
   return marketDateFromValue(new Date().toISOString(), timeZone) || new Date().toISOString().slice(0, 10);
 }
 
-function itemMarketDate(item: LiveFeedItem, timeZone = DEFAULT_MARKET_TIME_ZONE): string | null {
+export function itemMarketDate(item: LiveFeedItem, timeZone = DEFAULT_MARKET_TIME_ZONE): string | null {
   if (item.startsAt) return marketDateFromValue(item.startsAt, timeZone);
   if (item.date && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) return item.date;
   if (item.date) return marketDateFromValue(item.date, timeZone);

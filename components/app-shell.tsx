@@ -145,17 +145,19 @@ function PopularRow({ item, isSaved = false, onSave }: { item: LiveFeedItem; isS
 
 type AppShellProps = {
   feedItems: LiveFeedItem[];
+  pastItems?: LiveFeedItem[];
   totalCount: number;
   source: string;
   health: LiveFeedHealth;
 };
 
-export function AppShell({ feedItems, totalCount, source, health }: AppShellProps) {
+export function AppShell({ feedItems, pastItems = [], totalCount, source, health }: AppShellProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('St. Louis, MO');
   const [activeCategory, setActiveCategory] = useState('All categories');
   const [activeCity, setActiveCity] = useState('All cities');
   const [activeMoment, setActiveMoment] = useState('All');
+  const [eventArchiveView, setEventArchiveView] = useState<'upcoming' | 'past'>('upcoming');
   const [sortBy, setSortBy] = useState('soonest');
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [activeAppTab, setActiveAppTab] = useState('Discover'); // mobile-shell-active-tab-pass: app tab state is independent from viewMode.
@@ -168,15 +170,17 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
 
 
   const combinedFeedItems = useMemo(() => normalizeFeedItems(feedItems), [feedItems]);
+  const combinedPastItems = useMemo(() => normalizeFeedItems(pastItems), [pastItems]);
+  const allDiscoveryItems = useMemo(() => [...combinedFeedItems, ...combinedPastItems], [combinedFeedItems, combinedPastItems]);
 
   const categories = useMemo(
-    () => ['All categories', ...Array.from(new Set(combinedFeedItems.map((item) => item.category).filter(Boolean) as string[])).sort()],
-    [combinedFeedItems],
+    () => ['All categories', ...Array.from(new Set(allDiscoveryItems.map((item) => item.category).filter(Boolean) as string[])).sort()],
+    [allDiscoveryItems],
   );
 
   const cities = useMemo(
-    () => ['All cities', ...Array.from(new Set(combinedFeedItems.map((item) => item.city).filter(Boolean) as string[])).sort()],
-    [combinedFeedItems],
+    () => ['All cities', ...Array.from(new Set(allDiscoveryItems.map((item) => item.city).filter(Boolean) as string[])).sort()],
+    [allDiscoveryItems],
   );
 
   const filteredItems = useMemo(() => {
@@ -191,6 +195,19 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
     });
     return sortItems(filtered, sortBy);
   }, [activeCategory, activeCity, activeMoment, combinedFeedItems, locationQuery, marketDate, searchQuery, sortBy]);
+
+  const filteredPastItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const location = locationQuery.trim().toLowerCase();
+    const filtered = combinedPastItems.filter((item) => {
+      const matchesSearch = !query || itemSearchText(item).includes(query);
+      const matchesLocation = !location || location === 'st. louis, mo' || itemSearchText(item).includes(location);
+      const matchesCategory = activeCategory === 'All categories' || item.category === activeCategory;
+      const matchesCity = activeCity === 'All cities' || item.city === activeCity;
+      return matchesSearch && matchesLocation && matchesCategory && matchesCity;
+    });
+    return sortItems(filtered, sortBy).reverse();
+  }, [activeCategory, activeCity, combinedPastItems, locationQuery, searchQuery, sortBy]);
 
   const radiusFilteredItems = useMemo(
     () => visibleDiscoveryItems(filteredItems, { viewerLocation, radiusMiles: 10 }),
@@ -213,7 +230,8 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
         : 'Live feed connected and current.';
   const hasActiveFilters = Boolean(searchQuery) || activeCategory !== 'All categories' || activeCity !== 'All cities' || activeMoment !== 'All' || sortBy !== 'soonest';
   const heroDate = heroEvent ? dayBlock(heroEvent) : { month: 'Soon', day: '•' };
-  const savedItems = combinedFeedItems.filter((item) => isSavedEvent(item.id));
+  const savedItems = allDiscoveryItems.filter((item) => isSavedEvent(item.id));
+  const visiblePastItems = filteredPastItems.slice(0, viewMode === 'list' ? 36 : 18);
 
   function isSavedItem(item: LiveFeedItem): boolean {
     return isSavedEvent(item.id);
@@ -334,30 +352,50 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
           {moments.map((moment) => <button className={activeMoment === moment ? 'active' : ''} key={moment} type="button" onClick={() => setActiveMoment(moment)}>{moment}</button>)}
         </section>
 
-        <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
-          <header className="section-title-row"><h2>{discoveryLabels.featured}</h2><a href="#events">View all</a></header>
-          <div className="featured-rail polished-card-density">
-            {featuredItems.map((item) => <EventCard compact isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
-          </div>
+        <section className="event-archive-tabs" aria-label="Event timing">
+          <button className={eventArchiveView === 'upcoming' ? 'active' : ''} type="button" onClick={() => setEventArchiveView('upcoming')}>Upcoming</button>
+          <button className={eventArchiveView === 'past' ? 'active' : ''} type="button" onClick={() => setEventArchiveView('past')}>Past events <span>{combinedPastItems.length}</span></button>
         </section>
 
-        <section className="feed-section popular-near-you" aria-label="Popular nearby">
-          <header className="section-title-row">
-            <div><h2>{discoveryLabels.popular}</h2><p>{radiusFilteredItems.length} of {totalCount} {discoveryLabels.popularCountLabel}</p></div>
-            {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : <a href="#events">View all</a>}
-          </header>
-          <div className="popular-list polished-list-density">
-            {(popularItems.length ? popularItems : featuredItems).slice(0, 6).map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
-          </div>
-        </section>
+        {eventArchiveView === 'upcoming' ? (
+          <>
+            <section className="feed-section featured-this-week" id="events" aria-label="Featured events">
+              <header className="section-title-row"><h2>{discoveryLabels.featured}</h2><a href="#events">View all</a></header>
+              <div className="featured-rail polished-card-density">
+                {featuredItems.map((item) => <EventCard compact isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
+              </div>
+            </section>
+
+            <section className="feed-section popular-near-you" aria-label="Popular nearby">
+              <header className="section-title-row">
+                <div><h2>{discoveryLabels.popular}</h2><p>{radiusFilteredItems.length} of {totalCount} {discoveryLabels.popularCountLabel}</p></div>
+                {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : <a href="#events">View all</a>}
+              </header>
+              <div className="popular-list polished-list-density">
+                {(popularItems.length ? popularItems : featuredItems).slice(0, 6).map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}
+              </div>
+            </section>
+          </>
+        ) : null}
 
         <section className="view-mode-dock polished-view-dock" aria-label="Event view mode">
           {viewModes.map((mode) => <button className={viewMode === mode.id ? 'active' : ''} key={mode.id} onClick={() => setViewMode(mode.id)} type="button">{mode.label}</button>)}
         </section>
 
-        {visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}</div> : null}
-        {visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}</div> : null}
-        {viewMode === 'map' ? (
+        {eventArchiveView === 'past' ? (
+          <section className="feed-section past-events-panel" aria-label="Past events">
+            <header className="section-title-row">
+              <div><h2>Past events</h2><p>{filteredPastItems.length} archived from the active discovery feed.</p></div>
+              {hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear</button> : null}
+            </header>
+            {visiblePastItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visiblePastItems.map((item) => <EventCard isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}</div> : null}
+            {visiblePastItems.length > 0 && (viewMode === 'list' || viewMode === 'map') ? <div className="list-view">{visiblePastItems.map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}</div> : null}
+            {visiblePastItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view">{visiblePastItems.slice(0, 24).map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date archived'}</span><strong>{item.title}</strong><p>{item.time || 'Past event'} · {venueLine(item)}</p></article>)}</div> : null}
+          </section>
+        ) : null}
+        {eventArchiveView === 'upcoming' && visibleItems.length > 0 && viewMode === 'card' ? <div className="event-rail card-view polished-card-density">{visibleItems.map((item) => <EventCard isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}</div> : null}
+        {eventArchiveView === 'upcoming' && visibleItems.length > 0 && viewMode === 'list' ? <div className="list-view">{visibleItems.map((item) => <PopularRow isSaved={isSavedItem(item)} item={item} key={item.id} onSave={toggleSavedItem} />)}</div> : null}
+        {eventArchiveView === 'upcoming' && viewMode === 'map' ? (
           <section className="map-experience-upgrade map-discovery-shell" id="map" aria-label="Map discovery view">
             <div className="map-control-bar">
               <span className="map-radius-chip">Share location to enable 10 mi radius</span>
@@ -395,8 +433,9 @@ export function AppShell({ feedItems, totalCount, source, health }: AppShellProp
             </aside>
           </section>
         ) : null}
-        {visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view" id="calendar">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
-        {visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
+        {eventArchiveView === 'upcoming' && visibleItems.length > 0 && viewMode === 'calendar' ? <div className="calendar-view" id="calendar">{calendarItems.map((item) => <article className="calendar-card" key={item.id}><span>{item.date || 'Date pending'}</span><strong>{item.title}</strong><p>{item.time || 'Time pending'} · {venueLine(item)}</p></article>)}</div> : null}
+        {eventArchiveView === 'upcoming' && visibleItems.length === 0 ? <div className="empty-filter-state"><h3>No events match</h3><p>Try a different city, category, or search.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
+        {eventArchiveView === 'past' && visiblePastItems.length === 0 ? <div className="empty-filter-state"><h3>No past events match</h3><p>Past events move here automatically after their event date.</p><button type="button" onClick={clearFilters}>Clear filters</button></div> : null}
         {showSavedPanel ? (
           <section className="saved-events-panel" aria-label="Saved events">
             <header className="section-title-row"><div><h2>Saved events</h2><p>{savedItems.length ? `${savedItems.length} saved` : 'Save events to compare plans later.'}</p></div><button type="button" onClick={() => setShowSavedPanel(false)}>Close</button></header>
