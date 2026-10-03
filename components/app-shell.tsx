@@ -325,6 +325,7 @@ export function AppShell({ feedItems, pastItems = [], totalCount, source, health
             <Link className="mobile-qa-target event-submission-entry-pass" href="/post-local?mode=event" onClick={() => setShowMobileMenu(false)}>Open Post Local</Link>
             <Link className="mobile-qa-target business-profile-submission-pass" href="/post-local?mode=business" onClick={() => setShowMobileMenu(false)}>List Your Business</Link>
             <Link className="mobile-qa-target" href="/account" onClick={() => setShowMobileMenu(false)}>Account</Link>
+            <Link className="mobile-qa-target" href="/support" onClick={() => setShowMobileMenu(false)}>Support</Link>
             <Link className="mobile-qa-target" href="/operator/reviews" onClick={() => setShowMobileMenu(false)}>Operator reviews</Link>
             <button className="mobile-qa-target" type="button" onClick={() => { setShowSavedPanel(true); setActiveAppTab('Saved'); setShowMobileMenu(false); }}>Saved events</button>
           </section>
@@ -465,6 +466,12 @@ export function AppShell({ feedItems, pastItems = [], totalCount, source, health
             </button>
           ))}
         </nav>
+        <footer className="app-legal-links" aria-label="Legal and support links">
+          <Link href="/support">Support</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/delete-account">Delete account</Link>
+        </footer>
       </section>
 
       {heroEvent ? (

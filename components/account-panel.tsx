@@ -235,9 +235,15 @@ export function AccountPanel() {
             </div>
             <div className="account-footer-actions">
               <button className="secondary-action" type="button" disabled={busy} onClick={handleSignOut}>Sign out</button>
+              <Link className="secondary-action" href="/delete-account">Delete account or data</Link>
             </div>
           </form>
         )}
+        <nav className="account-legal-links" aria-label="Account support links">
+          <Link href="/support">Support</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+        </nav>
       </section>
     </main>
   );

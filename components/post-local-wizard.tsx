@@ -770,7 +770,7 @@ export function PostLocalWizard() {
             <p>{previewMeta}</p>
             <div className="ll-phone-actions">Call · Website · Directions · Save · Share</div>
           </div>
-          <div className="wizard-step-actions"><button type="button" onClick={goToPreviousWizardStep}>Back</button><button type="button" onClick={goToSubmitWizardStep}>Next: submit</button></div>
+          <div className="wizard-step-actions"><button type="button" onClick={goToPreviousWizardStep}>Back</button><Link href="#submit-for-approval" onClick={goToSubmitWizardStep}>Skip to submit</Link><button type="button" onClick={goToSubmitWizardStep}>Next: submit</button></div>
         </section>
 
         <section className="ll-card ll-submit-card post-flow-card post-wizard-stage-card" id="submit-for-approval" data-wizard-active={isWizardStepActive('submit')} hidden={!isWizardStepActive('submit')}>

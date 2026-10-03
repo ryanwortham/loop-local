@@ -49,6 +49,89 @@ a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 
+.legal-page-shell {
+  width: min(980px, calc(100% - 32px));
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 26px 0 72px;
+}
+
+.legal-topbar,
+.account-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 26px;
+  color: var(--ll-rebuild-blue);
+  font-weight: 850;
+}
+
+.legal-card {
+  border: 1px solid var(--ll-rebuild-border);
+  border-radius: var(--ll-rebuild-radius-xl);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--ll-rebuild-shadow);
+  padding: clamp(28px, 5vw, 58px);
+}
+
+.legal-card h1 {
+  margin: 0;
+  max-width: 760px;
+  color: var(--ll-rebuild-ink);
+  font-size: clamp(2.4rem, 6vw, 5rem);
+  line-height: .96;
+  letter-spacing: -0.075em;
+  font-weight: 900;
+}
+
+.legal-updated {
+  margin: 16px 0 34px;
+  color: var(--ll-rebuild-muted);
+  font-weight: 750;
+}
+
+.legal-content {
+  display: grid;
+  gap: 24px;
+}
+
+.legal-content section {
+  padding-top: 22px;
+  border-top: 1px solid var(--ll-rebuild-border);
+}
+
+.legal-content h2 {
+  margin: 0 0 10px;
+  color: var(--ll-rebuild-ink);
+  font-size: 1.05rem;
+}
+
+.legal-content p,
+.legal-content li {
+  color: var(--ll-rebuild-slate);
+  font-size: .98rem;
+  line-height: 1.65;
+}
+
+.legal-content a,
+.app-legal-links a,
+.account-legal-links a {
+  color: var(--ll-rebuild-blue);
+  font-weight: 850;
+}
+
+.app-legal-links,
+.account-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  justify-content: center;
+  margin: 26px auto 0;
+  color: var(--ll-rebuild-muted);
+  font-size: .82rem;
+}
+
 /* Complete frontend rebuild: premium local discovery app */
 .complete-frontend-rebuild {
   color: var(--ll-rebuild-ink);
@@ -3212,7 +3295,8 @@ body {
 .account-actions button, .account-actions a,
 .account-settings-section button,
 .account-operator-band a,
-.account-footer-actions button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0 18px; font: inherit; font-weight: 900; cursor: pointer; }
+.account-footer-actions button,
+.account-footer-actions a { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 0 18px; font: inherit; font-weight: 900; cursor: pointer; }
 .account-role { margin: 0; color: var(--ll-rebuild-muted); }
 .account-identity-band,
 .account-operator-band {
@@ -3274,6 +3358,7 @@ body {
   .account-actions > *,
   .account-settings-section button,
   .account-operator-band a,
-  .account-footer-actions button { width: 100%; }
+  .account-footer-actions button,
+  .account-footer-actions a { width: 100%; }
   .account-footer-actions { justify-content: stretch; }
 }

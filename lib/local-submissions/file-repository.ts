@@ -11,11 +11,7 @@ type FileRepositoryOptions = { runtimePath?: string };
 type UnknownRecord = Record<string, unknown>;
 
 const mutationQueues = new Map<string, Promise<void>>();
-const DEFAULT_RUNTIME_STORE_PATH = path.join(
-  /* turbopackIgnore: true */ process.cwd(),
-  'runtime-data',
-  'local-submissions.json',
-);
+const DEFAULT_RUNTIME_STORE_PATH = path.join(process.cwd(), 'runtime-data', 'local-submissions.json');
 
 const EMPTY_STORE: RepositoryStoreShape = {
   version: 1,
